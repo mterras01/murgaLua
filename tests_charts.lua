@@ -383,8 +383,7 @@ end --end function
 function load_data()
   local st, sysfile = "", ""
   local nbl,nbc = 0, 0
-
---[[  
+  
   if osName == "OS=linux" then
      --filename = "/home/terras/scripts-murgaLua/database_80.csv"
      --filename = "/home/terras/scripts-murgalua/fileactive_2017.csv"
@@ -396,8 +395,6 @@ function load_data()
   if osName == "OS=windows" then
      filename = "G:\\Dim\\dsl-not\\scripts-murgaLua\\export_150420.csv"
   end
-  ]]--
-  
   filename = fltk.fl_file_chooser("selecteur de fichier", "CSV Files (*.{csv,CSV})", SINGLE, nil) --place de SINGLE ?
   
   local f = 0
