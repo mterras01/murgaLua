@@ -51,6 +51,19 @@ function define_textfile_origin(data)
   end
 end --end function
 
+function erasequote()
+  local i
+  for i=1,#table_data do
+      if table_data[ i ] then
+         if sub(table_data[ i ],1,1) == "\"" and sub(table_data[ i ],-1) == "\"" then
+            table_data[ i ] = sub(table_data[ i ],2,-2)
+	 end
+      end
+  end
+  quit_t()
+  disp_sample_csv()
+end --end function
+
 function quit_t()
   if twindow then
      twindow:hide()
@@ -63,18 +76,27 @@ function disp_sample_csv()
   local i,j,cx,cy,post
   local cell={}
 
-  
+  if twindow then
+     twindow:hide()
+     twindow:clear()
+  end
   --fenetre graphique pour la restitution du tableau CSV
   width_twindow = 1024
   height_twindow = 250
   twindow = fltk:Fl_Window(width_twindow, height_twindow, "Tableau CSV")
-  width_button = 120
+  --width_button = 120
+  width_button = math.floor(width_twindow/co)
   height_button = 20
-  nb_car = width_button/10 --nb cars affichables dans la largeur du bouton
+  --nb_car = width_button/10 --nb cars affichables dans la largeur du bouton
+  nb_car = width_button/11 --nb cars affichables dans la largeur du bouton
   
   t_quit = fltk:Fl_Button(10, height_twindow-30, width_button, 25, "Quitter")
   t_quit:tooltip("Fermer cette fenetre")
   t_quit:callback(quit_t)
+  
+  t_quote = fltk:Fl_Button(width_button+12, height_twindow-30, width_button, 25, "oter les \"")
+  t_quote:tooltip("oter les \"")
+  t_quote:callback(erasequote)
   --affichage legendes + 2 premières lignes de table_data
   --table legendes
   cx, cy=0,0
@@ -298,7 +320,8 @@ function find_col_lines_csv(data)
                  if pos2 < l then
                     st = sub(data, pos1+1,pos2-1)
                  else
-                    st = sub(data, pos1+1,l-1)
+                    --st = sub(data, pos1+1,l-1)
+		    st = sub(data, pos1+1,l-size_eol)
                     table.insert(legendes,st)
                     break
                  end
@@ -306,7 +329,8 @@ function find_col_lines_csv(data)
               table.insert(legendes,st)
               pos1 = pos2
            else -- dernier champ du fichier
-              st = sub(data, pos1+1,l-1)
+              --st = sub(data, pos1+1,l-1)
+	      st = sub(data, pos1+1,l-size_eol)
               table.insert(legendes,st)
               break
            end
@@ -329,7 +353,8 @@ function find_col_lines_csv(data)
   while 1 do
     j = find(data,"\n",d)
     if j then
-       st = sub(data, d, j-1)
+       --st = sub(data, d, j-1)
+       st = sub(data, d, j-size_eol)
        m=1
        for i=1,cols-1 do
 	   k = find(st, separator, m)
@@ -368,13 +393,12 @@ function find_col_lines_csv(data)
 	  end
        end
        lines = lines+1
-       d = j+size_eol
+      --d = j+size_eol
+       d = j+1
     else
        break
     end
-  end
-
- 
+  end 
   
 print("Nb de lignes = " .. lines .. "\nNb de colonnes = " .. cols .. "\nNb de cellules = " .. #table_data)  
   return lines, cols
@@ -405,7 +429,20 @@ function load_data()
   local posc=1
   read_data = ""
   local str
+  
+  
   if filename then
+     --init previous tables, if any
+     if legendes and table_data and type_data then
+        table_data = nil
+	type_data = nil
+	legendes = nil
+	legendes = {}
+        table_data={}
+        type_data={}
+        co,li = 0,0
+     end
+      
      f = io.open(filename,"rb")
      if f then
         read_data = f:read("*all")
@@ -417,7 +454,8 @@ function load_data()
         nbl, nbc = find_col_lines_csv(read_data)
 	
 	pertinence_separator(read_data) --check if separator is the good one
-	
+	li, co = nbl, nbc
+	stats_0_csv()
         return nbl, nbc
      else
         print("Inexistence du fichier " .. filename)
@@ -470,7 +508,7 @@ end --end function
   li, co = load_data()
   if li and co then
      print("cols=" .. co .. " // lines=" .. li)
-     stats_0_csv()
+     --	stats_0_csv()
      disp_sample_csv()
   else
      os.exit(0)
@@ -510,13 +548,16 @@ end --end function
   testbutton1 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@filesave")
   dec_button = dec_button+35
   testbutton2 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@search")
+  testbutton2:tooltip("Visualiser la structure du CSV")
+  testbutton2:callback(disp_sample_csv)
   dec_button = dec_button+35
   testbutton3 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileprint")
   dec_button = dec_button+35
   testbutton4 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@refresh")
   dec_button = dec_button+35
   testbutton5 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileopen")
-  
+  testbutton5:tooltip("Ouvrir un autre fichier")
+  testbutton5:callback(load_data)
   
   pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
 
