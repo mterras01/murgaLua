@@ -12,6 +12,7 @@ separator = ";"
 legendes = {}
 table_data={}
 type_data={}
+type_date={}
 co,li = 0,0
 
 read_data = "" --tampon de lecture (et d'ecriture) des données sauvegardées au format CSV
@@ -57,6 +58,13 @@ function erasequote()
       if table_data[ i ] then
          if sub(table_data[ i ],1,1) == "\"" and sub(table_data[ i ],-1) == "\"" then
             table_data[ i ] = sub(table_data[ i ],2,-2)
+	 end
+      end
+  end
+    for i=1,#legendes do
+      if legendes[ i ] then
+         if sub(legendes[ i ],1,1) == "\"" and sub(legendes[ i ],-1) == "\"" then
+            legendes[ i ] = sub(legendes[ i ],2,-2)
 	 end
       end
   end
@@ -121,7 +129,8 @@ function disp_sample_csv()
       table.insert(cell, fltk:Fl_Button(cx, cy, width_button, height_button, st ))
       cell[ #cell ]:labelfont( fltk.FL_SCREEN )
       cell[#cell]:color(fltk.FL_RED)
-      cell[ #cell ]:tooltip( legendes[ j ] )
+      st = type_data[ j ] .. "\n" .. type_date[ j ]
+      cell[ #cell ]:tooltip( st )
   end
   
   
@@ -152,12 +161,109 @@ function disp_sample_csv()
   twindow:show()
 end --end function
 
-function find_date()
+function is_date(st, cols)
+  local lines, pos
+  local size,dd,mm,yy
+   --size of data and original type of data is important
+   --line 1 "legendes" excuded
+
+   size = #st
+   if size == 6 then
+      --2 options ddmmyy or yymmdd
+      mm = tonumber( sub(st,3,4) )
+      --option ddmmyy
+      dd = tonumber( sub(st,1,2) )
+      yy = tonumber( sub(st,5,6) )
+      if dd and mm and yy then
+         if dd>=1 and dd<=31 and mm>=1 and mm<=12 and yy>=0 and yy<=99 then
+           type_date[ cols ] = "ddmmyy"
+	   return 1
+         end
+      end
+      --option yymmdd
+      dd = tonumber( sub(st,5,6) )
+      yy = tonumber( sub(st,1,2) )
+      if dd and mm and yy then
+         if dd>=1 and dd<=31 and mm>=1 and mm<=12 and yy>=0 and yy<=99 then
+            type_date[ cols ] = "yymmdd"
+	    return 1
+         end
+      end
+  elseif size == 8 then
+      --4 options ddmmyyyy or yyyymmdd or yy-mm-dd or dd-mm-yy
+      --ddmmyyyy
+      dd = tonumber( sub(st,1,2) )
+      mm = tonumber( sub(st,3,4) )
+      yy = tonumber( sub(st,5,8) )
+      if dd and mm and yy then
+         if dd>=1 and dd<=31 and mm>=1 and mm<=12 and yy>=1800 and yy<=2100 then
+            type_date[ cols ] = "ddmmyyyy"
+	    return 1
+         end
+      end
+      --yyyymmdd
+      dd = tonumber( sub(st,7,8) )
+      mm = tonumber( sub(st,5,6) )
+      yy = tonumber( sub(st,1,4) )
+      if dd and mm and yy then
+         if dd>=1 and dd<=31 and mm>=1 and mm<=12 and yy>=1800 and yy<=2100 then
+            type_date[ cols ] = "yyyymmdd"
+	    return 1
+         end
+      end
+      --yy-mm-dd
+      dd = tonumber( sub(st,7,8) )
+      mm = tonumber( sub(st,4,5) )
+      yy = tonumber( sub(st,1,2) )
+      if dd and mm and yy then
+         if dd>=1 and dd<=31 and mm>=1 and mm<=12 and yy>=0 and yy<=99 then
+            type_date[ cols ] = "yy-mm-dd"
+	    return 1
+         end
+      end
+      --dd-mm-yy
+      dd = tonumber( sub(st,1,2) )
+      mm = tonumber( sub(st,4,5) )
+      yy = tonumber( sub(st,7,8) )
+      if dd and mm and yy then
+         if dd>=1 and dd<=31 and mm>=1 and mm<=12 and yy>=0 and yy<=99 then
+            type_date[ cols ] = "dd-mm-yy"
+	    return 1
+         end
+      end
+   elseif size == 10 then
+      --2 options dd-mm-yyyy or yyyy-mm-dd
+      --dd-mm-yyyy
+      dd = tonumber( sub(st,1,2) )
+      mm = tonumber( sub(st,4,5) )
+      yy = tonumber( sub(st,7,10) )
+      if dd and mm and yy then
+         if dd>=1 and dd<=31 and mm>=1 and mm<=12 and yy>=1800 and yy<=2100 then
+	    type_date[ cols ] = "dd-mm-yyyy"
+	    return 1
+         end
+      end
+      --yyyy-mm-dd
+      dd = tonumber( sub(st,9,10) )
+      mm = tonumber( sub(st,6,7) )
+      yy = tonumber( sub(st,1,4) )
+      if dd and mm and yy then
+         if dd>=1 and dd<=31 and mm>=1 and mm<=12 and yy>=1800 and yy<=2100 then
+	    type_date[ cols ] = "yyyy-mm-dd"
+	    return 1
+         end
+      end
+  else
+      --not date
+      type_date[ cols ] = ""
+      return nil
+  end 
+
 end --end function
 
 function find_type()
   local cols,lines, pos
-  local st3
+  local st3, st
   local valtype="" --possible multiple type values for each cols
   
 --print("co = " .. co .. ", li = " .. li) 
@@ -166,15 +272,20 @@ function find_type()
   type_data = {}
   
   for cols=1,co do
-      for lines=1,li do
+      for lines=2,li do  --line 1 "legendes" excuded
 	  pos = ((lines-1)*co) + cols
 	  if table_data[ pos ] then
---print("table_data[ " .. pos .. " ] = " .. table_data[ pos ] .. ", lines=" .. lines)
-	     if tonumber( table_data[ pos ] ) then
-	        st3 = "number"
+	     st = table_data[ pos ] .. ""
+	     if is_date(st, cols) and find(string.upper( legendes[ cols ]), "DAT") then
+                st3 = "date"
 	     else
-	        st3 = "string"
-	     end 
+--print("table_data[ " .. pos .. " ] = " .. table_data[ pos ] .. ", lines=" .. lines)
+	        if tonumber( table_data[ pos ] ) then
+	           st3 = "number"
+	        else
+	           st3 = "string"
+	        end
+	     end
 	     if find(valtype, st3) then
 	        --type already recorded
 	     else
@@ -185,12 +296,14 @@ function find_type()
       end
       --simple conclusion for this col (at this stage)
 --print("col = " .. cols .. ", buffer = " .. valtype)
-      if find(valtype, "number") then
-	 table.insert(type_data, "number")
-	 --may be a date
+      if find(valtype, "date") then
+	 table.insert(type_data, "date")
       else
-	 table.insert(type_data, "string")
-	 --may be a date
+         if find(valtype, "number") then
+	    table.insert(type_data, "number")
+         else
+	    table.insert(type_data, "string")
+	 end
       end
       valtype = ""
   end
@@ -413,9 +526,12 @@ function find_col_lines_csv(data)
        break
     end
   end 
-  erasequote() --enlever les guillemets enveloppant afin d'avoir un type de données cohérent
+  erasequote() --enlever les guillemets enveloppant afin d'avoir un type de données cohérent, sans oublier les legendes
 print("Nb de lignes = " .. lines .. "\nNb de colonnes = " .. cols .. "\nNb de cellules = " .. #table_data)  
   li,co = lines, cols
+  for i=1,co do
+      type_date[ i ] = ""
+  end
   find_type() --find type values for each col
   return lines, cols
 end --end function
@@ -452,10 +568,12 @@ function load_data()
      if legendes and table_data and type_data then
         table_data = nil
 	type_data = nil
+	type_date = nil
 	legendes = nil
 	legendes = {}
         table_data={}
         type_data={}
+	type_date={}
         co,li = 0,0
      end
       
