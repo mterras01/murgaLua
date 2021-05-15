@@ -60,6 +60,7 @@ function erasequote()
 	 end
       end
   end
+print("traitement de erasequote() termine")
   quit_t()
   disp_sample_csv()
 end --end function
@@ -94,9 +95,9 @@ function disp_sample_csv()
   t_quit:tooltip("Fermer cette fenetre")
   t_quit:callback(quit_t)
   
-  t_quote = fltk:Fl_Button(width_button+12, height_twindow-30, width_button, 25, "oter les \"")
-  t_quote:tooltip("oter les \"")
-  t_quote:callback(erasequote)
+  t_quote = fltk:Fl_Button(width_button+12, height_twindow-30, width_button, 25, "Dispo")
+  t_quote:tooltip("Dispo")
+  --t_quote:callback(erasequote)
   --affichage legendes + 2 premières lignes de table_data
   --table legendes
   cx, cy=0,0
@@ -151,18 +152,47 @@ function disp_sample_csv()
   twindow:show()
 end --end function
 
-function find_type(st)
-  local t_st
+function find_date()
+end --end function
+
+function find_type()
+  local cols,lines, pos
+  local st3
+  local valtype="" --possible multiple type values for each cols
   
-  if tonumber(st) then
-     t_st = tonumber(st)
-     if t_st .. "" == st then
-        return "numeric"
-     else
-        return "string"
-     end
-  else
-    return "string"
+--print("co = " .. co .. ", li = " .. li) 
+  --table_data was filled by function find_col_lines_csv()
+  type_data = nil
+  type_data = {}
+  
+  for cols=1,co do
+      for lines=1,li do
+	  pos = ((lines-1)*co) + cols
+	  if table_data[ pos ] then
+--print("table_data[ " .. pos .. " ] = " .. table_data[ pos ] .. ", lines=" .. lines)
+	     if tonumber( table_data[ pos ] ) then
+	        st3 = "number"
+	     else
+	        st3 = "string"
+	     end 
+	     if find(valtype, st3) then
+	        --type already recorded
+	     else
+	        --record new type in buffer string
+	        valtype = valtype .. "*" .. st3
+	     end
+	  end
+      end
+      --simple conclusion for this col (at this stage)
+--print("col = " .. cols .. ", buffer = " .. valtype)
+      if find(valtype, "number") then
+	 table.insert(type_data, "number")
+	 --may be a date
+      else
+	 table.insert(type_data, "string")
+	 --may be a date
+      end
+      valtype = ""
   end
 end --end function
 
@@ -292,7 +322,7 @@ end -- end function
 
 function find_col_lines_csv(data)
   local cols,lines = 0,0
-  local i,j,k,l,m,n,st,d,st2,st3
+  local i,j,k,l,m,n,st,d,st2
   local pos,posc = 1,1
   local pos1,pos2 = 1,1
   local pos_l
@@ -361,36 +391,20 @@ function find_col_lines_csv(data)
 	   if k then
 	      if (k-m) >=1 then
 		 st2 = sub(st, m, k-1)
-		 st3 = find_type(st2)
 	         table.insert(table_data, sub(st, m, k-1) )
-		 if lines == 1 then 
-		    table.insert(type_data, st3)
-		 end
 	      else
 		 st2=""
-		 st3 = find_type(st2)
 		 table.insert(table_data, "" )
-		 if lines == 1 then 
-		    table.insert(type_data, st3)
-		 end
 	      end
 	      m=k+1
 	   end
        end
        if (#st-m) >= 1 then
 	  st2 = sub(st, m)
-	  st3 = find_type(st2)
           table.insert(table_data, sub(st, m) )
-	  if lines == 1 then 
-	     table.insert(type_data, st3)
-	 end
        else
 	  st2=""
-	  st3 = find_type(st2)
 	  table.insert(table_data, "" )
-	  if lines == 1 then 
-	     table.insert(type_data, st3)
-	  end
        end
        lines = lines+1
       --d = j+size_eol
@@ -399,8 +413,10 @@ function find_col_lines_csv(data)
        break
     end
   end 
-  
+  erasequote() --enlever les guillemets enveloppant afin d'avoir un type de données cohérent
 print("Nb de lignes = " .. lines .. "\nNb de colonnes = " .. cols .. "\nNb de cellules = " .. #table_data)  
+  li,co = lines, cols
+  find_type() --find type values for each col
   return lines, cols
 end --end function
 
