@@ -2,6 +2,13 @@
 Various murgaLua scripts.
 murgaLua is a (very great) language based on Lua, and embedding fltk
 http://www.murga-projects.com/murgaLua/index.html
-Copyright (C) 2006-8 John Murga
+Copyright (C) 2006-8 John de Murga
 Short description : one binary ~500kb for three OS (Mac OS, Windows, Linux)
 More about fltk : https://www.fltk.org/
+
+![image](https://user-images.githubusercontent.com/83860363/118385429-f1f38d80-b60e-11eb-94dc-6c320e1de30a.png)
+Sadly, John de MURGA passed away 2020. Rest In Peace John, and thanks for all your contributions, among others : murgaLua,  Damn Small Linux, Puppy Linux...
+To remember his work, his life, a few links :
+https://www.linkedin.com/in/johnmurga/ (linkedin)
+https://bkhome.org/news/202007/murga-linux-puppy-forum-is-down.html (Barry Kauler's note)
+http://blog.puppylinux.com/vale-john-de-murga (note from Puppy Linux blog)
