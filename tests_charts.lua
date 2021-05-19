@@ -379,19 +379,18 @@ function stats_0_csv()
      --debut analyse
      for col=1,co do
          buffer = "" -- RAZ pour chaque colonne
-         for lig=2,li do --lig=2 permet d'exclure les legendes
-	     rang = (lig*co)+col
+         for lig=1,li do
+	     rang = ((lig-1)*co)+col
 	     if table_data[ rang ] == "" then
 	        vides[ col ] = vides[ col ]+1
 	     end
 	     k = tonumber(table_data[ rang ] )
 	     if k then
-                if type_data[ col ] == "number" then 
-		   moyenne[ col ] = moyenne[ col ]+table_data[ rang ]
-		   table.insert(mediane_buffer, table_data[ rang ])
-                   nb_valeurs_num[ col ] = nb_valeurs_num[ col ] +1
-		end
-	     else
+                moyenne[ col ] = moyenne[ col ]+table_data[ rang ]
+		table.insert(mediane_buffer, table_data[ rang ])
+                nb_valeurs_num[ col ] = nb_valeurs_num[ col ] +1
+	     end
+             if k == nil then
                 nb_valeurs_str[ col ] = nb_valeurs_str[ col ] +1
 	     end
 --[[ -- A OPTIMISER
@@ -401,33 +400,31 @@ function stats_0_csv()
 	        buffer = buffer .. "*" .. table_data[ rang ]
                 nb_valeurs_diff[ col ] = nb_valeurs_diff[ col ] +1
 	     end]]
-
+             if type_data[ col ] ~= "number" then
+	        mediane[ col ] = "NC"
+	     else
+	        if (#mediane_buffer % 2) == 1 then
+		   table.sort( mediane_buffer )
+	           mediane[ col ] = mediane_buffer[ math.ceil(#mediane_buffer/2) ]
+	        else 
+	           if #mediane_buffer ~= 0 then
+		      
+	              i = math.floor(#mediane_buffer/2)
+	              j = i+1
+	              mediane[ col ] = (mediane_buffer[ i ] + mediane_buffer[ j ])/2
+	           else
+	              mediane[ col ] = "NC"
+	           end
+		end
+	     end
+	     mediane_buffer=nil
+	     mediane_buffer={}
 	 end
-	 if type_data[ col ] == "number" then 
-	    if (#mediane_buffer % 2) == 1 then
-	       i = math.ceil(#mediane_buffer/2)
-	       mediane[ col ] = mediane_buffer[ i ]
-	    else 
-	       if #mediane_buffer ~= 0 then
-	          i = math.floor(#mediane_buffer/2)
-	          j = i+1
-	          mediane[ col ] = (mediane_buffer[ i ] + mediane_buffer[ j ])/2
-	       else
-	          mediane[ col ] = "NC"
-	       end
+	 if nb_valeurs_num[ col ] then
+	    if nb_valeurs_num[ col ] >0 then
+	       moyenne [ col ] = moyenne [ col ]/nb_valeurs_num[ col ]
 	    end
-	    if nb_valeurs_num[ col ] then
-	       if nb_valeurs_num[ col ] >0 then
-	          moyenne [ col ] = moyenne [ col ]/nb_valeurs_num[ col ]
-	       end
-	    end
-	 else
-	    moyenne [ col ] = "NC"
-	    mediane[ col ] = "NC"
 	 end
-	 --RAZ mediane_buffer={}
-	 mediane_buffer=nil
-	 mediane_buffer={}
 --print("Fin colonne " .. col)
      end
   else
@@ -440,7 +437,7 @@ function stats_0_csv()
   print("Nb val num = " .. table.concat(nb_valeurs_num, "//") )
   print("Nb val str = " .. table.concat(nb_valeurs_str, "//") )
   --print("Nb val diff = " .. table.concat(nb_valeurs_diff, "//") )
-  
+   
 end -- end function
 
 function find_col_lines_csv(data)
