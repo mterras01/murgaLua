@@ -2,17 +2,17 @@
 i=0
 f=0
 
---type_chart = { fltk.FL_BAR_CHART, fltk.FL_FILLED_CHART, fltk.FL_HORBAR_CHART, fltk.FL_LINE_CHART, fltk.FL_SPECIALPIE_CHART, fltk.FL_SPIKE_CHART, fltk.FL_PIE_CHART}
-
 --sorted table, by values 
 type_chart = { fltk.FL_BAR_CHART, fltk.FL_LINE_CHART, fltk.FL_FILLED_CHART, fltk.FL_SPIKE_CHART, fltk.FL_PIE_CHART, fltk.FL_SPECIALPIE_CHART, fltk.FL_HORBAR_CHART}
-label_chart = { "FL_HORBAR_CHART", "FL_LINE_CHART", "FL_FILLED_CHART", "FL_SPIKE_CHART", "FL_PIE_CHART", "FL_SPECIALPIE_CHART", "FL_BAR_CHART" }
+--label_chart = { "FL_HORBAR_CHART", "FL_LINE_CHART", "FL_FILLED_CHART", "FL_SPIKE_CHART", "FL_PIE_CHART", "FL_SPECIALPIE_CHART", "FL_BAR_CHART" }
+label_chart = { "FL_BAR_CHART", "FL_LINE_CHART", "FL_FILLED_CHART", "FL_SPIKE_CHART", "FL_PIE_CHART", "FL_SPECIALPIE_CHART", "FL_HORBAR_CHART" }
 
 separator = ";"
 legendes = {}
 table_data={}
 type_data={}
-type_date={}
+type_date={}    
+nb_valeurs_diff={}
 co,li = 0,0
 
 read_data = "" --tampon de lecture (et d'ecriture) des données sauvegardées au format CSV
@@ -360,7 +360,6 @@ function stats_0_csv()
   local mediane={}
   local nb_valeurs_str={}
   local nb_valeurs_num={}
-  local nb_valeurs_diff={}
   local buffer={}
   
   if #table_data <=1 then
@@ -378,7 +377,8 @@ function stats_0_csv()
      end
      --debut analyse
      for col=1,co do
-         buffer = "" -- RAZ pour chaque colonne
+print("Progression de la fonction stats_0_csv(), colonne " .. col .. " en cours.")
+         buffer = "" -- RAZ pour chaque colonne/ tampon pour nb_valeurs_diff[] 
          for lig=1,li do
 	     rang = ((lig-1)*co)+col
 	     if table_data[ rang ] == "" then
@@ -393,13 +393,15 @@ function stats_0_csv()
              if k == nil then
                 nb_valeurs_str[ col ] = nb_valeurs_str[ col ] +1
 	     end
---[[ -- A OPTIMISER
+	     
+	     --debut donnees histogramme -----------------------------------------------------------------
              if find(buffer, table_data[ rang ]) then
 	        --valeur deja enregistree
 	     else
-	        buffer = buffer .. "*" .. table_data[ rang ]
+	        buffer = buffer .. "_" .. table_data[ rang ]
                 nb_valeurs_diff[ col ] = nb_valeurs_diff[ col ] +1
-	     end]]
+	     end --fin donnees histogramme ---------------------------------------------------------------
+	     
              if type_data[ col ] ~= "number" then
 	        mediane[ col ] = "NC"
 	     else
@@ -628,6 +630,26 @@ function change_diagr()
   pwindow:show()
 end --end function
 
+function disp_chart(titre, titrecolor, legend, table, type_graphics)
+  local i, st
+
+  pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
+
+  pie:position(decx_chart, decy_chart)
+  pie:size(width_chart, height_chart)
+  if titre then
+     pie:label(titre)
+  end
+  pie:type( type_chart[type_graphics] )
+  pie:box(3)
+  pie:labelcolor(256)--title color
+  for i=1,co do
+      --st = "[" .. i .. "] " .. legend[ i ] .. ", val=" .. table[i]
+      st = legend[ i ] .. ", " .. table[i]
+      pie:add(table[i], st, i) -- ORDRE = value, label and colour
+  end
+end --end function
+
 function quit_callback_app()
   if pwindow then
      pwindow:hide()
@@ -635,6 +657,10 @@ function quit_callback_app()
      if twindow then
         twindow:hide()
         twindow:clear()
+     end
+     if pie then
+        pie:hide()
+        pie:clear()
      end
      print("Quiting?")
      os.exit(0)
@@ -698,8 +724,6 @@ end --end function
   testbutton5 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileopen")
   testbutton5:tooltip("Ouvrir un autre fichier")
   testbutton5:callback(load_data)
-  
-  pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
 
 --[[
   --st="Ceci est un test de message d'alerte"
@@ -708,18 +732,13 @@ end --end function
     st = st .. "type[" .. i .. "] = " .. type_chart[i] .. ", "
   end
   fltk:fl_alert(st)
-  ]]
+  ]]  
+  
+  local legend = legendes
+  local table = nb_valeurs_diff
+  type_graphics = 7
+  disp_chart("Nb of distincts values Histogram, by cols", textcolor, legend, table, type_graphics)
 
-  pie:position(decx_chart, decy_chart)
-  pie:size(width_chart, height_chart)
-  pie:label("label de pie")
-  pie:type( type_chart[type_graphics] )
-  pie:box(3)
-  pie:labelcolor(1)
-  for i=1,10 do
-      st = "[" .. i .. "] " .. demo_table[i]
-      pie:add(demo_table[i], st, i) -- ORDRE = value, label and colour
-  end
 
   --Fl:check()
   pwindow:show()
