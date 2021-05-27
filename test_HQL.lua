@@ -7,8 +7,9 @@ type_chart = { fltk.FL_BAR_CHART, fltk.FL_LINE_CHART, fltk.FL_FILLED_CHART, fltk
 --label_chart = { "FL_HORBAR_CHART", "FL_LINE_CHART", "FL_FILLED_CHART", "FL_SPIKE_CHART", "FL_PIE_CHART", "FL_SPECIALPIE_CHART", "FL_BAR_CHART" }
 label_chart = { "FL_BAR_CHART", "FL_LINE_CHART", "FL_FILLED_CHART", "FL_SPIKE_CHART", "FL_PIE_CHART", "FL_SPECIALPIE_CHART", "FL_HORBAR_CHART" }
 
-sep_end="------------------\n"
-sep_begin="\n------------------"
+sep_end="\n"
+sep_begin="------------------"
+  
 keyword={ "SELECT", "FROM ", "WHERE ", "GROUP BY", "ORDER BY ", "JOIN ", " AS ", "(SELECT ", "SUM(CASE WHEN", "COUNT(", "HAVING SUM(", "HAVING COUNT(", "WITH "}
 hm_tables={"ide_patient", "ide_sejour", "bas_catalogue_gen", "bas_catalogue_pers","bas_type_info","ide_etablissement_exterieur",
            "bas_etablissement", "Bas_prof_appl_util","bas_profil","bas_utilisateur","Ide_medecin","Ide_adresse","Ide_telephone",
@@ -40,22 +41,7 @@ hm_tables={"ide_patient", "ide_sejour", "bas_catalogue_gen", "bas_catalogue_pers
 	   "Sid_psy_calendar"
 	   }
 print("Nb de tables indexées = " .. #hm_tables)
---[[
-table_domains={"gestion patients, séjours, utilisateurs",17,
-               "isolement, contention",20,
-	       "gestion unités, chambres, lits, habilitations",28,
-	       "prescriptions",38,
-	       "observations",40,
-	       "formulaires",46,
-	       "bureautique",53,
-	       "PMSI",66,
-	       "supervisions de flux, supervision des accès",68,
-	       "identito-vigilance",69,
-	       "constantes",72,
-	       "HM agenda",76,
-	       "HM biologie",79,
-	       "dimension temps",80
-               }]]
+
 table_domains={"gestion patients, séjours, utilisateurs",
                "isolement, contention",
 	       "gestion unités, chambres, lits, habilitations",
@@ -72,27 +58,14 @@ table_domains={"gestion patients, séjours, utilisateurs",
 	       "dimension temps"
                }
 bornes_tables_domaines={17,20,28,38,40,46,53,66,68,69,72,76,79,80}
+nb_query_domain={}
 
 --print("Nb de domaines fonctionnels = " .. #table_domains/2)
 print("Nb de domaines fonctionnels = " .. #table_domains)
---[[
-idx_table_domaine={}
-for i=1,#hm_tables do
-    for j=2,#table_domains,2 do
-        if j == 2 then
-	   if i<=table_domains[2] then
-	      idx_table_domaine[ i ] = table_domains[ j-1 ]
-	   end
-	elseif j<=#table_domains then
-	   if i>table_domains[j-2] and i<=table_domains[j] then
-	      idx_table_domaine[ i ] = table_domains[ j-1 ]
-	   end
-	else
-	   --rien/nothing/nada/nix=nichts
-	end
-    end
-end]]
 
+for i=1,#table_domains do
+    nb_query_domain[i] = 0
+end
 
 comments={"/*", "--"}
 potential_errors={"=>"}
@@ -169,9 +142,7 @@ function disp_sample_csv()
   
   t_quote = fltk:Fl_Button(width_button+12, height_twindow-30, width_button, 25, "Dispo")
   t_quote:tooltip("Dispo")
-  --t_quote:callback(erasequote)
-  --affichage legendes + 2 premières lignes de table_data
-  --table legendes
+
   cx, cy=0,0
   for j=1,co do
       cy = 0
@@ -215,11 +186,6 @@ function disp_sample_csv()
 	  cell[#cell]:tooltip( table_data[ post ] )
       end 
   end
-  --st = table.concat(legendes, "/")
-  --print("legendes\n" .. st)
-  
-  --calculer les types par colonne
-  --calculer les champs non vides
   
   Fl:check()
   twindow:show()
@@ -376,6 +342,7 @@ function stats_0_csv()
 			  --nothing
 		       else
 		          query_domains[ i ] = query_domains[ i ] .. k .. "*"
+			  nb_query_domain[k] = nb_query_domain[k]+1
 		       end
 		    end
 		 else
@@ -384,6 +351,7 @@ function stats_0_csv()
 			  --nothing
 		       else
 		          query_domains[ i ] = query_domains[ i ] .. k .. "*"
+			  nb_query_domain[k] = nb_query_domain[k]+1
 		       end
 		    end
 		 end
@@ -391,10 +359,10 @@ function stats_0_csv()
           end     
       end
   end
-
+--[[
   for i=1,#query do
       print("query[ " .. i .. " ] (taille=" .. #query[i] .. "), query_key = " .. query_key[ i ] .. ", table_used = " .. table_used[ i ] .. ", req. fonctionnelle=" .. query_ok[ i ] .. ", domaines requete=" .. query_domains[ i ])
-  end
+  end]]
 end -- end function
 
 function find_queries(data)
@@ -441,10 +409,26 @@ end --end function
 
 function load_data()
   local st, sysfile = "", ""
+  local linecmd, res, f, buffer
+  filename=nil
   
   if osName == "OS=linux" then
-    filename = "/home/terras/scripts-murgaLua/requetes_HQL_for_analyse_240521.txt" --HP
-    --filename = "/home/terras/scripts-murgalua/requetes_HQL_for_analyse_240521.txt" -- ACER
+     linecmd = "hostname > temp.txt";
+     res = os.execute(linecmd)
+     if res == 0 then
+        f = io.open("temp.txt", "rb")
+        if f then
+           buffer = f:read("*all")
+	   if find(buffer, "terras-Aspire-5733Z",1,true) then
+	      filename = "/home/terras/scripts-murgalua/requetes_HQL_for_analyse_240521.txt" -- ACER
+	   else
+	      filename = "/home/terras/scripts-murgaLua/requetes_HQL_for_analyse_240521.txt" --HP
+	   end
+           io.close(f)
+	end
+        --filename = "/home/terras/scripts-murgaLua/requetes_HQL_for_analyse_240521.txt" --HP
+        --filename = "/home/terras/scripts-murgalua/requetes_HQL_for_analyse_240521.txt" -- ACER
+     end
   end
   if osName == "OS=windows" then
      filename = "G:\\Dim\\dsl-not\\scripts-murgaLua\\requetes_HQL_for_analyse_240521.txt"
@@ -512,7 +496,7 @@ function change_diagr()
   pwindow:show()
 end --end function
 
-function disp_chart(titre, titrecolor, legend, table, type_graphics)
+function disp_chart(titre, titrecolor, legend, tabl, type_graphics)
   local i, st
 
   pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
@@ -525,10 +509,11 @@ function disp_chart(titre, titrecolor, legend, table, type_graphics)
   pie:type( type_chart[type_graphics] )
   pie:box(3)
   pie:labelcolor(256)--title color
+  
+  print("table.concat(legend) = " .. table.concat(legend,'*') .. " // table.concat(table) = " .. table.concat(tabl,'*'))
   for i=1,co do
-      --st = "[" .. i .. "] " .. legend[ i ] .. ", val=" .. table[i]
-      st = legend[ i ] .. ", " .. table[i]
-      pie:add(table[i], st, i) -- ORDRE = value, label and colour
+      st = legend[ i ] .. ", " .. tabl[i]
+      pie:add(tabl[i], st, i) -- ORDRE = value, label and colour
   end
 end --end function
 
@@ -556,7 +541,7 @@ end --end function
   --premiere partie : chargement des données  
   load_data()
   if #query > 1 then
-     disp_sample_csv()
+     --disp_sample_csv()
   else
      os.exit(0)
   end
@@ -615,11 +600,12 @@ end --end function
   fltk:fl_alert(st)
   ]]  
   
-  local legend = legendes
-  local table = nb_valeurs_diff
   type_graphics = 7
-  disp_chart("Nb of distincts values Histogram, by cols", textcolor, legend, table, type_graphics)
-
+print("#table_domains = " .. #table_domains .. ", table.concat(nb_query_domain) = " .. table.concat(nb_query_domain,"//"))
+  disp_chart("Nb of distincts values Histogram, by cols", textcolor, table_domains, nb_query_domain, type_graphics)
+--for i=1,#table_domains do
+--    nb_query_domain[i] = 0
+--end
 
   --Fl:check()
   pwindow:show()
