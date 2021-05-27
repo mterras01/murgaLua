@@ -10,8 +10,9 @@ label_chart = { "FL_BAR_CHART", "FL_LINE_CHART", "FL_FILLED_CHART", "FL_SPIKE_CH
 sep_end="------------------\n"
 sep_begin="\n------------------"
 keyword={ "SELECT", "FROM ", "WHERE ", "GROUP BY", "ORDER BY ", "JOIN ", " AS ", "(SELECT ", "SUM(CASE WHEN", "COUNT(", "HAVING SUM(", "HAVING COUNT(", "WITH "}
-hm_tables={"ide_patient", "ide_sejour", "bas_catalogue_gen", "bas_catalogue_pers","bas_type_info","ide_etablissement_exterieur","bas_etablissement",
-           "Bas_prof_appl_util","bas_profil","bas_utilisateur","Ide_medecin","Ide_adresse","Ide_telephone","Bas_ville","ide_mouvement","Pms_evenement","Ide_ald",
+hm_tables={"ide_patient", "ide_sejour", "bas_catalogue_gen", "bas_catalogue_pers","bas_type_info","ide_etablissement_exterieur",
+           "bas_etablissement", "Bas_prof_appl_util","bas_profil","bas_utilisateur","Ide_medecin","Ide_adresse","Ide_telephone",
+	   "Bas_ville","ide_mouvement","Pms_evenement","Ide_ald",
 	   
            "Med_isolement_registre","med_isolement_mesure","med_isolement_contention",
 
@@ -38,6 +39,8 @@ hm_tables={"ide_patient", "ide_sejour", "bas_catalogue_gen", "bas_catalogue_pers
 	   
 	   "Sid_psy_calendar"
 	   }
+print("Nb de tables indexées = " .. #hm_tables)
+--[[
 table_domains={"gestion patients, séjours, utilisateurs",17,
                "isolement, contention",20,
 	       "gestion unités, chambres, lits, habilitations",28,
@@ -52,7 +55,27 @@ table_domains={"gestion patients, séjours, utilisateurs",17,
 	       "HM agenda",76,
 	       "HM biologie",79,
 	       "dimension temps",80
+               }]]
+table_domains={"gestion patients, séjours, utilisateurs",
+               "isolement, contention",
+	       "gestion unités, chambres, lits, habilitations",
+	       "prescriptions",
+	       "observations",
+	       "formulaires",
+	       "bureautique",
+	       "PMSI",
+	       "supervisions de flux, supervision des accès",
+	       "identito-vigilance",
+	       "constantes",
+	       "HM agenda",
+	       "HM biologie",
+	       "dimension temps"
                }
+bornes_tables_domaines={17,20,28,38,40,46,53,66,68,69,72,76,79,80}
+
+--print("Nb de domaines fonctionnels = " .. #table_domains/2)
+print("Nb de domaines fonctionnels = " .. #table_domains)
+--[[
 idx_table_domaine={}
 for i=1,#hm_tables do
     for j=2,#table_domains,2 do
@@ -68,7 +91,8 @@ for i=1,#hm_tables do
 	   --rien/nothing/nada/nix=nichts
 	end
     end
-end
+end]]
+
 
 comments={"/*", "--"}
 potential_errors={"=>"}
@@ -302,7 +326,7 @@ function is_date(st, cols)
 end --end function
 
 function stats_0_csv()
-  local i,j,k
+  local i,j,k,l
   local query_key={}
   local table_used={}
   local query_ok={}
@@ -316,9 +340,9 @@ function stats_0_csv()
 
   --initialisations des tables de stats
   for i=1,#query do
-      query_key[ i ] = ""
-      table_used[ i ] = ""
-      query_domains[ i ] = ""
+      query_key[ i ] = "*"
+      table_used[ i ] = "*"
+      query_domains[ i ] = "*"
       query_ok[ i ] = 0
   end
   --debut analyse
@@ -344,13 +368,25 @@ function stats_0_csv()
           if find( st1, st2,1,true) then
              table_used[ i ] = table_used[ i ] .. j .. "*"
 	     --search domain's table
-	     if idx_table_domaine[ j ] then 
-	        st3 = idx_table_domaine[ j ] .. ""
-	        if find( query_domains[ i ], st3,1,true) then
-	           --already recorded
-	        else
-	           query_domains[ i ] = idx_table_domaine[ j ] .. "*"
-	        end
+	     for k=1,#bornes_tables_domaines do
+	         st3 = "*" .. k .. "*"
+	         if k==1 then
+		    if j <= bornes_tables_domaines[ k ] then
+		       if find(query_domains[ i ],st3,1,true) then
+			  --nothing
+		       else
+		          query_domains[ i ] = query_domains[ i ] .. k .. "*"
+		       end
+		    end
+		 else
+		    if j>bornes_tables_domaines[ k-1 ] and j<=bornes_tables_domaines[ k ] then
+		       if find(query_domains[ i ],st3,1,true) then
+			  --nothing
+		       else
+		          query_domains[ i ] = query_domains[ i ] .. k .. "*"
+		       end
+		    end
+		 end
 	     end
           end     
       end
@@ -358,9 +394,6 @@ function stats_0_csv()
 
   for i=1,#query do
       print("query[ " .. i .. " ] (taille=" .. #query[i] .. "), query_key = " .. query_key[ i ] .. ", table_used = " .. table_used[ i ] .. ", req. fonctionnelle=" .. query_ok[ i ] .. ", domaines requete=" .. query_domains[ i ])
-      if #query[i] < 70 then
-print( query[i] )
-      end
   end
 end -- end function
 
@@ -410,8 +443,8 @@ function load_data()
   local st, sysfile = "", ""
   
   if osName == "OS=linux" then
-    --filename = "/home/terras/scripts-murgaLua/requetes_HQL_for_analyse_240521.txt" --HP
-    filename = "/home/terras/scripts-murgalua/requetes_HQL_for_analyse_240521.txt" -- ACER
+    filename = "/home/terras/scripts-murgaLua/requetes_HQL_for_analyse_240521.txt" --HP
+    --filename = "/home/terras/scripts-murgalua/requetes_HQL_for_analyse_240521.txt" -- ACER
   end
   if osName == "OS=windows" then
      filename = "G:\\Dim\\dsl-not\\scripts-murgaLua\\requetes_HQL_for_analyse_240521.txt"
@@ -586,10 +619,7 @@ end --end function
   local table = nb_valeurs_diff
   type_graphics = 7
   disp_chart("Nb of distincts values Histogram, by cols", textcolor, legend, table, type_graphics)
---[[
-  for i=1,#idx_table_domaine do
-    print("hm_tables[" .. i .. "] = " .. hm_tables[i] .. ", domaine = " .. idx_table_domaine[i])
-  end]]
+
 
   --Fl:check()
   pwindow:show()
