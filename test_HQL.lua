@@ -42,16 +42,16 @@ hm_tables={"ide_patient", "ide_sejour", "bas_catalogue_gen", "bas_catalogue_pers
 	   }
 print("Nb de tables indexées = " .. #hm_tables)
 
-table_domains={"gestion patients, séjours, utilisateurs",
+table_domains={"gestion patients/utilisateurs",
                "isolement, contention",
-	       "gestion unités, chambres, lits, habilitations",
+	       "gestion unites",
 	       "prescriptions",
 	       "observations",
 	       "formulaires",
 	       "bureautique",
 	       "PMSI",
-	       "supervisions de flux, supervision des accès",
-	       "identito-vigilance",
+	       "supervisions",
+	       "identito",
 	       "constantes",
 	       "HM agenda",
 	       "HM biologie",
@@ -497,7 +497,7 @@ function change_diagr()
 end --end function
 
 function disp_chart(titre, titrecolor, legend, tabl, type_graphics)
-  local i, st
+  local i, j, st
 
   pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
 
@@ -510,9 +510,20 @@ function disp_chart(titre, titrecolor, legend, tabl, type_graphics)
   pie:box(3)
   pie:labelcolor(256)--title color
   
-  print("table.concat(legend) = " .. table.concat(legend,'*') .. " // table.concat(table) = " .. table.concat(tabl,'*'))
-  for i=1,co do
-      st = legend[ i ] .. ", " .. tabl[i]
+  print("table.concat(legend) = " .. table.concat(legend,'*') .. " // table.concat(tabl) = " .. table.concat(tabl,'*'))
+  for i=1,#legend do
+      if tabl[i] then
+	 if math.log( tabl[i] ) then
+	    --j = math.log( tabl[i] )
+	    j = tabl[i]
+	 else
+	    j = tabl[i]
+	 end
+      else
+	j = 0
+      end
+      --st = legend[ i ] .. ", " .. tabl[i]
+      st = legend[ i ] .. ", " .. j
       pie:add(tabl[i], st, i) -- ORDRE = value, label and colour
   end
 end --end function
