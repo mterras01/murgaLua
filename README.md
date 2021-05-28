@@ -1,5 +1,8 @@
 # murgaLua
-Various murgaLua scripts.
+Various murgaLua scripts :
+- test_HQL.lua reads a bunch of Hibernate Queries recorded in file "requetes_HQL_for_analyse_240521.txt" for doing some stats: how many queries including patient, sejour, prescription, constante, plan de soin etc... with some charts for vizualisation.
+- test_charts.lua reads a csv file of your choice, with ";" as separator and does some stats and charts visualization.
+
 murgaLua is a (very great) language based on Lua, and embedding fltk
 http://www.murga-projects.com/murgaLua/index.html
 Copyright (C) 2006-8 John de Murga
@@ -12,3 +15,5 @@ To remember his work, his life, a few links :
 https://www.linkedin.com/in/johnmurga/ (linkedin)
 https://bkhome.org/news/202007/murga-linux-puppy-forum-is-down.html (Barry Kauler's note)
 http://blog.puppylinux.com/vale-john-de-murga (note from Puppy Linux blog)
+
+RIP John de Murga
