@@ -42,9 +42,9 @@ hm_tables={"ide_patient", "ide_sejour", "bas_catalogue_gen", "bas_catalogue_pers
 	   }
 print("Nb de tables indexées = " .. #hm_tables)
 
-table_domains={"gestion patients/utilisateurs",
-               "isolement, contention",
-	       "gestion unites",
+table_domains={"sejours",
+               "isocont",
+	       "unites",
 	       "prescriptions",
 	       "observations",
 	       "formulaires",
@@ -54,8 +54,8 @@ table_domains={"gestion patients/utilisateurs",
 	       "identito",
 	       "constantes",
 	       "HM agenda",
-	       "HM biologie",
-	       "dimension temps"
+	       "HM bio",
+	       "DIM temps"
                }
 bornes_tables_domaines={17,20,28,38,40,46,53,66,68,69,72,76,79,80}
 nb_query_domain={}
@@ -528,7 +528,7 @@ function sort_chart_tables(legend, tabl)
       end
   end
   for i=1,#tab do
-      print("tab[" .. i .. "] = " .. tab[i])
+      print("tab[" .. i .. "] = " .. tab[i] .. "(" .. leg[i] .. ")")
   end
   print("buffer_processed = " .. buffer_processed)
   return leg,tab
@@ -551,23 +551,8 @@ function disp_chart(titre, titrecolor, legend, tabl, type_graphics)
   pie:type( type_chart[type_graphics] )
   pie:box(3)
   pie:labelcolor(256)--title color
+  --pie:align(fltk.FL_ALIGN_LEFT)
   
-  --print("table.concat(legend) = " .. table.concat(legend,'*') .. " // table.concat(tabl) = " .. table.concat(tabl,'*'))
-  --[[
-  for i=1,#legend do
-      if tabl[i] then
-	 if math.log( tabl[i] ) then
-	    --j = math.floor(math.log( tabl[i] ))
-	    j = tabl[i]
-	 else
-	    j = tabl[i]
-	 end
-      else
-	j = 0
-      end
-      st = legend[ i ] .. ", " .. j
-      pie:add(j, st, i) -- ORDER = value, label and colour
-  end]]
   for i=1,#leg do
       if tab[i] then
 	 if math.log( tab[i] ) then
@@ -579,7 +564,8 @@ function disp_chart(titre, titrecolor, legend, tabl, type_graphics)
       else
 	j = 0
       end
-      st = leg[ i ] .. ", " .. j
+      --st = leg[ i ] .. "\n" .. j
+      st = j .. "\n" .. leg[ i ]
       pie:add(j, st, i) -- ORDER = value, label and colour
   end
   
@@ -630,18 +616,18 @@ end --end function
   demo_table = {10,30,-20,5,-30,15,20,40,7, 14}
 
   --fenetre graphique pour les diagrammes
-  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "Analyse graphique par diagrammes")
+  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "Data visualization, by charts")
   
   --centrage du bouton en bas de la fenetre pwindow
   --i = (width_pwindow/2)-(width_button/2)
   width_button = 100
-  quit = fltk:Fl_Button(dec_button+10, height_pwindow-30, width_button, 25, "Quitter")
-  quit:tooltip("Quitter cette appli!")
+  quit = fltk:Fl_Button(dec_button+10, height_pwindow-30, width_button, 25, "Quit")
+  quit:tooltip("Quit!")
   quit:callback(quit_callback_app)
   
   width_button = 180
-  nextbutton = fltk:Fl_Button(dec_button+115, height_pwindow-30, width_button, 25, "type diagr")
-  nextbutton:tooltip("Changer le diagramme!")
+  nextbutton = fltk:Fl_Button(dec_button+115, height_pwindow-30, width_button, 25, "type chart")
+  nextbutton:tooltip("Change Chart!")
   nextbutton:callback(change_diagr)
   nextbutton:label(label_chart[type_graphics])
   
@@ -650,15 +636,15 @@ end --end function
   testbutton1 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@filesave")
   dec_button = dec_button+35
   testbutton2 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@search")
-  testbutton2:tooltip("Visualiser la structure du CSV")
-  testbutton2:callback(disp_sample_csv)
+  --testbutton2:tooltip("See CSV struct")
+  --testbutton2:callback(disp_sample_csv)
   dec_button = dec_button+35
   testbutton3 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileprint")
   dec_button = dec_button+35
   testbutton4 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@refresh")
   dec_button = dec_button+35
   testbutton5 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileopen")
-  testbutton5:tooltip("Ouvrir un autre fichier")
+  testbutton5:tooltip("Open another file")
   testbutton5:callback(load_data)
 
 --[[
@@ -672,7 +658,7 @@ end --end function
   
   type_graphics = 7
 --print("#table_domains = " .. #table_domains .. ", table.concat(nb_query_domain) = " .. table.concat(nb_query_domain,"//"))
-  disp_chart("Nb of distincts values Histogram, by cols", textcolor, table_domains, nb_query_domain, type_graphics)
+  disp_chart("Nb of squeries per domain", textcolor, table_domains, nb_query_domain, type_graphics)
 --for i=1,#table_domains do
 --    nb_query_domain[i] = 0
 --end
