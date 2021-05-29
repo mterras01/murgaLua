@@ -419,15 +419,16 @@ function load_data()
         f = io.open("temp.txt", "rb")
         if f then
            buffer = f:read("*all")
+print("Hostname ? " .. buffer)
 	   if find(buffer, "terras-Aspire-5733Z",1,true) then
 	      filename = "/home/terras/scripts-murgalua/requetes_HQL_for_analyse_240521.txt" -- ACER
-	   else
+	   elseif find(buffer, "HP6200",1,true) then
 	      filename = "/home/terras/scripts-murgaLua/requetes_HQL_for_analyse_240521.txt" --HP
+	   else
+	      filename=nil
 	   end
            io.close(f)
 	end
-        --filename = "/home/terras/scripts-murgaLua/requetes_HQL_for_analyse_240521.txt" --HP
-        --filename = "/home/terras/scripts-murgalua/requetes_HQL_for_analyse_240521.txt" -- ACER
      end
   end
   if osName == "OS=windows" then
@@ -496,11 +497,52 @@ function change_diagr()
   pwindow:show()
 end --end function
 
+function sort_chart_tables(legend, tabl)
+  local i, j, st, st2, valmax, idxmax
+  local leg={}
+  local tab={}
+  buffer_processed = "*"
+  
+  --classifier code
+  for i=1,#tabl do
+      st = "*" .. i .. "*"
+      if find(buffer_processed, st,1,true) == nil then
+         valmax = tabl[ i ]
+         idxmax = i
+         for j=1,#tabl do
+	     if j ~= i then
+	        if tabl[j] > valmax then
+		   st2 = "*" .. j .. "*"
+		   if find(buffer_processed, st2,1,true) == nil then
+	              valmax = tabl[ j ]
+		      idxmax = j
+		   end
+	        end
+	     end
+	 end
+	 if idxmax then
+            table.insert(tab, tabl[ idxmax ])
+            table.insert(leg, legend[ idxmax ])
+            buffer_processed = buffer_processed .. idxmax .. "*"
+	 end
+      end
+  end
+  for i=1,#tab do
+      print("tab[" .. i .. "] = " .. tab[i])
+  end
+  print("buffer_processed = " .. buffer_processed)
+  return leg,tab
+end --end function 
+
 function disp_chart(titre, titrecolor, legend, tabl, type_graphics)
   local i, j, st
+  local leg={}
+  local tab={}
 
+  --before visualization, sort both tables tabl AND legend "Descending order"
+  leg,tab = sort_chart_tables(legend, tabl)
+  
   pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
-
   pie:position(decx_chart, decy_chart)
   pie:size(width_chart, height_chart)
   if titre then
@@ -510,11 +552,12 @@ function disp_chart(titre, titrecolor, legend, tabl, type_graphics)
   pie:box(3)
   pie:labelcolor(256)--title color
   
-  print("table.concat(legend) = " .. table.concat(legend,'*') .. " // table.concat(tabl) = " .. table.concat(tabl,'*'))
+  --print("table.concat(legend) = " .. table.concat(legend,'*') .. " // table.concat(tabl) = " .. table.concat(tabl,'*'))
+  --[[
   for i=1,#legend do
       if tabl[i] then
 	 if math.log( tabl[i] ) then
-	    --j = math.log( tabl[i] )
+	    --j = math.floor(math.log( tabl[i] ))
 	    j = tabl[i]
 	 else
 	    j = tabl[i]
@@ -522,13 +565,28 @@ function disp_chart(titre, titrecolor, legend, tabl, type_graphics)
       else
 	j = 0
       end
-      --st = legend[ i ] .. ", " .. tabl[i]
       st = legend[ i ] .. ", " .. j
-      pie:add(tabl[i], st, i) -- ORDRE = value, label and colour
+      pie:add(j, st, i) -- ORDER = value, label and colour
+  end]]
+  for i=1,#leg do
+      if tab[i] then
+	 if math.log( tab[i] ) then
+	    --j = math.floor(math.log( tabl[i] ))
+	    j = tab[i]
+	 else
+	    j = tab[i]
+	 end
+      else
+	j = 0
+      end
+      st = leg[ i ] .. ", " .. j
+      pie:add(j, st, i) -- ORDER = value, label and colour
   end
+  
 end --end function
 
 function quit_callback_app()
+  --[[
   if pwindow then
      pwindow:hide()
      pwindow:clear()
@@ -542,7 +600,8 @@ function quit_callback_app()
      end
      print("Quiting?")
      os.exit(0)
-  end
+  end]]
+  os.exit(0)
 end --end function
 
   t00 = os.time() --top chrono
@@ -612,7 +671,7 @@ end --end function
   ]]  
   
   type_graphics = 7
-print("#table_domains = " .. #table_domains .. ", table.concat(nb_query_domain) = " .. table.concat(nb_query_domain,"//"))
+--print("#table_domains = " .. #table_domains .. ", table.concat(nb_query_domain) = " .. table.concat(nb_query_domain,"//"))
   disp_chart("Nb of distincts values Histogram, by cols", textcolor, table_domains, nb_query_domain, type_graphics)
 --for i=1,#table_domains do
 --    nb_query_domain[i] = 0
