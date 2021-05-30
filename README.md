@@ -2,6 +2,7 @@
 Various murgaLua scripts :
 - test_HQL.lua reads a bunch of Hibernate Queries recorded in file "requetes_HQL_for_analyse_240521.txt" for doing some stats: how many queries including patient, sejour, prescription, constante, plan de soin etc... with some charts for vizualisation.
 - test_charts.lua reads a csv file of your choice, with ";" as separator and does some stats and charts visualization.
+- As for murgaLua, charts methods & functions are very very very few documented...
 
 murgaLua is a (very great) language based on Lua, and embedding fltk
 http://www.murga-projects.com/murgaLua/index.html
