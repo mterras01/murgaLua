@@ -58,13 +58,30 @@ table_domains={"sejours",
 	       "DIM temps"
                }
 bornes_tables_domaines={17,20,28,38,40,46,53,66,68,69,72,76,79,80}
-nb_query_domain={}
+nb_query_domain={} --nb of queries with a specific domain
+nb_query_keyword={} --nb of queries with a specific keyword
+
+decx_chart   = 20
+decy_chart   = 0
+width_chart  = 450
+height_chart = 450
+pos_x_cwindow = 10
+pos_y_cwindow = 10
+width_cwindow = 500
+height_cwindow = 500
+width_button = 160
+dec_button = 0
+type_graphics = 1
+  
+cwindow={} --array of windows for charts
+pie={} --array of charts
 
 --print("Nb de domaines fonctionnels = " .. #table_domains/2)
 print("Nb de domaines fonctionnels = " .. #table_domains)
 
 for i=1,#table_domains do
     nb_query_domain[i] = 0
+    nb_query_keyword[i] = 0
 end
 
 comments={"/*", "--"}
@@ -293,7 +310,6 @@ end --end function
 
 function stats_0_csv()
   local i,j,k,l
-  local query_key={}
   local table_used={}
   local query_ok={}
   local query_domains={}
@@ -306,7 +322,7 @@ function stats_0_csv()
 
   --initialisations des tables de stats
   for i=1,#query do
-      query_key[ i ] = "*"
+
       table_used[ i ] = "*"
       query_domains[ i ] = "*"
       query_ok[ i ] = 0
@@ -314,6 +330,7 @@ function stats_0_csv()
   --debut analyse
   for i=1, #query do
       st1 = upper(query[ i ])
+      buffer_keyword = "*"
       if find(st1, "NICKEL",1,true) then
 	 query_ok[ i ] = 1
       elseif find(st1, ":OK",1,true) then
@@ -326,7 +343,7 @@ function stats_0_csv()
       for j=1,#keyword do
          st2 = upper(keyword[ j ])
          if find( st1, st2,1,true) then
-            query_key[ i ] = query_key[ i ] .. j .. "*"
+            nb_query_keyword[ j ] = nb_query_keyword[ j ] +1
          end
       end
       for j=1,#hm_tables do
@@ -361,7 +378,7 @@ function stats_0_csv()
   end
 --[[
   for i=1,#query do
-      print("query[ " .. i .. " ] (taille=" .. #query[i] .. "), query_key = " .. query_key[ i ] .. ", table_used = " .. table_used[ i ] .. ", req. fonctionnelle=" .. query_ok[ i ] .. ", domaines requete=" .. query_domains[ i ])
+      print("query[ " .. i .. " ] (taille=" .. #query[i] .. "), nb_query_keyword = " .. nb_query_keyword[ i ] .. ", table_used = " .. table_used[ i ] .. ", req. fonctionnelle=" .. query_ok[ i ] .. ", domaines requete=" .. query_domains[ i ])
   end]]
 end -- end function
 
@@ -476,27 +493,6 @@ print("Hostname ? " .. buffer)
   end
 end --end function
 
-function change_diagr()
-  local i, type_diag, st
-  
-  if pwindow and pie then
-     i = pie:type()
-     if i<6 then
-        pie:type(i+1)
-     else
-        pie:type(0)
-     end
-     pie:redraw()
-     pie:show()
-     Fl:check()
-  end
-  type_graphics = i+1
-  nextbutton:label(label_chart[type_graphics])
-  nextbutton:redraw()
-  
-  pwindow:show()
-end --end function
-
 function sort_chart_tables(legend, tabl)
   local i, j, st, st2, valmax, idxmax
   local leg={}
@@ -538,19 +534,20 @@ function disp_chart(titre, titrecolor, legend, tabl, type_graphics)
   local i, j, st
   local leg={}
   local tab={}
-
+  
   --before visualization, sort both tables tabl AND legend "Descending order"
   leg,tab = sort_chart_tables(legend, tabl)
   
-  pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
-  pie:position(decx_chart, decy_chart)
-  pie:size(width_chart, height_chart)
+  table.insert(pie, fltk:Fl_Chart(0, 0, 5, 5, nil) )
+  pie[ #pie ]:position(decx_chart, decy_chart)
+  pie[ #pie ]:size(width_chart, height_chart)
+  pie[ #pie ]:autosize()
   if titre then
-     pie:label(titre)
+     pie[ #pie ]:label(titre)
   end
-  pie:type( type_chart[type_graphics] )
-  pie:box(3)
-  pie:labelcolor(256)--title color
+  pie[ #pie ]:type( type_chart[type_graphics] )
+  pie[ #pie ]:box(3)
+  pie[ #pie ]:labelcolor(256)--title color]]
   --pie:align(fltk.FL_ALIGN_LEFT)
   
   for i=1,#leg do
@@ -566,27 +563,29 @@ function disp_chart(titre, titrecolor, legend, tabl, type_graphics)
       end
       --st = leg[ i ] .. "\n" .. j
       st = j .. "\n" .. leg[ i ]
-      pie:add(j, st, i) -- ORDER = value, label and colour
+      pie[ #pie ]:add(j, st, i) -- ORDER = value, label and colour
   end
+  pie[ #pie ]:redraw()
+  pie[ #pie ]:show()
+  Fl:check()
   
 end --end function
 
+function next_diagr()
+  --fenetre graphique pour les diagrammes
+  local st=""
+  st = "Data visualization " ..  (#cwindow+1) .. ", by charts"
+  pos_x_cwindow = pos_x_cwindow + 20
+  pos_y_cwindow = pos_y_cwindow + 50
+  table.insert(cwindow, fltk:Fl_Window(pos_x_cwindow, pos_y_cwindow, width_cwindow, height_cwindow, "Data visualization 2, by charts") )
+
+  type_graphics = 7
+  disp_chart("Nb of queries per keyword", textcolor, keyword, nb_query_keyword, type_graphics)
+  cwindow[ #cwindow ]:show()
+  Fl:check()
+end --end function
+
 function quit_callback_app()
-  --[[
-  if pwindow then
-     pwindow:hide()
-     pwindow:clear()
-     if twindow then
-        twindow:hide()
-        twindow:clear()
-     end
-     if pie then
-        pie:hide()
-        pie:clear()
-     end
-     print("Quiting?")
-     os.exit(0)
-  end]]
   os.exit(0)
 end --end function
 
@@ -602,48 +601,39 @@ end --end function
      os.exit(0)
   end
   print("Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. (os.difftime(os.time(), t00)/60) .. " mn, soit en " .. (os.difftime(os.time(), t00)/3600).. " heures")
-  
-  decx_chart   = 20
-  decy_chart   = 0
-  width_chart  = 450
-  height_chart = 450
-  width_pwindow = 500
-  height_pwindow = 500
-  width_button = 160
-  dec_button = 0
-  type_graphics = 1
-  
+   
   demo_table = {10,30,-20,5,-30,15,20,40,7, 14}
 
-  --fenetre graphique pour les diagrammes
-  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "Data visualization, by charts")
+  --main graphic window for charts (first of an array)
+  table.insert(cwindow, fltk:Fl_Window(pos_x_cwindow, pos_y_cwindow, width_cwindow, height_cwindow, "Data visualization, by charts") )
   
-  --centrage du bouton en bas de la fenetre pwindow
-  --i = (width_pwindow/2)-(width_button/2)
+  --centrage du bouton en bas de la fenetre cwindow
+  --i = (width_cwindow/2)-(width_button/2)
   width_button = 100
-  quit = fltk:Fl_Button(dec_button+10, height_pwindow-30, width_button, 25, "Quit")
+  quit = fltk:Fl_Button(dec_button+10, height_cwindow-30, width_button, 25, "Quit")
   quit:tooltip("Quit!")
   quit:callback(quit_callback_app)
   
   width_button = 180
-  nextbutton = fltk:Fl_Button(dec_button+115, height_pwindow-30, width_button, 25, "type chart")
-  nextbutton:tooltip("Change Chart!")
-  nextbutton:callback(change_diagr)
+  nextbutton = fltk:Fl_Button(dec_button+115, height_cwindow-30, width_button, 25, "type chart")
+  nextbutton:tooltip("Fltk type of Chart")
   nextbutton:label(label_chart[type_graphics])
   
   width_button = 30
   dec_button = dec_button+115+190
-  testbutton1 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@filesave")
+  testbutton1 = fltk:Fl_Button(dec_button, height_cwindow-30, width_button, 25, "@filesave")
   dec_button = dec_button+35
-  testbutton2 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@search")
-  --testbutton2:tooltip("See CSV struct")
-  --testbutton2:callback(disp_sample_csv)
+  testbutton2 = fltk:Fl_Button(dec_button, height_cwindow-30, width_button, 25, "@search")
+
   dec_button = dec_button+35
-  testbutton3 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileprint")
+  testbutton3 = fltk:Fl_Button(dec_button, height_cwindow-30, width_button, 25, "@fileprint")
   dec_button = dec_button+35
-  testbutton4 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@refresh")
+  testbutton4 = fltk:Fl_Button(dec_button, height_cwindow-30, width_button, 25, "@refresh")
+  testbutton4:callback(next_diagr)
+  testbutton4:tooltip("Next chart")
+  
   dec_button = dec_button+35
-  testbutton5 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileopen")
+  testbutton5 = fltk:Fl_Button(dec_button, height_cwindow-30, width_button, 25, "@fileopen")
   testbutton5:tooltip("Open another file")
   testbutton5:callback(load_data)
 
@@ -658,13 +648,15 @@ end --end function
   
   type_graphics = 7
 --print("#table_domains = " .. #table_domains .. ", table.concat(nb_query_domain) = " .. table.concat(nb_query_domain,"//"))
-  disp_chart("Nb of squeries per domain", textcolor, table_domains, nb_query_domain, type_graphics)
+  disp_chart("Nb of queries per domain", textcolor, table_domains, nb_query_domain, type_graphics)
 --for i=1,#table_domains do
 --    nb_query_domain[i] = 0
 --end
-
+  
   --Fl:check()
-  pwindow:show()
+  cwindow[ #cwindow ]:show()
+  
+  next_diagr()
   
 Fl:check()
 Fl:run()
