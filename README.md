@@ -16,5 +16,6 @@ To remember his work, his life, a few links :
 https://www.linkedin.com/in/johnmurga/ (linkedin)
 https://bkhome.org/news/202007/murga-linux-puppy-forum-is-down.html (Barry Kauler's note)
 http://blog.puppylinux.com/vale-john-de-murga (note from Puppy Linux blog)
+and last contribution of John's github on May 12, 2020 : https://github.com/JohnMurga?tab=overview&from=2020-12-01&to=2020-12-31
 
 RIP John de Murga
