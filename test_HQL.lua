@@ -10,7 +10,7 @@ label_chart = { "FL_BAR_CHART", "FL_LINE_CHART", "FL_FILLED_CHART", "FL_SPIKE_CH
 sep_end="\n"
 sep_begin="------------------"
   
-keyword={ "SELECT", "FROM ", "WHERE ", "GROUP BY", "ORDER BY ", "JOIN ", " AS ", "(SELECT ", "SUM(CASE WHEN", "COUNT(", "HAVING SUM(", "HAVING COUNT(", "WITH "}
+keyword={ "SELECT", "FROM ", "WHERE ", "GROUP BY", "ORDER BY ", "JOIN ", " AS ", "(SELECT ", "SUM(", "SUM(CASE WHEN", "COUNT(", "HAVING SUM(", "HAVING COUNT(", "WITH ","AVG(", "VARIANCE("}
 hm_tables={"ide_patient", "ide_sejour", "bas_catalogue_gen", "bas_catalogue_pers","bas_type_info","ide_etablissement_exterieur",
            "bas_etablissement", "Bas_prof_appl_util","bas_profil","bas_utilisateur","Ide_medecin","Ide_adresse","Ide_telephone",
 	   "Bas_ville","ide_mouvement","Pms_evenement","Ide_ald",
@@ -81,6 +81,8 @@ print("Nb de domaines fonctionnels = " .. #table_domains)
 
 for i=1,#table_domains do
     nb_query_domain[i] = 0
+end
+for i=1,#keyword do
     nb_query_keyword[i] = 0
 end
 
