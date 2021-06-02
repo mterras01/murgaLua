@@ -60,6 +60,8 @@ table_domains={"sejours",
 bornes_tables_domaines={17,20,28,38,40,46,53,66,68,69,72,76,79,80}
 nb_query_domain={} --nb of queries with a specific domain
 nb_query_keyword={} --nb of queries with a specific keyword
+legend_size={}
+histo_size={}
 
 decx_chart   = 20
 decy_chart   = 0
@@ -315,7 +317,8 @@ function stats_0_csv()
   local table_used={}
   local query_ok={}
   local query_domains={}
-  local st1,st2,st3
+  local st,st1,st2,st3
+  local divider=500
   
   
   if #query <=1 then
@@ -331,6 +334,13 @@ function stats_0_csv()
   end
   --debut analyse
   for i=1, #query do
+      k = math.floor(#query[i]/divider)+1
+      if histo_size[ k ] then
+         histo_size[ k ] = histo_size[ k ]+1
+      else
+	 histo_size[ k ] = 1
+      end
+      
       st1 = upper(query[ i ])
       buffer_keyword = "*"
       if find(st1, "NICKEL",1,true) then
@@ -377,6 +387,10 @@ function stats_0_csv()
 	     end
           end     
       end
+  end
+  for i=1,#histo_size do
+      st= ((i-1)*divider) .. "-" .. (i*divider)-1
+      table.insert(legend_size, st)
   end
 --[[
   for i=1,#query do
@@ -532,13 +546,16 @@ function sort_chart_tables(legend, tabl)
   return leg,tab
 end --end function 
 
-function disp_chart(titre, titrecolor, legend, tabl, type_graphics)
+function disp_chart(titre, titrecolor, legend, tabl, type_graphics, no_sort)
   local i, j, st
-  local leg={}
-  local tab={}
+  local leg,tab
   
   --before visualization, sort both tables tabl AND legend "Descending order"
-  leg,tab = sort_chart_tables(legend, tabl)
+  if no_sort then
+     leg,tab = sort_chart_tables(legend, tabl)
+  else
+     leg,tab = legend,tabl
+  end
   
   table.insert(pie, fltk:Fl_Chart(0, 0, 5, 5, nil) )
   pie[ #pie ]:position(decx_chart, decy_chart)
@@ -577,12 +594,26 @@ function next_diagr()
   --fenetre graphique pour les diagrammes
   local st=""
   st = "Data visualization " ..  (#cwindow+1) .. ", by charts"
-  pos_x_cwindow = pos_x_cwindow + 20
-  pos_y_cwindow = pos_y_cwindow + 50
-  table.insert(cwindow, fltk:Fl_Window(pos_x_cwindow, pos_y_cwindow, width_cwindow, height_cwindow, "Data visualization 2, by charts") )
-
+  pos_x_cwindow = pos_x_cwindow + 320
+  pos_y_cwindow = pos_y_cwindow
+  table.insert(cwindow, fltk:Fl_Window(pos_x_cwindow, pos_y_cwindow, width_cwindow, height_cwindow, st) )
+  
   type_graphics = 7
-  disp_chart("Nb of queries per keyword", textcolor, keyword, nb_query_keyword, type_graphics)
+  disp_chart("Nb of queries per keyword", textcolor, keyword, nb_query_keyword, type_graphics, true)
+  cwindow[ #cwindow ]:show()
+  Fl:check()
+end --end function
+
+function next_diagr2()
+  --fenetre graphique pour les diagrammes
+  local st=""
+  st = "Data visualization " ..  (#cwindow+1) .. ", by charts"
+  pos_x_cwindow = pos_x_cwindow + 320
+  pos_y_cwindow = pos_y_cwindow
+  table.insert(cwindow, fltk:Fl_Window(pos_x_cwindow, pos_y_cwindow, width_cwindow, height_cwindow, st) )
+  
+  type_graphics = 7
+  disp_chart("Nb of queries per size in bytes", textcolor, legend_size, histo_size, type_graphics, 1)
   cwindow[ #cwindow ]:show()
   Fl:check()
 end --end function
@@ -631,8 +662,8 @@ end --end function
   testbutton3 = fltk:Fl_Button(dec_button, height_cwindow-30, width_button, 25, "@fileprint")
   dec_button = dec_button+35
   testbutton4 = fltk:Fl_Button(dec_button, height_cwindow-30, width_button, 25, "@refresh")
-  testbutton4:callback(next_diagr)
-  testbutton4:tooltip("Next chart")
+  --testbutton4:callback(next_diagr)
+  --testbutton4:tooltip("Next chart")
   
   dec_button = dec_button+35
   testbutton5 = fltk:Fl_Button(dec_button, height_cwindow-30, width_button, 25, "@fileopen")
@@ -649,16 +680,14 @@ end --end function
   ]]  
   
   type_graphics = 7
---print("#table_domains = " .. #table_domains .. ", table.concat(nb_query_domain) = " .. table.concat(nb_query_domain,"//"))
-  disp_chart("Nb of queries per domain", textcolor, table_domains, nb_query_domain, type_graphics)
---for i=1,#table_domains do
---    nb_query_domain[i] = 0
---end
+  disp_chart("Nb of queries per domain", textcolor, table_domains, nb_query_domain, type_graphics, true)
   
   --Fl:check()
   cwindow[ #cwindow ]:show()
   
   next_diagr()
+  next_diagr2()
+  
   
 Fl:check()
 Fl:run()
