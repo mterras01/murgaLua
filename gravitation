@@ -1,0 +1,894 @@
+#!/bin/murgaLua
+
+--[[
+# original code attraction.py from jpountz
+# https://codes-sources.commentcamarche.net/profile/user/jpountz
+
+# Parameters
+#
+# alt between 0 and 360
+# speed is about 15 (arbitrary unity)
+# angle (degree) can be 0 to 360
+# trajectories can be elliptic, hyperbolic or parabolic
+# exemple : 105/105/14 elliptic
+#           210/45/9   elliptic
+#           350/18/12  hyperbolic
+# As for parabolic, it's more difficult, you can guess
+
+# Operating
+#
+# K constant is G (universal gravity constant) * M (earth mass)
+# satellite's trajectory is computed by solving the mechanical equation:
+#     satellite's mass * acceleration = Earth's gravitational force impact for the satellite
+]]--
+
+
+--[[ REMINDER
+--1/ SOI = Sphere Of [gravitational] Influence: done
+--2/ computing Apollo SOI changing : SOI Earth <=> SOI Moon when distance(Apollo,Moon) <= 66 000 km: done
+--3/ better elliptical orbit little axis (to do) and big axis (done) computing: done
+--4/ better orbital speeds synchronizing for Moon and apollo
+]]--
+
+
+g = 6.67*10^-11 --constante_gravitation 
+ua = 149597870000 --mètres
+dtl = 384399000 --distance terre lune, mètres
+
+--Earth
+m_t = 5.9722*10^24 --masse, kg
+r_t = 6371000 --rayon, mètres
+g_t = 9.80665 --gravité de surface m.s-2
+vl_t = 11186 --vitesse de liberation, m/s
+
+--global m_l,r_l,g_l,vl_l
+--Moon
+m_l = 7.3477*10^22 --masse, kg
+r_l = 1736000 --rayon, mètres
+g_l = 1.622 --gravité de surface m.s-2
+vl_l = 2380 --vitesse de liberation, m/s
+
+
+--apollo--CSM(=CM+SM)+LM
+m_a = (5800+24500)+16500 --apollo mass, kg
+--earth altitude (m) in orbit before translunar injection
+alterrestre = 180000 --180km
+vit_inj_translunaire = 11000 --m/s, entre 10,7 et 11,1 km/s
+--altitude lunaire (m) en orbite avant descente LM ou retour sur terre
+alt_lunaire_retour_libre = 250000 --meters
+alt_lunaire_descente_LM = 110000 --meters
+--vitesse orbitale lunaire
+vitorblunapollo = 1611 --m/s , soit 5800 km/h
+
+--E_potentielle = masse * g * altitude
+--E_cinetique  = 1/2* masse * vitesse^2
+
+theta=0 --theta=angle repérant la position du satellite par rapport à l'horizontale
+dv=8 --dv=distance(M,I)=distance(N,I)
+xb=0
+yb=0 --head of speedvector
+xi=0
+yi=0 --middle of speedvector
+xmm=0
+ymm=0
+xnn=0
+ynn=0 ----arrowhead of speedvector
+--loops
+loop_me=0 --number of Moon loops around Earth
+loop_ae=0 --number of Apollo loops around Earth
+loop_am=0--number of Apollo loops around Moon
+
+a=0
+b=0
+c=0
+
+g = 6.67*10^-11 --constante_gravitation 
+ua = 149597870000 --mètres
+
+dtl = 384399000 -- distance terre lune, mètres
+
+--terre
+m_t = 5.9722*10^24 --masse, kg
+r_t = 6371000 -- rayon, mètres
+g_t = 9.80665 -- gravité de surface m.s-2
+vl_t = 11186 -- vitesse de liberation, m/s
+
+--lune
+m_l = 7.3477*10^22 --masse, kg
+r_l = 1736000 -- rayon, mètres
+g_l = 1.622 -- gravité de surface m.s-2
+vl_l = 2380 -- vitesse de liberation, m/s
+
+--apollo--CSM(=CM+SM)+LM
+m_a = (5800+24500)+16500
+--altitude terrestre (m) en orbite avant injection translunaire
+alterrestre = 180000 --180km
+vit_inj_translunaire = 11000 -- m/s, entre 10,7 et 11,1 km/s
+--altitude lunaire (m) en orbite avant descente LM ou retour sur terre
+alt_lunaire_retour_libre = 250000
+alt_lunaire_descente_LM = 110000
+--vitesse orbitale lunaire
+vitorblunapollo = 1611 --m/s , soit 5800 km/h
+
+
+--zone d'influence gravitationnelle lunaire
+zigl = 66000000 --en mètres
+
+
+
+
+res = math.sqrt((g*m_t)/(r_t+dtl))
+print("Vitesse lunaire = " .. res .. " m.s^1")
+print("Vitesse lunaire = " .. (res*3600/1000) .. " km.h^1")
+
+res = 2*math.pi*math.sqrt(((r_t+dtl)^3)/(g*m_t))
+print("Periode de revolution = " .. res)
+
+
+
+--apollo coords
+x_apollo = 0
+y_apollo = 12
+dx=0
+dy=0
+
+--Apollo trajectory points storage, for analytics
+store_xa={}
+store_ya={}
+min_d_a2e=10000 --minimum distance(Apollo,Earth) for this trajectory
+max_d_a2e=0 --maximum distance(Apollo,Earth) for this trajectory
+idx_min_d_a2e=1 --index in matrix store_xa for minimum distance(Apollo,Earth) for this trajectory
+idx_max_d_a2e=1 --index in matrix store_xa for maximum distance(Apollo,Earth) for this trajectory
+xminaxis1,xmaxaxis1=0,0
+yminaxis1,ymaxaxis1=0,0
+xminaxis2,xmaxaxis2=0,0
+yminaxis2,ymaxaxis2=0,0
+distaxis1, distaxis2=0,0 --axis size for Apollo elliptical trajectory
+xmid,ymid=0,0 -- intresection point of axis 1 and axis 2 (Apollo elliptical trajectory)
+a_axis1,b_axis1=0,0 --line's equation for axis1: y = ax+b
+a_axis2,b_axis2=0,0 --line's equation for axis2: y = ax+b
+circumf=0 --circumference of orbital around earth
+
+--moon coords
+x_moon = 780
+y_moon = 400
+
+--alta=100 	-- apollo altitude, km
+alta=200
+angle_degre_a=100
+--forcea=6 -- more elliptical orbit, angle_degre_a=80, alta=200
+--forcea=9 -- more circular orbit, angle_degre_a=80, alta=200
+--forcea=11 -- more circular orbit, angle_degre_a=80, alta=200, SOI=earth, then moon
+forcea=11 -- more circular orbit, angle_degre_a=80, alta=200
+
+lc=800 		--côté du canvas (L)
+de=9 		--Earth diameter (D)
+dm=3 		--moon diameter
+altm=384	--Earth to moon distance (*1000 km)
+d=2 		--satellite diameter
+flag=0
+
+--Earth coords
+x=lc/2
+y=lc/2
+
+--angle,force=0,0
+--K=50  --joue le rôle du produit G*M
+K=50 -- K for Apollo/Earth
+KM=10 --K for Apollo/Moon
+theta=0
+
+x_apollo,y_apollo=(lc/2)-(de/2)-alta,lc/2
+dxa,dya=forcea*math.cos(angle_degre_a)/20,-forcea*math.sin(angle_degre_a)/20
+
+--satellite = Moon
+angle_degre_m=10 --angle repérant la position du satellite par rapport à l'horizontale
+--forcem=7
+forcem=-40
+x_moon,y_moon=(lc/2)-altm,lc/2
+dxm,dym=forcem*math.cos(angle_degre_m)/20,-forcem*math.sin(angle_degre_m)/20
+
+--distances Apollo to Earth and to Moon
+d_a2m=0 --distance Apollo to Moon
+d_a2e=0 --distance Apollo to Earth
+soi="" --Sphere Of [gravitationnal] Influence = Earth, Moon ... or Sun
+
+time_unit = 0
+time_loop=0
+--time_step = 0.00001 --time scale = increasing => lower animation speed, decreasing => higher animation speed
+time_step = 0.001 --time scale = increasing => lower animation speed, decreasing => higher animation speed
+timelapsefactor=10000 --2nd time scale = increasing => lower animation speed, decreasing => higher animation speed
+
+terre2=nil --Box label for Earth
+lune2=nil  --Box label for Moon
+
+
+--point d'injection translunaire
+x_itl = 0
+y_itl = 0
+angle_itl = time_unit
+  
+function hypot(a,b)
+  return(math.sqrt((a*a) + (b*b)))
+end -- end function
+  
+function sleep()
+  c=0
+  if cwindow then
+     --continue
+  else
+     os.exit(0)
+  end
+  local i=0
+  local c=0
+  for i=0, timelapsefactor do 
+      c = math.cos(i)
+  end
+end
+
+--Fl:scheme("plastic")
+Fl:scheme("gtk+")
+
+function plustime()
+  time_step = time_step*2
+  if time_step > 0.4 then
+    time_step = 0.4
+  end 
+end --end function
+
+function minustime()
+  time_step = time_step/2
+  if time_step < 0.00001 then
+    time_step = 0.00001
+  end 
+end --end function
+
+function update_new_moon_position()
+  st=""
+  --update boxes with x & y moon coords
+  st = "X=" .. string.format("%04d", x_moon-(lc/2))
+  moon_xcoord:label(st)
+  st = "Y=" .. string.format("%04d", y_moon-(lc/2))
+  moon_ycoord:label(st)
+  moon_ycoord:redraw()
+  --update orbital distance traveled box
+  st = string.format("%09d", (2*math.pi*altm*100000))
+  moon_odt:label(st)
+end --end function
+
+function update_new_apollo_position()
+  colr=0
+  st=""
+
+  --update boxes with x & y apollo
+  st = "X=" .. string.format("%04d", x_apollo-(lc/2))
+  apollo_x:label(st)
+  apollo_x:redraw()
+  st = "Y=" .. string.format("%04d", y_apollo-(lc/2))
+  apollo_y:label(st)
+  apollo_y:redraw()
+  
+  --update boxes with x & y distance apollo to moon & to earth
+  d_a2m = math.sqrt(((x_apollo-x_moon)*(x_apollo-x_moon)) + ((y_apollo-y_moon)*(y_apollo-y_moon)))
+  st = "d=" .. string.format("%06d", (d_a2m*1000))
+  dista2m:label(st)
+  dista2m:redraw()
+  d_a2e = math.sqrt(((x_apollo-x)*(x_apollo-x)) + ((y_apollo-y)*(y_apollo-y)))
+  st = "d=" .. string.format("%06d", (d_a2e*1000))
+  dista2e:label(st)
+  dista2e:redraw()
+    
+  --crashes management
+  if d_a2m <= (dm/2) then
+     --crashing on the Moon
+     st = "Apollo 1 has crashed on the Moon... Resetting simulator systems"
+     fltk:fl_alert(st)
+     reset()
+  end
+  if d_a2e <= (de/2) then
+     --crashing on the Earth
+     st = "Apollo 1 has crashed on the Earth... Resetting simulator systems"
+     fltk:fl_alert(st)
+     reset()
+  end
+  
+  
+  --update boxe with SOI (Sphere Of [gravitationnal] Influence from previous distances
+  if d_a2m <= 66 then
+     soi = "Moon"
+     st = "SOI = Moon"
+     colr=27
+  elseif d_a2e <= 929 then
+     soi = "Earth"
+     st = "SOI = Earth"
+     colr=4
+  else
+    soi = "Sun"
+    st = "SOI = Sun"
+    colr=3
+    st = "Apollo 1 is leaving Earth Sphere Of Influence... Resetting simulator systems"
+    fltk:fl_alert(st)
+    reset()
+  end
+  soichanging:labelcolor(colr)
+  soichanging:label(st)
+  soichanging:redraw()
+  
+  --update orbital distance traveled box
+  st = string.format("%09d", (circumf*100000))
+  apollo_odt:label(st)
+  
+end --end function
+
+function disp_finished_trajectory()
+  i=0
+  h=0
+  cy=0
+  distax2=150 --arbitrary distance between two points on axis 2, centered on I(xmid,ymid)
+  deltax2=0 --discriminant for 2 solutions of equations system d(M,I)=distax2 AND M on line P
+  a_eq_ax2=0
+  b_eq_ax2=0
+  c_eq_ax2=0
+  --erase previous 
+  fltk.fl_color(49)
+  fltk.fl_line(xminaxis1, yminaxis1, xmaxaxis1, ymaxaxis1)
+  fltk.fl_line(xminaxis2, yminaxis2, xmaxaxis2, ymaxaxis2)
+  
+  --tracing previous trajectory : one loop around Earth (if all is right?)
+  fltk.fl_color(3)
+  for i=1,#store_xa do
+      fltk.fl_point(store_xa[i], store_ya[i])
+  end
+  
+  --big axis ??? tracing
+  xminaxis1=store_xa[idx_min_d_a2e]
+  xmaxaxis1=store_xa[idx_max_d_a2e]
+  yminaxis1=store_ya[idx_min_d_a2e]
+  ymaxaxis1=store_ya[idx_max_d_a2e]
+  fltk.fl_line(store_xa[idx_min_d_a2e], store_ya[idx_min_d_a2e], store_xa[idx_max_d_a2e], store_ya[idx_max_d_a2e])
+  --middle of axis1
+  xmid = (xminaxis1+xmaxaxis1)/2
+  ymid = (yminaxis1+ymaxaxis1)/2
+  
+  --line equation for axis 1
+  a_axis1 = (ymaxaxis1-yminaxis1)/(xmaxaxis1-xminaxis1)
+  b_axis1 = ymaxaxis1-(( (ymaxaxis1-yminaxis1)/(xmaxaxis1-xminaxis1) )*xmaxaxis1)
+  --line equation for axis 2
+  a_axis2 = -1/a_axis1 -- why? axis1 and axis 2 are perpendicular, thus axis1*a_axis2=-1
+  b_axis2 = ymid - (a_axis2*xmid)
+  
+  --axis2 -- finding yminaxis2 & ymaxaxis2 with computing method 2 (more acute)
+  for i=1,#store_xa do
+      cy = math.floor( (a_axis2*store_xa[i]) + b_axis2)
+      if math.floor(store_ya[i]) == cy then 
+	 xminaxis2 = store_xa[i]
+	 yminaxis2 = store_ya[i]
+	 --finding xmaxaxis2 & ymaxaxis2 with point I(xmid,ymid) middle of axis2
+	 xmaxaxis2 = (2*xmid)-xminaxis2
+	 ymaxaxis2 = (2*ymid)-yminaxis2
+	 break
+      end
+  end
+  --axis1 size computing
+  distaxis1 = math.sqrt( ((xmaxaxis1-xminaxis1)*(xmaxaxis1-xminaxis1)) + ((ymaxaxis1-yminaxis1)*(ymaxaxis1-yminaxis1)) )
+  --axis2 size computing
+  distaxis2 = math.sqrt( ((xmaxaxis2-xminaxis2)*(xmaxaxis2-xminaxis2)) + ((ymaxaxis2-yminaxis2)*(ymaxaxis2-yminaxis2)) )
+  
+  
+  --print(" xmin = " .. xmin .. " // xmax = " .. xmax)
+  --print(" ymin = " .. ymin .. " // ymax = " .. ymax)
+  --ellipse big and little axis
+  --if xmax-xmin > ymax-ymin then
+  if distaxis1 > distaxis2 then
+     bigaxis = distaxis1
+     littleaxis = distaxis2
+     fltk.fl_color(1)
+     fltk.fl_line(xminaxis1, yminaxis1, xmaxaxis1, ymaxaxis1)
+     fltk.fl_color(2)
+     fltk.fl_line(xminaxis2, yminaxis2, xmaxaxis2, ymaxaxis2)
+     Fl:check()
+  else
+     bigaxis = distaxis2
+     littleaxis = distaxis1
+     fltk.fl_color(2)
+     fltk.fl_line(xminaxis1, yminaxis1, xmaxaxis1, ymaxaxis1)
+     fltk.fl_color(1)
+     fltk.fl_line(xminaxis2, yminaxis2, xmaxaxis2, ymaxaxis2)
+     Fl:check()
+  end
+  
+  --computing elliptical eccentricity
+  eccentricity = math.sqrt((bigaxis*bigaxis/4)-(littleaxis*littleaxis/4))/(bigaxis/2)
+  --computing elliptical circumference
+  h = ((bigaxis/2) - (littleaxis/2)) / ((bigaxis/2) + (littleaxis/2))
+  h = h*h
+  circumf = math.pi*((bigaxis/2) + (littleaxis/2))*(1+((3*h)/(10+math.sqrt(4+(3*h)))))
+print("circumf (apollo around Earth elliptical trajectory) = " .. (circumf*100000))  
+print("apollo around Earth eccentricity = " .. eccentricity)
+    --computing elliptical circumference
+print("lunar orbit circumf = " .. (2*math.pi*altm*100000) )  
+end --end function
+
+function TLinjection()
+  --point d'injection translunaire
+  x_itl = x_apollo
+  y_itl = y_apollo
+  angle_itl = time_unit
+  
+  
+  --equation of circular orbit is (x+400)^2 + (y-400)^2 = 12*12
+  --equation of tangente  ax+by+c=0, soit y = -(a/c)x-(c/b) ou 
+  --compute a,b,c
+  c = (x_itl*x_itl)+(y_itl*y_itl)-400*(x_itl+y_itl)
+  a = (x_itl-x)
+  b = (y_itl-y)
+  if y_itl == y then
+     y2 = y+500
+     x2 = x_itl
+  else
+     if x_itl >= x then
+        x2 = x_itl+500
+        y2 = ((a/c)*x2) - (c/b)
+     else
+        x2 = x_itl-500
+        y2 = ((a/c)*x2) - (c/b)
+     end
+  end
+ 
+  
+  fltk.fl_color(1)
+  fltk.fl_line(x_itl, y_itl, x2, y2)
+  cwindow:make_current()
+end
+  
+function compute_apollo_position_post_lti( time_unit )
+  x_apollo,y_apollo=x_apollo+dx,y_apollo+dy
+end --end function
+
+function compute_moon_speed()
+  
+end --end function
+
+function drawmoon( time_unit )
+   i=0
+   st=""
+   old_x_apollo = x_apollo
+   old_y_apollo = y_apollo
+   
+   --apollo trajectory points storage, for analytics
+   table.insert(store_xa, x_apollo)
+   table.insert(store_ya, y_apollo)
+   
+   --Terre, position statique
+   x=lc/2
+   y=lc/2
+   fltk.fl_color(4)
+   fltk.fl_pie(x-10, y-10, 20, 20, 0, 360)
+
+   terre2 = fltk:Fl_Box(x-110, y-15, 128, 32, "")
+   terre2:label("TERRE")
+   terre2:color(4)
+   terre2:draw()
+   
+   --updating animation's speed
+   st=""
+   st = st .. string.format("%03.06f", (time_step*1000))
+   animspeed:label(st)
+     
+   --erase previous apollo
+   fltk.fl_color(49)
+   --fltk.fl_point(x_apollo, y_apollo)
+   fltk.fl_pie(x_apollo-3, y_apollo-3, 6, 6, 0, 360)
+   --erase previous apollo speedvector
+   if xb ~= 0 and yb ~= 0 then
+      fltk.fl_color(49)
+      fltk.fl_line(x_apollo,y_apollo,xb,yb)
+      --erasing speed vector arrowhead
+      fltk.fl_line(xmm,ymm,xb,yb)
+      fltk.fl_line(xnn,ynn,xb,yb)
+   end
+   
+   --changing Sphere Of [gravitationnal] Influence
+   if soi == "Earth" then
+      x_apollo,y_apollo=x_apollo+dxa,y_apollo+dya
+      r=hypot(x_apollo-(lc/2),(lc/2)-y_apollo)
+      v=hypot(dxa,dya)
+      --angle repérant la position du satellite par rapport à l'horizontale
+      if x_apollo-(lc/2)>0 then
+         theta=math.atan((-y_apollo+(lc/2))/(x_apollo-(lc/2)))
+      else
+         theta=math.atan((-y_apollo+(lc/2))/(x_apollo-(lc/2)))+math.pi
+      end 
+      dxa,dya=dxa-K*math.cos(theta)/(r*r),dya+K*math.sin(theta)/(r*r)
+   elseif soi == "Moon" then
+      x_apollo,y_apollo=x_apollo+dxa,y_apollo+dya
+      r=hypot(x_apollo-x_moon,y_moon-y_apollo)
+      v=hypot(dxa,dya)
+      --angle repérant la position du satellite par rapport à l'horizontale
+      if x_apollo-x_moon>0 then
+         theta=math.atan((-y_apollo+y_moon)/(x_apollo-x_moon))
+      else
+         theta=math.atan((-y_apollo+y_moon)/(x_apollo-x_moon))+math.pi
+      end 
+      dxa,dya=dxa-KM*math.cos(theta)/(r*r),dya+KM*math.sin(theta)/(r*r)
+   else
+      --nothing
+   end
+   
+   
+   --erase previous moon
+   fltk.fl_color(49)
+   fltk.fl_pie(x_moon-3, y_moon-3, 6, 6, 0, 360)
+   
+
+
+   sleep()
+   update_new_moon_position()
+   update_new_apollo_position()
+   
+   --updating apollo's position
+   fltk.fl_color(1)
+   --fltk.fl_point(x_apollo, y_apollo)
+   fltk.fl_pie(x_apollo-2, y_apollo-2, 4, 4, 0, 360)
+   
+   --speedvector
+   fltk.fl_color(1)
+   xb, yb = x_apollo+(80*dxa), y_apollo+(80*dya)
+   fltk.fl_line(x_apollo,y_apollo,xb,yb)
+   --computing vector arrowhead (for graphic drawing)
+   xi, yi = x_apollo+(40*dxa),y_apollo+(40*dya) --middle of body's vector 
+   --bird flapping headvector
+   xmm = ((2*xi)*(1+(dxa*dxa)/(dya*dya))-(2*dv))/(2*(1+(dxa*dxa)/(dya*dya)))
+   ymm = (-(dxa/dya)*xmm)+yi+((dxa/dya)*xi)
+   xnn = ((2*xi)*(1+(dxa*dxa)/(dya*dya))+(2*dv))/(2*(1+(dxa*dxa)/(dya*dya)))
+   ynn = (-(dxa/dya)*xnn)+yi+((dxa/dya)*xi)    
+   --drawing speed vector arrowhead
+   fltk.fl_line(xmm,ymm,xb,yb)
+   fltk.fl_line(xnn,ynn,xb,yb)
+   
+   
+   --updating Moon loops around Earth
+   oldloop_me = loop_me
+   loop_me = math.floor(math.deg(time_unit))/360
+   if oldloop_me < loop_me then
+        t0lm = os.clock() --top chrono
+        t1lm = os.clock() --top chrono
+--print("Lunar Revolution in " .. (t1lm-t0lm) .. " secondes, soit en " .. ((t1lm-t0lm)/60) .. " mn")
+        oldloop_me = loop_me
+   end
+   st=""
+   st = st .. string.format("%05d", loop_me)
+   loop_moon:label(st)
+   loop_moon:redraw()
+
+   --updating Apollo loops around Earth
+   if old_y_apollo <(lc/2) and y_apollo >(lc/2) then
+      loop_ae = loop_ae+1
+      disp_finished_trajectory()
+--print("Number of points stored for Apollo orbital trajectory = " .. #store_xa)
+      --Reinit apollo trajectory points storage, for analytics
+      store_xa=nil
+      store_xa={}
+      store_ya=nil
+      store_ya={}
+      min_d_a2e=10000 --minimum distance(Apollo,Earth) for this trajectory
+      max_d_a2e=0   --minimum distance(Apollo,Earth) for this trajectory
+      idx_min_d_a2e=1
+      idx_max_d_a2e=1
+   else
+      --computing for elliptical axis
+      if d_a2e < min_d_a2e then
+         min_d_a2e = d_a2e
+	 idx_min_d_a2e = #store_xa
+      end
+      if d_a2e > max_d_a2e then
+         max_d_a2e = d_a2e
+	 idx_max_d_a2e = #store_xa
+      end
+   end
+   st=""
+   st = st .. string.format("%05d", loop_ae)
+   loop_apollo_e:label(st)
+   loop_apollo_e:redraw()
+   
+   
+   
+   --computing new Moon position
+   x_moon = altm*math.cos( time_unit )+(lc/2)
+   y_moon = altm*math.sin( time_unit )+(lc/2)
+   
+   --computing SOI (Sphere Of [gravitational] Influence)
+   fltk.fl_color(92)
+   fltk.fl_circle((lc/2), (lc/2), 318) -- 66 000 km = radius of SOI "AROUND THE MOON"
+   --fltk.fl_circle(x_moon, y_moon, 66) -- 66 000 km = radius of SOI AROUND THE MOON
+   --fltk.fl_arc(x_moon-33, y_moon-33, 66, 66, 0, 360) -- 66 000 km = radius of SOI AROUND THE MOON
+   
+   --dynamic Moon label -----------------------------------------------------------------------------------
+   lune2:position(x_moon-15, y_moon+3)
+   lune2:redraw_label()
+   
+   --updating moon's position
+   fltk.fl_color(27)
+   fltk.fl_pie(x_moon-3, y_moon-3, 6, 6, 0, 360)
+   
+   Fl:check()
+   cwindow:make_current()
+  
+end --end function
+
+function show_moves()
+    cwindow:make_current()
+    while(1) do
+        time_unit = time_unit+time_step 
+	sleep()
+        drawmoon( time_unit )
+	if cwindow then
+           --continue
+        else
+           os.exit()
+        end
+	--[[
+	if time_unit >0 and x_moon-(lc/2) >= 378 and y_moon-(lc/2) == 0 then
+	  loop_me = loop_me+1
+	  time_unit = 0
+	end
+	]]--
+    end
+end
+
+function quit_moves(object)
+     cwindow:hide()
+     os.exit(0)
+end
+
+function reset()
+  --apollo coords
+  x_apollo = 0
+  y_apollo = 12
+  dx=0
+  dy=0
+  
+  --Apollo trajectory points storage, for analytics
+  if store_xa then store_xa=nil end
+  if store_ya then store_ya=nil end
+  store_xa={}
+  store_ya={}
+  min_d_a2e=10000 --minimum distance(Apollo,Earth) for this trajectory
+  max_d_a2e=0 --maximum distance(Apollo,Earth) for this trajectory
+  idx_min_d_a2e=1 --index in matrix store_xa for minimum distance(Apollo,Earth) for this trajectory
+  idx_max_d_a2e=1 --index in matrix store_xa for maximum distance(Apollo,Earth) for this trajectory
+  xminaxis1,xmaxaxis1=0,0
+  yminaxis1,ymaxaxis1=0,0
+  xminaxis2,xmaxaxis2=0,0
+  yminaxis2,ymaxaxis2=0,0
+  distaxis1, distaxis2=0,0 --axis size for Apollo elliptical trajectory
+  xmid,ymid=0,0 -- intresection point of axis 1 and axis 2 (Apollo elliptical trajectory)
+  a_axis1,b_axis1=0,0 --line's equation for axis1: y = ax+b
+  a_axis2,b_axis2=0,0 --line's equation for axis2: y = ax+b
+  circumf=0 --circumference of orbital around earth
+  
+  --moon coords
+  x_moon = 780
+  y_moon = 400
+  
+  --alta=100 	-- apollo altitude, km
+  alta=165
+  --alta=200
+  angle_degre_a=100
+  --forcea=6 -- more elliptical orbit, angle_degre_a=80, alta=200
+  --forcea=9 -- more circular orbit, angle_degre_a=80, alta=200
+  --forcea=11 -- more circular orbit, angle_degre_a=80, alta=200, SOI=earth, then moon
+  forcea=11 -- more circular orbit, angle_degre_a=80, alta=200
+  
+  lc=800 		--côté du canvas (L)
+  de=9 		--Earth diameter (D)
+  dm=3 		--moon diameter
+  altm=384	--Earth to moon distance (*1000 km)
+  d=2 		--satellite diameter
+  flag=0
+  
+  --Earth coords
+  x=lc/2
+  y=lc/2
+  
+  --angle,force=0,0
+  --K=50  --joue le rôle du produit G*M
+  K=50 -- K for Apollo/Earth
+  --KM=50 --K for Apollo/Moon
+  KM=40 --K for Apollo/Moon
+  theta=0
+  
+  x_apollo,y_apollo=(lc/2)-(de/2)-alta,lc/2
+  dxa,dya=forcea*math.cos(angle_degre_a)/20,-forcea*math.sin(angle_degre_a)/20
+  
+  --satellite = Moon
+  angle_degre_m=10 --angle repérant la position du satellite par rapport à l'horizontale
+  --forcem=7
+  forcem=-40
+  x_moon,y_moon=(lc/2)-altm,lc/2
+  dxm,dym=forcem*math.cos(angle_degre_m)/20,-forcem*math.sin(angle_degre_m)/20
+  
+  --distances Apollo to Earth and to Moon
+  d_a2m=0 --distance Apollo to Moon
+  d_a2e=0 --distance Apollo to Earth
+  soi="" --Sphere Of [gravitationnal] Influence = Earth, Moon ... or Sun
+  
+  time_unit = 0
+  time_loop=0
+  --time_step = 0.00001 --time scale = increasing => lower animation speed, decreasing => higher animation speed
+  time_step = 0.001 --time scale = increasing => lower animation speed, decreasing => higher animation speed
+  timelapsefactor=10000 --2nd time scale = increasing => lower animation speed, decreasing => higher animation speed
+   
+  cwindow:hide()
+  cwindow=nil
+  display_menu()
+  show_moves()
+end --end function
+
+function pause()
+  st = "press a key for resume..."
+  fltk:fl_alert(st)
+end
+
+function display_menu()
+  fltk:fl_font(FL_SCREEN, 14)
+
+  width_window = 800
+  height_window = 800
+  cwindow = fltk:Fl_Double_Window(width_window, height_window, "Some orbital mechanics")
+  stopbutton = fltk:Fl_Button(2, 2, 40, 20, "Quit")
+  resetbutton = fltk:Fl_Button(45, 2, 40, 20, "Reset")
+  pausebutton = fltk:Fl_Button(88, 2, 40, 20, "Pause")
+
+  --Moon orbital distance traveled (around Earth) -------------------------
+  moon_odt = fltk:Fl_Box(131, 2, 80, 18,"")
+  moon_odt:color(27)
+  moon_odt:box(3) 
+  moon_odt:tooltip("Moon [one] orbital distance traveled (around Earth)")
+  
+  --Apollo orbital distance traveled (around Earth) -------------------------
+  apollo_odt = fltk:Fl_Box(214, 2, 80, 18,"")
+  apollo_odt:color(1)
+  apollo_odt:box(3) 
+  apollo_odt:tooltip("Apollo [one] orbital distance traveled (around Earth)")
+  
+  
+  width_edit = 130
+  height_edit = 22
+  tlibutton = fltk:Fl_Button(2, 24, 50, 20, "TLI")
+  tlibutton:tooltip("Trans Lunar Injection")
+
+  width_edit = 130
+  height_edit = 22
+  animspeed = fltk:Fl_Button(24, 48, 90, 20, "")
+  animspeed:tooltip("animation's speed")
+  plusbutton = fltk:Fl_Button(2, 48, 20, 20, "@-98->")
+  plusbutton:tooltip("Increase animation's speed") 
+  minusbutton = fltk:Fl_Button(116, 48, 20, 20, "@-92->")
+  minusbutton:tooltip("Decrease animation's speed") 
+  
+  width_edit = 130
+  height_edit = 22
+  frameboxa = fltk:Fl_Box(width_window-width_edit-2, 2, width_edit, height_edit, "")
+  frameboxa:box(3)
+  frameboxa:color(1)
+  apollo_x = fltk:Fl_Box(width_window-width_edit, 4, 60, 18,"X=")
+  apollo_x:box(3) 
+  apollo_x:tooltip("X Apollo, from Earth Center (km)")
+  apollo_y = fltk:Fl_Box(width_window-width_edit-2+68, 4, 60, 18,"Y=")
+  apollo_y:box(3) 
+  apollo_y:tooltip("Y Apollo, from Earth Center (km)") 
+
+  width_edit = 130
+  height_edit = 22
+  frameboxm = fltk:Fl_Box(width_window-width_edit-2, 26, width_edit, height_edit, "")
+  frameboxm:box(3)
+  frameboxm:color(27)
+  moon_xcoord = fltk:Fl_Box(width_window-width_edit, 28, 60, 18,"X=")
+  moon_xcoord:box(3) 
+  moon_xcoord:tooltip("X Moon, from Earth Center (*1 000 km)") 
+  moon_ycoord = fltk:Fl_Box(width_window-width_edit-2+68, 28, 60, 18,"Y=")
+  moon_ycoord:box(3) 
+  moon_ycoord:tooltip("Y Moon, from Earth Center (*1 000 km)") 
+
+  width_edit = 130
+  height_edit = 22
+  loopbox = fltk:Fl_Box(width_window-width_edit-2, 50, width_edit, height_edit, "")
+  loopbox:color(49)
+  loopbox:box(3)
+  loop_moon = fltk:Fl_Box(width_window-width_edit, 52, 60, 18,"")
+  loop_moon:color(27) 
+  loop_moon:box(3) 
+  loop_moon:tooltip("Number of Moon loops around Earth") 
+
+  loop_apollo_e = fltk:Fl_Box(width_window-width_edit-2+68, 52, 60, 18,"")
+  loop_apollo_e:color(1) 
+  loop_apollo_e:box(3) 
+  loop_apollo_e:tooltip("Number of Apollo loops around Earth") 
+
+  width_edit = 80
+  height_edit = 22
+  frameboxdistme = fltk:Fl_Box(width_window-width_edit-2, 74, width_edit, height_edit, "")
+  frameboxdistme:box(3)
+  frameboxdistme:color(27)
+  dista2m = fltk:Fl_Box(width_window-width_edit, 76, width_edit-4, 18,"d=")
+  dista2m:box(3) 
+  dista2m:tooltip("Apollo to Moon distance (km)") 
+
+  width_edit = 80
+  height_edit = 22
+  frameboxdistae = fltk:Fl_Box(width_window-width_edit-2, 98, width_edit, height_edit, "")
+  frameboxdistae:box(3)
+  frameboxdistae:color(4)
+  dista2e = fltk:Fl_Box(width_window-width_edit, 100, width_edit-4, 18,"d=")
+  dista2e:box(3) 
+  dista2e:tooltip("Apollo to Earth distance (km)")
+
+  width_edit = 80
+  height_edit = 22
+  soichanging = fltk:Fl_Box(width_window-width_edit-2, 122, width_edit, height_edit, "")
+  soichanging:box(3)
+  --soichanging:color(4)
+  soichanging:tooltip("Current Sphere Of [gravitationnal] Influence for Apollo = Earth or Moon") 
+
+  --dynamic Moon label 
+  lune2 = fltk:Fl_Box(x+(lc/2)-120, y-15, 35, 16, "")
+  lune2:color(27)
+  lune2:labelcolor(27)
+  lune2:labelsize(12)
+  lune2:label("LUNE")
+  
+  --alt, angle from horizontal &
+  --alta=200
+  --angle_degre_a=100
+  --forcea
+  print("alta=" .. alta .. ", angle_degre_a=" .. angle_degre_a .. ", forcea=" .. forcea)
+  alti = fltk:Fl_Input(2, 24, 40, 20)
+  alti:insert(alta)
+  alti:tooltip("Initial Apollo's altitude from Earth (km)")
+  alti:callback(
+  function(inputalti)
+     alta = alti:value()
+     alti:redraw()
+  end)
+  angleh = fltk:Fl_Input(44, 24, 40, 20)
+  angleh:insert(angle_degre_a)
+  angleh:tooltip("Initial Apollo's trajectory angle from horizontal (degree)")
+  angleh:callback(
+  function(inputangleh)
+    angle_degre_a = angleh:value()
+    angleh:redraw()
+  end)
+  forza = fltk:Fl_Input(86, 24, 40, 20)
+  forza:insert(forcea)
+  forza:tooltip("Initial Apollo's speed/force intensity")
+  forza:callback(
+  function(inputforza)
+    forcea = forza:value()
+    forza:redraw()
+  end)
+  Kmoon = fltk:Fl_Input(128, 24, 40, 20)
+  Kmoon:insert(KM)
+  Kmoon:tooltip("Moon gravitationnal factor")
+  Kmoon:callback(
+  function(inputkmoon)
+    KM = Kmoon:value()
+    Kmoon:redraw()
+  end)
+
+  stopbutton:callback(quit_moves)
+  resetbutton:callback(reset)
+  pausebutton:callback(pause)
+  tlibutton:callback(TLinjection)
+  plusbutton:callback(plustime)
+  minusbutton:callback(minustime)
+
+  cwindow:show()
+  cwindow:make_current()
+  show_moves()
+  Fl:check()
+end --end function
+
+display_menu()
+Fl:check()
+Fl:run()
