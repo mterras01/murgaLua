@@ -1,0 +1,358 @@
+#!/bin/murgaLua
+i=0
+f=0
+
+words={}
+occur_words={}
+word_buffer=""
+table_convert={}
+convert={ascii_car={}, ascii_char={}}
+convert.ascii_car[1]="é"
+convert.ascii_char[1]="e"
+convert.ascii_car[2]="É"
+convert.ascii_char[2]="E"
+convert.ascii_car[3]="à"
+convert.ascii_char[3]="a"
+convert.ascii_car[4]="À"
+convert.ascii_char[4]="A"
+convert.ascii_car[5]="è"
+convert.ascii_char[5]="e"
+convert.ascii_car[6]="È"
+convert.ascii_char[6]="E"
+convert.ascii_car[7]="ô"
+convert.ascii_char[7]="o"
+convert.ascii_car[8]="Ô"
+convert.ascii_char[8]="O"
+convert.ascii_car[9]="ê"
+convert.ascii_char[9]="e"
+convert.ascii_car[10]="Ê"
+convert.ascii_char[10]="E"
+convert.ascii_car[11]="î"
+convert.ascii_char[11]="i"
+convert.ascii_car[12]="Î"
+convert.ascii_char[12]="I"
+convert.ascii_car[13]="ù"
+convert.ascii_char[13]="u"
+convert.ascii_car[14]="Ù"
+convert.ascii_char[14]="U"
+convert.ascii_car[15]="ç"
+convert.ascii_char[15]="c"
+convert.ascii_car[16]="Ç"
+convert.ascii_char[16]="C"
+convert.ascii_car[17]="â"
+convert.ascii_char[17]="a"
+convert.ascii_car[18]="Â"
+convert.ascii_char[18]="A"
+convert.ascii_car[19]="û"
+convert.ascii_char[19]="u"
+convert.ascii_car[20]="Û"
+convert.ascii_char[20]="U"
+convert.ascii_car[21]="ë"
+convert.ascii_char[21]="e"
+convert.ascii_car[22]="Ë"
+convert.ascii_char[22]="E"
+convert.ascii_car[23]="ï"
+convert.ascii_char[23]="i"
+convert.ascii_car[24]="Ï"
+convert.ascii_char[24]="I"
+convert.ascii_car[25]="ö"
+convert.ascii_char[25]="o"
+convert.ascii_car[26]="Ö"
+convert.ascii_char[26]="O"
+convert.ascii_car[27]="ü"
+convert.ascii_char[27]="U"
+convert.ascii_car[28]="Ü"
+convert.ascii_char[28]="U"
+convert.ascii_car[29]="…" --"suspension points", not portable at all!
+convert.ascii_char[29]= "."
+
+
+-- control of ASCII table --
+--[[
+for i=1,#convert.ascii_car do
+    print("initial ASCII char = " .. convert.ascii_car[i] .. " / converted char = " .. convert.ascii_char[i])
+end
+]]--
+
+separator = ";"
+co,li = 0,0
+
+read_data = "" --tampon de lecture (et d'ecriture) des données sauvegardées au format CSV
+size_eol = 0 -- varie selon Unix (MacOs) ou Windows
+
+-- si luajit est utilisé, commenter cette ligne 
+osName="OS=" .. murgaLua.getHostOsName()
+--si luajit, remplacer la ligne ci-dessus par
+--osName="OS=linux"
+
+t00=0
+t11=0
+
+--Fl:scheme("plastic")
+Fl:scheme("gtk+")
+
+find = string.find
+sub = string.sub
+
+
+function define_textfile_origin(data)
+  local i,st
+
+  --finding if -CURRENTLY OPENED- text file
+  -- is Unix or Windows -generated
+  --searching for CR/LF (windows)
+  st = string.char(13) .. string.char(10)
+  i = find(data, st)
+  if i then
+--print("Ce fichier a ete genere par Windows => size_eol=2")
+     size_eol=2 -- for windows remove CR+LF at end of line
+     return("windows")
+  else
+--print("Ce fichier a ete genere par un Unix-like => size_eol=1")
+     size_eol=1 -- for unixes remove only LF(?)
+     return("unix")
+  end
+end --end function
+
+function erasepunct()
+  local i, s, c, st, count
+  local remp=" "
+  local valid_residual_words={}
+  
+  --1rst pass group replace accentuated french caracters with non-accentuated ones ----------------
+  count=0
+  for i=1,#convert.ascii_car do
+      --print("initial ASCII char = " .. convert.ascii_car[i] .. " / converted char = " .. convert.ascii_char[i])
+      st = convert.ascii_car[i]
+      remp = convert.ascii_char[i]
+      s,c = string.gsub(read_data, st, remp)
+      if c then 
+         read_data = s
+	 count = count+c
+      end
+  end
+  print("Remplacements (accentuated cars) = " .. c)
+  read_data = string.upper(read_data)
+  
+  --2nd pass group replace special caracter with spaces ----------------
+  --st = "%A%c*" --pattern : all NON characters and escape sequences, zero or more occurences
+  st = "%A" --pattern : all NON characters and escape sequences, zero or more occurences
+  remp=" "
+  s,c = string.gsub(read_data, st, remp)
+  if c then 
+     read_data = s
+     print("Remplacements (non car) = " .. c)
+  end
+  
+  --3rd pass convert multiple contiguous or unique spaces into ONE "\n" character ----------------
+  remp="\n"
+  --punct = nil
+  --punct = {}
+  count=0
+  for i = 159,0,-1 do
+      --table.insert(punct, string.rep(" ", (i+1) ) )
+      s,c = string.gsub(read_data, string.rep(" ", (i+1) ), remp)
+      if c then 
+         read_data = s
+	 count = count+c
+      end
+  end
+print("Remplacements (espaces) = " .. count)
+
+  --Fourth pass erasing small words whose size <=2 ((or 3 cars)) ----------------
+  local p, p0
+  local replace="\n"
+  local excluded_short_strings="POUR AUCUN AVEC SANS FAIT PLUS MOINS AVANT APRES UNE BIS NON OUI MME DES HORS PUISQU RIEN"
+  local buffer=""
+  p0 = 1
+  while 1 do
+      p = find(read_data, replace, p0)
+      if p then
+	 tempword = sub(read_data, p0, p-1)
+	 if #tempword >= 3 then
+	    if find(excluded_short_strings, tempword) then 
+	       --excluded short -french- strings
+	    else
+	       if find(buffer, tempword) then 
+		  --string is already recorded
+	       else
+	          table.insert(words, tempword)
+	          buffer = buffer .. " " .. words[ #words ]
+	       end
+	    end
+	 end
+	 p0 = p+1 --may require a modification according to EOL size UNIX-MAC or WINDOWS
+      else
+	 break
+      end
+  end
+  --ordering list by alphanumeric car
+  table.sort(words)
+--[[
+  for i=1,#words do
+      print(i .. ". " .. words[i])
+  end
+]]--
+
+print("function erasepunct() over")
+--print(read_data)
+end --end function
+
+function occurs()
+  local i, p, p0
+  local st
+  
+  p0 = 1
+  for i =1,#words do
+      --st =  words[i]
+      occur_words[ i ] = 0
+      while 1 do
+         p = find(read_data, words[i], p0, true)
+         if p then
+	    occur_words[ i ] = occur_words[ i ] +1
+	    p0 = p+1
+         else
+	    break
+         end
+      end
+print(i .. ". " .. words[i] .. "(size=" .. #words[i] .. ") occurs " .. occur_words[i] .. " times")
+  end
+
+print("function occurs() over")
+print("#words = " .. #words .. ", #read_data = " .. #read_data)
+end --end function
+
+function load_data()
+  local st, sysfile = "", ""
+  local nbl,nbc = 0, 0
+  --[-[
+  if osName == "OS=linux" then
+     --filename = "/home/terras/dim/TODO_2021_240721.txt"
+     filename = "/home/terras/Téléchargements/Documentation-DIM/2020_LISTE_A_FAIRE/TODO_2021_250721.txt"
+  end
+  if osName == "OS=windows" then
+     filename = "G:\\Dim\\dsl-not\\scripts-murgaLua\\export_150420.csv"
+  end
+  --]]--
+  --filename = fltk.fl_file_chooser("selecteur de fichier", "CSV Files (*.{csv,CSV,txt,TXT})", SINGLE, nil) --place de SINGLE ?
+  
+  local f = 0
+  local i = 0
+  local j = 0
+  local k = 0
+  local pos=1
+  local posc=1
+  read_data = ""
+  local str
+  
+  
+  if filename then
+     --init previous tables, if any
+      
+     f = io.open(filename,"rb")
+     if f then
+        read_data = f:read("*all")
+        read_data = string.upper(read_data)
+        print("Lecture reussie pour le fichier " .. filename .. ", taille=" .. #read_data .. " octets")
+        io.close(f)
+        sysfile = define_textfile_origin(read_data)
+        print("Origine systeme du fichier = " .. sysfile )
+        erasepunct()
+	occurs()
+     else
+        print("Inexistence du fichier " .. filename)
+        return nil, nil
+     end
+  else
+    return nil, nil
+  end
+end --end function
+
+function quit_callback_app()
+  if pwindow then
+     pwindow:hide()
+     pwindow:clear()
+     if twindow then
+        twindow:hide()
+        twindow:clear()
+     end
+     if pie then
+        pie:hide()
+        pie:clear()
+     end
+     print("Quiting?")
+     os.exit(0)
+  end
+end --end function
+
+  t00 = os.time() --top chrono
+
+  --version FLTK
+  print("Fltk version "  .. fltk.FL_MAJOR_VERSION .. "." .. fltk.FL_MINOR_VERSION .. fltk.FL_PATCH_VERSION)
+  --premiere partie : chargement des données  
+  if load_data() then
+     print(#read_data .. " octets")
+  else
+     os.exit(0)
+  end
+  print("Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. (os.difftime(os.time(), t00)/60) .. " mn, soit en " .. (os.difftime(os.time(), t00)/3600).. " heures")
+  
+  decx_chart   = 20
+  decy_chart   = 0
+  width_chart  = 450
+  height_chart = 450
+  width_pwindow = 500
+  height_pwindow = 500
+  width_button = 160
+  dec_button = 0
+  type_graphics = 1
+  
+  demo_table = {10,30,-20,5,-30,15,20,40,7, 14}
+
+  --fenetre graphique pour les diagrammes
+  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "WordCloud")
+  
+  --centrage du bouton en bas de la fenetre pwindow
+  --i = (width_pwindow/2)-(width_button/2)
+  width_button = 100
+  quit = fltk:Fl_Button(dec_button+10, height_pwindow-30, width_button, 25, "Quitter")
+  quit:tooltip("Quitter cette appli!")
+  quit:callback(quit_callback_app)
+  
+  width_button = 180
+  nextbutton = fltk:Fl_Button(dec_button+115, height_pwindow-30, width_button, 25, "type diagr")
+  nextbutton:tooltip("Changer le diagramme!")
+  nextbutton:callback(change_diagr)
+  nextbutton:label(label_chart[type_graphics])
+  
+  width_button = 30
+  dec_button = dec_button+115+190
+  testbutton1 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@filesave")
+  dec_button = dec_button+35
+  testbutton2 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@search")
+  testbutton2:tooltip("Visualiser la structure du CSV")
+  testbutton2:callback(disp_sample_csv)
+  dec_button = dec_button+35
+  testbutton3 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileprint")
+  dec_button = dec_button+35
+  testbutton4 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@refresh")
+  dec_button = dec_button+35
+  testbutton5 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileopen")
+  testbutton5:tooltip("Ouvrir un autre fichier")
+  testbutton5:callback(load_data)
+
+--[[
+  --st="Ceci est un test de message d'alerte"
+  st=""
+  for i=1,#type_chart do
+    st = st .. "type[" .. i .. "] = " .. type_chart[i] .. ", "
+  end
+  fltk:fl_alert(st)
+  ]]  
+  
+
+  --Fl:check()
+  pwindow:show()
+  
+Fl:check()
+Fl:run()
