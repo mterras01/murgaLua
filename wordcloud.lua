@@ -4,9 +4,12 @@ f=0
 
 words={}
 occur_words={}
+words_ordering={}
 word_buffer=""
 table_convert={}
-convert={ascii_car={}, ascii_char={}}
+convert={ascii_car={}, 
+         ascii_char={}
+        }
 convert.ascii_car[1]="é"
 convert.ascii_char[1]="e"
 convert.ascii_car[2]="É"
@@ -162,7 +165,7 @@ print("Remplacements (espaces) = " .. count)
   --Fourth pass erasing small words whose size <=2 ((or 3 cars)) ----------------
   local p, p0
   local replace="\n"
-  local excluded_short_strings="POUR AUCUN AVEC SANS FAIT PLUS MOINS AVANT APRES UNE BIS NON OUI MME DES HORS PUISQU RIEN"
+  local excluded_short_strings="POUR AUCUN AVEC SANS FAIT PLUS MOINS AVANT APRES UNE BIS NON OUI MME DES HORS PUISQU RIEN BILAN BLDM PAR SUR DANS"
   local buffer=""
   p0 = 1
   while 1 do
@@ -200,14 +203,27 @@ end --end function
 
 function occurs()
   local i, p, p0
-  local st
+  local st,s,c
+
+  
+  --[-[
+  --restoring read_data buffer by replacing \n by space
+  s,c = string.gsub(read_data, "\n", " ")
+  if c then 
+     read_data = s
+     print("Restoring read_data buffer ")
+--print(read_data)
+  end
+  --]]--
   
   p0 = 1
-  for i =1,#words do
       --st =  words[i]
+  for i =1,#words do
       occur_words[ i ] = 0
+      p0 = 1
       while 1 do
          p = find(read_data, words[i], p0, true)
+	 --p = find(read_data, words[i], p0)
          if p then
 	    occur_words[ i ] = occur_words[ i ] +1
 	    p0 = p+1
@@ -215,9 +231,56 @@ function occurs()
 	    break
          end
       end
-print(i .. ". " .. words[i] .. "(size=" .. #words[i] .. ") occurs " .. occur_words[i] .. " times")
+--print(i .. ". " .. words[i] .. " (size=" .. #words[i] .. ") occurs " .. occur_words[i] .. " times")
   end
+print("before removing weak occurences, #words = " .. #words)
 
+--[[
+  --2nd pass: removing words whith occurs <=3 
+  for i =#words,1,-1 do
+      if occur_words[ i ] <= 3 then
+	table.remove(occur_words, i)
+	table.remove(words, i)
+      else
+print(i .. ". " .. words[i] .. " (size=" .. #words[i] .. ") occurs " .. occur_words[i] .. " times")
+      end
+  end
+print("After removing weak occurences, #words = " .. #words)
+]]--
+
+  --2nd pass: ordering occurs by descending order 
+  local max_value = 0
+  local max_order=1  
+  local processed = {}
+  for i =1,#words do
+      table.insert(processed, 0)
+  end
+  
+  while 1 do
+    max_value = 0
+    max_order=0
+    for i =#words,1,-1 do
+        if processed[ i ] == 0 then
+	  if occur_words[ i ] > max_value then
+              max_value = occur_words[ i ]
+              max_order = i
+           end
+	end
+    end
+    if max_order == 0 then
+       break
+    end
+    table.insert(words_ordering, max_order)
+    processed[ max_order ] = 1
+  end
+  
+  local j
+  --display results
+  for i =#words_ordering,1,-1 do
+      j = words_ordering[ i ]
+print(i .. ". " .. words[j] .. " occurs= " .. occur_words[j])
+    end
+  
 print("function occurs() over")
 print("#words = " .. #words .. ", #read_data = " .. #read_data)
 end --end function
@@ -227,8 +290,8 @@ function load_data()
   local nbl,nbc = 0, 0
   --[-[
   if osName == "OS=linux" then
-     --filename = "/home/terras/dim/TODO_2021_240721.txt"
-     filename = "/home/terras/Téléchargements/Documentation-DIM/2020_LISTE_A_FAIRE/TODO_2021_250721.txt"
+     filename = "/home/terras/dim/TODO_2021_250721.txt" -- ACER
+     --filename = "/home/terras/Téléchargements/Documentation-DIM/2020_LISTE_A_FAIRE/TODO_2021_250721.txt" --HP
   end
   if osName == "OS=windows" then
      filename = "G:\\Dim\\dsl-not\\scripts-murgaLua\\export_150420.csv"
