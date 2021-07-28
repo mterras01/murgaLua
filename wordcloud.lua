@@ -165,7 +165,7 @@ print("Remplacements (espaces) = " .. count)
   --Fourth pass erasing small words whose size <=2 ((or 3 cars)) ----------------
   local p, p0
   local replace="\n"
-  local excluded_short_strings="POUR AUCUN AVEC SANS FAIT PLUS MOINS AVANT APRES UNE BIS NON OUI MME DES HORS PUISQU RIEN BILAN BLDM PAR SUR DANS"
+  local excluded_short_strings="POUR AUCUN AVEC SANS FAIT PLUS MOINS AVANT APRES UNE BIS NON OUI MME DES HORS PUISQU RIEN BILAN BLDM PAR SUR DANS PAS ANNUEL PDF MEDICAL PEC VUE INITIE MEDECINS ANNEE DOCS MON VERS MOIS"
   local buffer=""
   p0 = 1
   while 1 do
@@ -278,25 +278,66 @@ print("After removing weak occurences, #words = " .. #words)
   --display results
   for i =#words_ordering,1,-1 do
       j = words_ordering[ i ]
-print(i .. ". " .. words[j] .. " occurs= " .. occur_words[j])
+print(i .. ". word " .. words[j] .. " occurs " .. occur_words[j] .. " times")
     end
   
 print("function occurs() over")
 print("#words = " .. #words .. ", #read_data = " .. #read_data)
 end --end function
 
+function display_cloud()
+  local diml,dimh --dimension chaine lxh
+  local posx,posy,sizefactor
+  local i,j
+  --width_pwindow, height_pwindow
+  
+    --for i =#words_ordering,1,-1 do
+  for i =#words_ordering,(#words_ordering-30) do
+      j = words_ordering[ i ]
+      sizefactor = occur_words[j]/30
+      dimh = sizefactor
+      diml = sizefactor*#words[j]
+      x=math.random(0, (width_pwindow-diml) )
+      y=math.random(0, (height_pwindow-30-dimh) )
+      w=diml
+      h=dimh
+      st=words[j]
+      b = fltk:Fl_Button(x,y,w,h, st, st)
+      b:box(0)
+      b:labelcolor(i)
+      b:labelsize(diml)
+      
+    end
+end --end function
+
 function load_data()
   local st, sysfile = "", ""
-  local nbl,nbc = 0, 0
-  --[-[
+  local nbl,nbc = 0, 0  
+  
   if osName == "OS=linux" then
-     filename = "/home/terras/dim/TODO_2021_250721.txt" -- ACER
-     --filename = "/home/terras/Téléchargements/Documentation-DIM/2020_LISTE_A_FAIRE/TODO_2021_250721.txt" --HP
+     linecmd = "hostname > temp.txt";
+     res = os.execute(linecmd)
+     if res == 0 then
+        f = io.open("temp.txt", "rb")
+        if f then
+           buffer = f:read("*all")
+print("Hostname ? " .. buffer)
+	   if find(buffer, "terras-Aspire-5733Z",1,true) then
+	      filename = "/home/terras/dim/TODO_2021_250721.txt" -- ACER
+	   elseif find(buffer, "HP6200",1,true) then
+	      filename = "/home/terras/Téléchargements/Documentation-DIM/2020_LISTE_A_FAIRE/TODO_2021_250721.txt"
+	   else
+	      filename=nil
+	   end
+           io.close(f)
+	end
+     end
+  else
+     --osName == "OS=windows" then
+     filename = "G:\\Dim\\dsl-not\\scripts-murgaLua\\TODO_2021_250721.txt"
   end
-  if osName == "OS=windows" then
-     filename = "G:\\Dim\\dsl-not\\scripts-murgaLua\\export_150420.csv"
-  end
-  --]]--
+  
+  --- FILE CHOOSER
   --filename = fltk.fl_file_chooser("selecteur de fichier", "CSV Files (*.{csv,CSV,txt,TXT})", SINGLE, nil) --place de SINGLE ?
   
   local f = 0
@@ -322,6 +363,7 @@ function load_data()
         print("Origine systeme du fichier = " .. sysfile )
         erasepunct()
 	occurs()
+	return 1
      else
         print("Inexistence du fichier " .. filename)
         return nil, nil
@@ -382,11 +424,31 @@ end --end function
   quit:tooltip("Quitter cette appli!")
   quit:callback(quit_callback_app)
   
-  width_button = 180
-  nextbutton = fltk:Fl_Button(dec_button+115, height_pwindow-30, width_button, 25, "type diagr")
-  nextbutton:tooltip("Changer le diagramme!")
-  nextbutton:callback(change_diagr)
-  nextbutton:label(label_chart[type_graphics])
+  
+  local diml,dimh --dimension chaine lxh
+  local posx,posy,sizefactor
+  local i,j,a,b,x,y,w,h
+  local centerw=(width_pwindow/2)
+  local centerh=((height_pwindow-30)/2)
+  --width_pwindow, height_pwindow
+  
+    --for i =#words_ordering,1,-1 do
+  for i=1,30 do
+      j = words_ordering[ i ]
+      sizefactor = occur_words[j]/20
+      dimh = sizefactor
+      diml = sizefactor*#words[j]
+      x=math.random(centerw-(width_pwindow/4), centerw+(width_pwindow/4))
+      y=math.random(centerh-((height_pwindow-30)/4), centerh+((height_pwindow-30)/4))
+      w=diml
+      h=dimh
+      st=words[j]
+      b = fltk:Fl_Button(x,y,w,h, st)
+      b:box(0)
+      b:labelcolor(i)
+      b:labelsize(diml)
+      
+    end
   
   width_button = 30
   dec_button = dec_button+115+190
@@ -394,7 +456,7 @@ end --end function
   dec_button = dec_button+35
   testbutton2 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@search")
   testbutton2:tooltip("Visualiser la structure du CSV")
-  testbutton2:callback(disp_sample_csv)
+  --testbutton2:callback(disp_sample_csv)
   dec_button = dec_button+35
   testbutton3 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileprint")
   dec_button = dec_button+35
