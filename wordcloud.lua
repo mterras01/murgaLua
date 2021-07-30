@@ -414,16 +414,60 @@ end --end function
   
   demo_table = {10,30,-20,5,-30,15,20,40,7, 14}
 
-  --fenetre graphique pour les diagrammes
+  --GUI --------------------------------------------------------------------
   pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "WordCloud")
   
   --centrage du bouton en bas de la fenetre pwindow
   --i = (width_pwindow/2)-(width_button/2)
-  width_button = 100
-  quit = fltk:Fl_Button(dec_button+10, height_pwindow-30, width_button, 25, "Quitter")
+  width_button = 60
+  quit = fltk:Fl_Button(dec_button+5, height_pwindow-30, width_button, 25, "Quitter")
   quit:tooltip("Quitter cette appli!")
   quit:callback(quit_callback_app)
   
+  dec_button = dec_button+width_button+15
+  slider1stwords = fltk:Fl_Slider(dec_button, height_pwindow-20, 180, 15, "")
+  s1wbutton=fltk:Fl_Button(dec_button, height_pwindow-35, 180, 15, "")
+  s1wbutton:box(0)
+  slider1stwords:type(1)
+  debocc=30
+  finocc=1000 --select 30 to 1000 words  with max occurrences in panel
+  slider1stwords:range(debocc, finocc)
+  slider1stwords:step(10)
+  
+  st = debocc .. " first words"
+  s1wbutton:label( st )
+  s1wbutton:box(0)
+  
+  slider1stwords:callback(
+	function(slider1stwords)
+	      local d,st
+	      d = slider1stwords:value()
+	      st = d .. " first words"
+              s1wbutton:label( st )
+	end)
+	
+  -- dispersion of words parameter
+  dec_button = dec_button+180+15
+  sliderdisp = fltk:Fl_Slider(dec_button, height_pwindow-20, 180, 15, "")
+  sdispbutton=fltk:Fl_Button(dec_button, height_pwindow-35, 180, 15, "")
+  sdispbutton:box(0)
+  sliderdisp:type(1)
+  debdisp=30
+  findisp=1000 --select 30 to 1000 words  with max occurrences in panel
+  sliderdisp:range(debdisp, findisp)
+  sliderdisp:step(10)
+  
+  st = debdisp .. " pix dispersion"
+  sdispbutton:label( st )
+  sdispbutton:box(0)
+  
+  sliderdisp:callback(
+	function(sliderdisp)
+	      local d,st
+	      d = sliderdisp:value()
+	      st = d .. " pix dispersion"
+              sdispbutton:label( st )
+	end)
   
   local diml,dimh --dimension chaine lxh
   local posx,posy,sizefactor
@@ -450,22 +494,15 @@ end --end function
       
     end
   
-  width_button = 30
-  dec_button = dec_button+115+190
-  testbutton1 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@filesave")
-  dec_button = dec_button+35
-  testbutton2 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@search")
-  testbutton2:tooltip("Visualiser la structure du CSV")
-  --testbutton2:callback(disp_sample_csv)
-  dec_button = dec_button+35
-  testbutton3 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileprint")
-  dec_button = dec_button+35
-  testbutton4 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@refresh")
+  
+  --[[
   dec_button = dec_button+35
   testbutton5 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileopen")
   testbutton5:tooltip("Ouvrir un autre fichier")
   testbutton5:callback(load_data)
-
+  ]]--
+  
+  
 --[[
   --st="Ceci est un test de message d'alerte"
   st=""
@@ -473,8 +510,7 @@ end --end function
     st = st .. "type[" .. i .. "] = " .. type_chart[i] .. ", "
   end
   fltk:fl_alert(st)
-  ]]  
-  
+  ]]    
 
   --Fl:check()
   pwindow:show()
