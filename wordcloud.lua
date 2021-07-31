@@ -311,13 +311,13 @@ function display_cloud()
       h_widget = word_button[ #word_button]:h()
       w_widget = word_button[ #word_button]:w()
       --now changing position of button for alignment
-      x=centerw-(w_widget/2)+math.random(-100,100)
-      y=centerh-(h_widget/2)+math.random(-100,100)
+      x=centerw-(w_widget/2)+math.random(-200,200)
+      y=centerh-(h_widget/2)+math.random(-200,200)
       word_button[ #word_button]:position(x,y)
       
       --number of occurences in tooltip: too many for displaying ?!
-      --st = occur_words[j] .. " occurences"
-      --word_button[ #word_button]:tooltip(st)
+      st = occur_words[j] .. " occurences"
+      word_button[ #word_button]:tooltip(st)
     end
     
     
@@ -325,28 +325,31 @@ end --end function
 
 function update_cloud()
   local d,d2
-  local diml,dimh --dimension chaine lxh
-  local posx,posy,sizefactor
-  local i,j,a,b,x,y,w,h
+  local i,j,x,y,w,h
   local centerw=(width_pwindow/2)
   local centerh=((height_pwindow-30)/2)
   
   --first update: make words visible/hidden according to slider1stwords
   d = slider1stwords:value()
+--print(d .. " first occurences words")
+  for i=1,300 do
+      word_button[ i ]:show() --all words are visible at this stage
+  end
   for i=1,300 do
       if i <= d then 
-	 word_button[ i ]:show()
+	 word_button[ i ]:show() --some words are visible at this stage
       else
-	 word_button[ i ]:hide()
+	 word_button[ i ]:hide() --other words are hidden according to d (nb of occurences) threshold
       end
   end
-  --2nd update: make words more or less "dispersed"
+  --2nd update: make words more or less "dispersed". ALL words are processed, even those hidden 
   d2 = sliderdisp:value()
+--print(d2 .. " pix words dispersion")
   for i=1,300 do
       --height and width of the widget = word_button
       h_widget = word_button[ i ]:h()
       w_widget = word_button[ i ]:w()
-      --now changing position of button for alignment
+      --now changing position of button for alignment according to d2 dispersion parameter
       x=centerw-(w_widget/2)+math.random(-1*d2,d2)
       y=centerh-(h_widget/2)+math.random(-1*d2,d2)
       word_button[ i ]:position(x,y)
@@ -476,8 +479,9 @@ end --end function
   finocc=300 --select 30 to 300 words  with max occurrences in panel
   slider1stwords:range(debocc, finocc)
   slider1stwords:step(10)
+  slider1stwords:value(300)
   
-  st = debocc .. " first words"
+  st = finocc .. " first words"
   s1wbutton:label( st )
   s1wbutton:box(0)
   
@@ -485,9 +489,11 @@ end --end function
 	function(slider1stwords)
 	      local d,d2,st
 	      d = slider1stwords:value()
-	      d2 = sliderdisp:value()
 	      st = d .. " first words"
               s1wbutton:label( st )
+	      d2 = sliderdisp:value()
+	      st = d2 .. " pix dispersion"
+              sdispbutton:label( st )
 	      update_cloud()
 	end)
 	
@@ -498,12 +504,12 @@ end --end function
   sdispbutton:box(0)
   sliderdisp:type(1)
   debdisp=50
-  findisp=250 --select 50 to 250 pixels between words dispersion
+  findisp=200 --select 50 to 200 pixels "from center of display words dispersion"
   sliderdisp:range(debdisp, findisp)
   sliderdisp:step(10)
-  sliderdisp:value(100)
+  sliderdisp:value(300)
   
-  st = debdisp .. " pix dispersion"
+  st = findisp .. " pix dispersion"
   sdispbutton:label( st )
   sdispbutton:box(0)
   
@@ -511,6 +517,8 @@ end --end function
 	function(sliderdisp)
 	      local d,d2,st
 	      d = slider1stwords:value()
+	      st = d .. " first words"
+              s1wbutton:label( st )
 	      d2 = sliderdisp:value()
 	      st = d2 .. " pix dispersion"
               sdispbutton:label( st )
