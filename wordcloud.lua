@@ -5,7 +5,8 @@ f=0
 words={}
 occur_words={}
 words_ordering={}
-word_buffer=""
+word_button={}
+
 table_convert={}
 convert={ascii_car={}, 
          ascii_char={}
@@ -288,26 +289,68 @@ end --end function
 function display_cloud()
   local diml,dimh --dimension chaine lxh
   local posx,posy,sizefactor
-  local i,j
-  --width_pwindow, height_pwindow
-  
-    --for i =#words_ordering,1,-1 do
-  for i =#words_ordering,(#words_ordering-30) do
+  local i,j,a,b,x,y,w,h,st
+  local centerw=(width_pwindow/2)
+  local centerh=((height_pwindow-height_button)/2)
+  local h_widget,w_widget
+
+  for i=1,300 do
       j = words_ordering[ i ]
-      sizefactor = occur_words[j]/30
+      sizefactor = occur_words[j]/4
       dimh = sizefactor
       diml = sizefactor*#words[j]
-      x=math.random(0, (width_pwindow-diml) )
-      y=math.random(0, (height_pwindow-30-dimh) )
       w=diml
       h=dimh
       st=words[j]
-      b = fltk:Fl_Button(x,y,w,h, st, st)
-      b:box(0)
-      b:labelcolor(i)
-      b:labelsize(diml)
+      table.insert(word_button, fltk:Fl_Button(0,0,w,h, st))
+      word_button[ #word_button]:label(st)
+      word_button[ #word_button]:box(0)
+      word_button[ #word_button]:labelcolor(i)
+      word_button[ #word_button]:labelsize(dimh)
+      --height and width of the widget = word_button
+      h_widget = word_button[ #word_button]:h()
+      w_widget = word_button[ #word_button]:w()
+      --now changing position of button for alignment
+      x=centerw-(w_widget/2)+math.random(-100,100)
+      y=centerh-(h_widget/2)+math.random(-100,100)
+      word_button[ #word_button]:position(x,y)
       
+      --number of occurences in tooltip: too many for displaying ?!
+      --st = occur_words[j] .. " occurences"
+      --word_button[ #word_button]:tooltip(st)
     end
+    
+    
+end --end function
+
+function update_cloud()
+  local d,d2
+  local diml,dimh --dimension chaine lxh
+  local posx,posy,sizefactor
+  local i,j,a,b,x,y,w,h
+  local centerw=(width_pwindow/2)
+  local centerh=((height_pwindow-30)/2)
+  
+  --first update: make words visible/hidden according to slider1stwords
+  d = slider1stwords:value()
+  for i=1,300 do
+      if i <= d then 
+	 word_button[ i ]:show()
+      else
+	 word_button[ i ]:hide()
+      end
+  end
+  --2nd update: make words more or less "dispersed"
+  d2 = sliderdisp:value()
+  for i=1,300 do
+      --height and width of the widget = word_button
+      h_widget = word_button[ i ]:h()
+      w_widget = word_button[ i ]:w()
+      --now changing position of button for alignment
+      x=centerw-(w_widget/2)+math.random(-1*d2,d2)
+      y=centerh-(h_widget/2)+math.random(-1*d2,d2)
+      word_button[ i ]:position(x,y)
+  end
 end --end function
 
 function load_data()
@@ -418,19 +461,19 @@ end --end function
   pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "WordCloud")
   
   --centrage du bouton en bas de la fenetre pwindow
-  --i = (width_pwindow/2)-(width_button/2)
-  width_button = 60
-  quit = fltk:Fl_Button(dec_button+5, height_pwindow-30, width_button, 25, "Quitter")
+  width_button = 40
+  height_button = 40
+  quit = fltk:Fl_Button(dec_button+5, height_pwindow-height_button, width_button, height_button, "Quit")
   quit:tooltip("Quitter cette appli!")
   quit:callback(quit_callback_app)
   
-  dec_button = dec_button+width_button+15
+  dec_button = dec_button+width_button+10
   slider1stwords = fltk:Fl_Slider(dec_button, height_pwindow-20, 180, 15, "")
   s1wbutton=fltk:Fl_Button(dec_button, height_pwindow-35, 180, 15, "")
   s1wbutton:box(0)
   slider1stwords:type(1)
   debocc=30
-  finocc=1000 --select 30 to 1000 words  with max occurrences in panel
+  finocc=300 --select 30 to 300 words  with max occurrences in panel
   slider1stwords:range(debocc, finocc)
   slider1stwords:step(10)
   
@@ -440,22 +483,25 @@ end --end function
   
   slider1stwords:callback(
 	function(slider1stwords)
-	      local d,st
+	      local d,d2,st
 	      d = slider1stwords:value()
+	      d2 = sliderdisp:value()
 	      st = d .. " first words"
               s1wbutton:label( st )
+	      update_cloud()
 	end)
 	
   -- dispersion of words parameter
-  dec_button = dec_button+180+15
+  dec_button = dec_button+180+5
   sliderdisp = fltk:Fl_Slider(dec_button, height_pwindow-20, 180, 15, "")
   sdispbutton=fltk:Fl_Button(dec_button, height_pwindow-35, 180, 15, "")
   sdispbutton:box(0)
   sliderdisp:type(1)
-  debdisp=30
-  findisp=1000 --select 30 to 1000 words  with max occurrences in panel
+  debdisp=50
+  findisp=250 --select 50 to 250 pixels between words dispersion
   sliderdisp:range(debdisp, findisp)
   sliderdisp:step(10)
+  sliderdisp:value(100)
   
   st = debdisp .. " pix dispersion"
   sdispbutton:label( st )
@@ -463,44 +509,20 @@ end --end function
   
   sliderdisp:callback(
 	function(sliderdisp)
-	      local d,st
-	      d = sliderdisp:value()
-	      st = d .. " pix dispersion"
+	      local d,d2,st
+	      d = slider1stwords:value()
+	      d2 = sliderdisp:value()
+	      st = d2 .. " pix dispersion"
               sdispbutton:label( st )
+	      update_cloud()
 	end)
+	
+  -- UPDATE button
+  dec_button = dec_button+180+5
+  updatebutton=fltk:Fl_Button(dec_button, height_pwindow-height_button, 40, height_button, "@fileopen")
+  updatebutton:tooltip("Open another file")
   
-  local diml,dimh --dimension chaine lxh
-  local posx,posy,sizefactor
-  local i,j,a,b,x,y,w,h
-  local centerw=(width_pwindow/2)
-  local centerh=((height_pwindow-30)/2)
-  --width_pwindow, height_pwindow
-  
-    --for i =#words_ordering,1,-1 do
-  for i=1,30 do
-      j = words_ordering[ i ]
-      sizefactor = occur_words[j]/20
-      dimh = sizefactor
-      diml = sizefactor*#words[j]
-      x=math.random(centerw-(width_pwindow/4), centerw+(width_pwindow/4))
-      y=math.random(centerh-((height_pwindow-30)/4), centerh+((height_pwindow-30)/4))
-      w=diml
-      h=dimh
-      st=words[j]
-      b = fltk:Fl_Button(x,y,w,h, st)
-      b:box(0)
-      b:labelcolor(i)
-      b:labelsize(diml)
-      
-    end
-  
-  
-  --[[
-  dec_button = dec_button+35
-  testbutton5 = fltk:Fl_Button(dec_button, height_pwindow-30, width_button, 25, "@fileopen")
-  testbutton5:tooltip("Ouvrir un autre fichier")
-  testbutton5:callback(load_data)
-  ]]--
+  display_cloud()
   
   
 --[[
