@@ -98,7 +98,9 @@ Fl:scheme("gtk+")
 
 find = string.find
 sub = string.sub
-
+cos = math.cos
+sin = math.sin
+rand = math.random
 
 function define_textfile_origin(data)
   local i,st
@@ -294,6 +296,7 @@ function display_cloud()
   local centerw=(width_pwindow/2)
   local centerh=((height_pwindow-height_button)/2)
   local h_widget,w_widget
+  local ran=0
 
   for i=1,300 do
       j = words_ordering[ i ]
@@ -312,8 +315,14 @@ function display_cloud()
       h_widget = word_button[ #word_button]:h()
       w_widget = word_button[ #word_button]:w()
       --now changing position of button for alignment
-      x=centerw-(w_widget/2)+math.random(-200,200)
-      y=centerh-(h_widget/2)+math.random(-200,200)
+      if shapedisp:label() == "@square" then
+         x=centerw-(w_widget/2)+rand(-200,200)
+         y=centerh-(h_widget/2)+rand(-200,200)
+      else
+	 ran=rand(0,359)
+         x=centerw-(w_widget/2)+(rand(0,200) * cos(ran))
+         y=centerh-(h_widget/2)+(rand(0,200) * sin(ran))
+      end
       word_button[ #word_button]:position(x,y)
       
       --number of occurences in tooltip: too many for displaying ?!
@@ -349,8 +358,15 @@ function update_cloud()
       h_widget = word_button[ i ]:h()
       w_widget = word_button[ i ]:w()
       --now changing position of ALL buttons (even hidden) for alignment according to d2 dispersion parameter
-      x=centerw-(w_widget/2)+math.random(-1*d2,d2)
-      y=centerh-(h_widget/2)+math.random(-1*d2,d2)
+      if shapedisp:label() == "@square" then
+         x=centerw-(w_widget/2)+rand(-1*d2,d2)
+         y=centerh-(h_widget/2)+rand(-1*d2,d2)
+      else
+	 ran=rand(0,359)
+	 x=centerw-(w_widget/2)+(rand(0,d2) * cos(ran))
+         y=centerh-(h_widget/2)+(rand(0,d2) * sin(ran))
+      end
+      
       word_button[ i ]:position(x,y)
   end
   pwindow:redraw()
@@ -423,15 +439,7 @@ function quit_callback_app()
   if pwindow then
      pwindow:hide()
      pwindow:clear()
-     if twindow then
-        twindow:hide()
-        twindow:clear()
-     end
-     if pie then
-        pie:hide()
-        pie:clear()
-     end
-     print("Quiting?")
+     print("Quiting")
      os.exit(0)
   end
 end --end function
@@ -497,7 +505,7 @@ end --end function
   st = findisp .. " pix dispersion"
   sdispbutton:label( st )
   sdispbutton:box(0)
-	
+  
   slider1stwords:callback(
 	function(swordsupd)
 	      local d,d2,st
@@ -521,9 +529,25 @@ end --end function
 	      update_cloud()
 	end)
 
+  -- shape of dispersion = square or circle
+  dec_button = dec_button+180
+  width_button = 30
+  height_button = 40
+  shapedisp = fltk:Fl_Button(dec_button+5, height_pwindow-height_button, width_button, height_button, "@square")
+  shapedisp:labelcolor(19)
+  shapedisp:tooltip("click for toggle square/circle shape for words dispersion")
+  shapedisp:callback(
+        function(shapeupd)
+	      if shapedisp:label() == "@square" then
+		 shapedisp:label("@circle")
+	      else
+		 shapedisp:label("@square")
+	      end
+	      update_cloud()
+        end)
 
   -- UPDATE button
-  dec_button = dec_button+180+5
+  dec_button = dec_button+35
   updatebutton=fltk:Fl_Button(dec_button, height_pwindow-height_button, 40, height_button, "@fileopen")
   updatebutton:tooltip("Open another file")
   
