@@ -1,6 +1,7 @@
 #!/bin/murgaLua
 i=0
 f=0
+st=""
 
 words={}
 occur_words={}
@@ -316,7 +317,7 @@ function display_cloud()
       word_button[ #word_button]:position(x,y)
       
       --number of occurences in tooltip: too many for displaying ?!
-      st = occur_words[j] .. " occurences"
+      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\""
       word_button[ #word_button]:tooltip(st)
     end
     
@@ -325,18 +326,17 @@ end --end function
 
 function update_cloud()
   local d,d2
-  local i,j,x,y,w,h
+  local i,x,y,h_widget,w_widget
   local centerw=(width_pwindow/2)
   local centerh=((height_pwindow-30)/2)
   
   --first update: make words visible/hidden according to slider1stwords
   d = slider1stwords:value()
---print(d .. " first occurences words")
   for i=1,300 do
       word_button[ i ]:show() --all words are visible at this stage
   end
   for i=1,300 do
-      if i <= d then 
+      if i < d+10 then 
 	 word_button[ i ]:show() --some words are visible at this stage
       else
 	 word_button[ i ]:hide() --other words are hidden according to d (nb of occurences) threshold
@@ -344,16 +344,16 @@ function update_cloud()
   end
   --2nd update: make words more or less "dispersed". ALL words are processed, even those hidden 
   d2 = sliderdisp:value()
---print(d2 .. " pix words dispersion")
   for i=1,300 do
       --height and width of the widget = word_button
       h_widget = word_button[ i ]:h()
       w_widget = word_button[ i ]:w()
-      --now changing position of button for alignment according to d2 dispersion parameter
+      --now changing position of ALL buttons (even hidden) for alignment according to d2 dispersion parameter
       x=centerw-(w_widget/2)+math.random(-1*d2,d2)
       y=centerh-(h_widget/2)+math.random(-1*d2,d2)
       word_button[ i ]:position(x,y)
   end
+  pwindow:redraw()
 end --end function
 
 function load_data()
@@ -447,20 +447,16 @@ end --end function
      os.exit(0)
   end
   print("Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. (os.difftime(os.time(), t00)/60) .. " mn, soit en " .. (os.difftime(os.time(), t00)/3600).. " heures")
-  
-  decx_chart   = 20
-  decy_chart   = 0
-  width_chart  = 450
-  height_chart = 450
+    
+  --GUI --------------------------------------------------------------------
   width_pwindow = 500
   height_pwindow = 500
   width_button = 160
   dec_button = 0
-  type_graphics = 1
+  pwindow=nil
+  s1wbutton=nil
+  sliderdisp=nil
   
-  demo_table = {10,30,-20,5,-30,15,20,40,7, 14}
-
-  --GUI --------------------------------------------------------------------
   pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "WordCloud")
   
   --centrage du bouton en bas de la fenetre pwindow
@@ -470,6 +466,7 @@ end --end function
   quit:tooltip("Quitter cette appli!")
   quit:callback(quit_callback_app)
   
+  --selection of first x most written words
   dec_button = dec_button+width_button+10
   slider1stwords = fltk:Fl_Slider(dec_button, height_pwindow-20, 180, 15, "")
   s1wbutton=fltk:Fl_Button(dec_button, height_pwindow-35, 180, 15, "")
@@ -479,24 +476,13 @@ end --end function
   finocc=300 --select 30 to 300 words  with max occurrences in panel
   slider1stwords:range(debocc, finocc)
   slider1stwords:step(10)
-  slider1stwords:value(300)
-  
+  slider1stwords:value( finocc )
   st = finocc .. " first words"
+  --slider1stwords:value( finocc-10 )
+  --st = finocc-10 .. " first words"
   s1wbutton:label( st )
   s1wbutton:box(0)
   
-  slider1stwords:callback(
-	function(slider1stwords)
-	      local d,d2,st
-	      d = slider1stwords:value()
-	      st = d .. " first words"
-              s1wbutton:label( st )
-	      d2 = sliderdisp:value()
-	      st = d2 .. " pix dispersion"
-              sdispbutton:label( st )
-	      update_cloud()
-	end)
-	
   -- dispersion of words parameter
   dec_button = dec_button+180+5
   sliderdisp = fltk:Fl_Slider(dec_button, height_pwindow-20, 180, 15, "")
@@ -504,17 +490,16 @@ end --end function
   sdispbutton:box(0)
   sliderdisp:type(1)
   debdisp=50
-  findisp=200 --select 50 to 200 pixels "from center of display words dispersion"
+  findisp=200 --select 50 to 200 pixels "from-center-of-window-words'dispersion"
   sliderdisp:range(debdisp, findisp)
   sliderdisp:step(10)
-  sliderdisp:value(300)
-  
+  sliderdisp:value( findisp )
   st = findisp .. " pix dispersion"
   sdispbutton:label( st )
   sdispbutton:box(0)
-  
-  sliderdisp:callback(
-	function(sliderdisp)
+	
+  slider1stwords:callback(
+	function(swordsupd)
 	      local d,d2,st
 	      d = slider1stwords:value()
 	      st = d .. " first words"
@@ -524,7 +509,19 @@ end --end function
               sdispbutton:label( st )
 	      update_cloud()
 	end)
-	
+  sliderdisp:callback(
+	function(sdispupd)
+	      local d,d2,st
+	      d = slider1stwords:value()
+	      st = d .. " first words"
+              s1wbutton:label( st )
+	      d2 = sliderdisp:value()
+	      st = d2 .. " pix dispersion"
+              sdispbutton:label( st )
+	      update_cloud()
+	end)
+
+
   -- UPDATE button
   dec_button = dec_button+180+5
   updatebutton=fltk:Fl_Button(dec_button, height_pwindow-height_button, 40, height_button, "@fileopen")
