@@ -3,7 +3,7 @@ i=0
 f=0
 st=""
 proportion_factor=0
-max_font_size=60 -- word with highest occurence will be displaid with this font size 
+max_font_size=80 -- word with highest occurence will be displaid with this font size 
   
 -- main data tables -------------------------------------------------------
 words={}
@@ -464,6 +464,9 @@ function load_disp_data()
      end
   end
    if load_data() == 1 then
+      --reinit display parameters before displaying new data
+      slider1stwords:value( finocc )
+      sliderdisp:value( findisp )
       display_cloud()
    else
      print("load_data() != 1 !!!")
@@ -590,10 +593,7 @@ end --end function
       table.insert(word_button, fltk:Fl_Button(0,0,20,20, ""))
       word_button[ #word_button]:box(0)
   end
-  
-  
-  
-  
+    
   display_cloud()
   
   
