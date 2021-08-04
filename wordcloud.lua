@@ -2,7 +2,10 @@
 i=0
 f=0
 st=""
-
+proportion_factor=0
+max_font_size=60 -- word with highest occurence will be displaid with this font size 
+  
+-- main data tables -------------------------------------------------------
 words={}
 occur_words={}
 words_ordering={}
@@ -100,6 +103,7 @@ find = string.find
 sub = string.sub
 cos = math.cos
 sin = math.sin
+pi = math.pi
 rand = math.random
 
 function define_textfile_origin(data)
@@ -124,7 +128,6 @@ end --end function
 function erasepunct()
   local i, s, c, st, count
   local remp=" "
-  local valid_residual_words={}
   
   --1rst pass group replace accentuated french caracters with non-accentuated ones ----------------
   count=0
@@ -138,7 +141,7 @@ function erasepunct()
 	 count = count+c
       end
   end
-  print("Remplacements (accentuated cars) = " .. c)
+  print("Replacements (accentuated cars) = " .. c)
   read_data = string.upper(read_data)
   
   --2nd pass group replace special caracter with spaces ----------------
@@ -148,7 +151,7 @@ function erasepunct()
   s,c = string.gsub(read_data, st, remp)
   if c then 
      read_data = s
-     print("Remplacements (non car) = " .. c)
+     print("Replacements (non car) = " .. c)
   end
   
   --3rd pass convert multiple contiguous or unique spaces into ONE "\n" character ----------------
@@ -157,14 +160,13 @@ function erasepunct()
   --punct = {}
   count=0
   for i = 159,0,-1 do
-      --table.insert(punct, string.rep(" ", (i+1) ) )
       s,c = string.gsub(read_data, string.rep(" ", (i+1) ), remp)
       if c then 
          read_data = s
 	 count = count+c
       end
   end
-print("Remplacements (espaces) = " .. count)
+print("Replacements (espaces) = " .. count)
 
   --Fourth pass erasing small words whose size <=2 ((or 3 cars)) ----------------
   local p, p0
@@ -209,17 +211,6 @@ function occurs()
   local i, p, p0
   local st,s,c
 
-  
-  --[-[
-  --restoring read_data buffer by replacing \n by space
-  s,c = string.gsub(read_data, "\n", " ")
-  if c then 
-     read_data = s
-     print("Restoring read_data buffer ")
---print(read_data)
-  end
-  --]]--
-  
   p0 = 1
       --st =  words[i]
   for i =1,#words do
@@ -239,26 +230,36 @@ function occurs()
   end
 print("before removing weak occurences, #words = " .. #words)
 
---[[
+
   --2nd pass: removing words whith occurs <=3 
   for i =#words,1,-1 do
       if occur_words[ i ] <= 3 then
 	table.remove(occur_words, i)
 	table.remove(words, i)
       else
-print(i .. ". " .. words[i] .. " (size=" .. #words[i] .. ") occurs " .. occur_words[i] .. " times")
+--print(i .. ". " .. words[i] .. " (size=" .. #words[i] .. ") occurs " .. occur_words[i] .. " times")
       end
   end
 print("After removing weak occurences, #words = " .. #words)
-]]--
 
-  --2nd pass: ordering occurs by descending order 
+
+  --3rd pass: ordering occurs by descending order 
   local max_value = 0
   local max_order=1  
   local processed = {}
   for i =1,#words do
       table.insert(processed, 0)
   end
+  
+  --reset table words_ordering, if already used/filled
+  if words_ordering then
+     if #words_ordering then
+        for i=#words_ordering,1,-1 do
+	    table.remove(words_ordering)
+	end
+     end
+  end
+  
   
   while 1 do
     max_value = 0
@@ -296,51 +297,54 @@ function display_cloud()
   local centerw=(width_pwindow/2)
   local centerh=((height_pwindow-height_button)/2)
   local h_widget,w_widget
-  local ran=0
+  local ran,rad=0,0
+  proportion_factor=0
 
+  proportion_factor = occur_words[ words_ordering[ 1 ] ]/max_font_size
   for i=1,300 do
       j = words_ordering[ i ]
-      sizefactor = occur_words[j]/4
+      --sizefactor means "size of font" proportional to nb of word's occurences : max should equal to variable "max_font_size"
+      sizefactor = occur_words[j]/proportion_factor
       dimh = sizefactor
       diml = sizefactor*#words[j]
       w=diml
       h=dimh
       st=words[j]
-      table.insert(word_button, fltk:Fl_Button(0,0,w,h, st))
-      word_button[ #word_button]:label(st)
-      word_button[ #word_button]:box(0)
-      word_button[ #word_button]:labelcolor(i)
-      word_button[ #word_button]:labelsize(dimh)
+      word_button[ i ]:label(st)
+      word_button[ i ]:box(0)
+      word_button[ i ]:labelcolor(i)
+      word_button[ i ]:labelsize(dimh)
       --height and width of the widget = word_button
-      h_widget = word_button[ #word_button]:h()
-      w_widget = word_button[ #word_button]:w()
+      h_widget = word_button[ i ]:h()
+      w_widget = word_button[ i ]:w()
       --now changing position of button for alignment
       if shapedisp:label() == "@square" then
          x=centerw-(w_widget/2)+rand(-200,200)
          y=centerh-(h_widget/2)+rand(-200,200)
       else
-	 ran=rand(0,359)
-         x=centerw-(w_widget/2)+(rand(0,200) * cos(ran))
-         y=centerh-(h_widget/2)+(rand(0,200) * sin(ran))
+	 ran=rand(0,359) --random angle in degrees
+	 rad = (ran*pi/180)--in radians for cos() and sin() functions
+         x=centerw-(w_widget/2)+(rand(0,200) * cos(rad))
+         y=centerh-(h_widget/2)+(rand(0,200) * sin(rad))
       end
-      word_button[ #word_button]:position(x,y)
+      word_button[ i ]:position(x,y)
       
-      --number of occurences in tooltip: too many for displaying ?!
+      --number of occurences in tooltip
       st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\""
-      word_button[ #word_button]:tooltip(st)
+      word_button[ i ]:tooltip(st)
+      word_button[ i ]:show()
     end
-    
-    
 end --end function
 
 function update_cloud()
   local d,d2
   local i,x,y,h_widget,w_widget
   local centerw=(width_pwindow/2)
-  local centerh=((height_pwindow-30)/2)
+  local centerh=((height_pwindow-40)/2)
   
   --first update: make words visible/hidden according to slider1stwords
   d = slider1stwords:value()
+print("slider1stwords:value() = " .. d .. " ( in fct update_cloud)")
   for i=1,300 do
       word_button[ i ]:show() --all words are visible at this stage
   end
@@ -376,6 +380,12 @@ function load_data()
   local st, sysfile = "", ""
   local nbl,nbc = 0, 0  
   
+  i=0
+  f=0
+  st=""
+  
+  --for testing purpose only
+ --[[ 
   if osName == "OS=linux" then
      linecmd = "hostname > temp.txt";
      res = os.execute(linecmd)
@@ -398,9 +408,9 @@ print("Hostname ? " .. buffer)
      --osName == "OS=windows" then
      filename = "G:\\Dim\\dsl-not\\scripts-murgaLua\\TODO_2021_250721.txt"
   end
-  
+  ]]
   --- FILE CHOOSER
-  --filename = fltk.fl_file_chooser("selecteur de fichier", "CSV Files (*.{csv,CSV,txt,TXT})", SINGLE, nil) --place de SINGLE ?
+  filename = fltk.fl_file_chooser("file selector", "CSV Files (*.{csv,CSV,txt,TXT})", SINGLE, nil) --place de SINGLE ?
   
   local f = 0
   local i = 0
@@ -419,20 +429,45 @@ print("Hostname ? " .. buffer)
      if f then
         read_data = f:read("*all")
         read_data = string.upper(read_data)
-        print("Lecture reussie pour le fichier " .. filename .. ", taille=" .. #read_data .. " octets")
+        print("Reading successfully file " .. filename .. ", taille=" .. #read_data .. " bytes")
         io.close(f)
         sysfile = define_textfile_origin(read_data)
-        print("Origine systeme du fichier = " .. sysfile )
+        print("filesystem Origin (according to CR/LF) = " .. sysfile )
         erasepunct()
 	occurs()
 	return 1
      else
-        print("Inexistence du fichier " .. filename)
+        print("Inexistent of file " .. filename)
         return nil, nil
      end
   else
     return nil, nil
   end
+end --end function
+
+function load_disp_data()  
+  local i
+  
+  if words and occur_words then
+     if #words and #occur_words then
+        for i=#words,1,-1 do
+	    table.remove(words)
+	    table.remove(occur_words)
+	end
+     end
+  end
+  if words_ordering then
+     if #words_ordering then
+        for i=#words_ordering,1,-1 do
+            table.remove(words_ordering)
+	end
+     end
+  end
+   if load_data() == 1 then
+      display_cloud()
+   else
+     print("load_data() != 1 !!!")
+   end
 end --end function
 
 function quit_callback_app()
@@ -461,9 +496,9 @@ end --end function
   height_pwindow = 500
   width_button = 160
   dec_button = 0
-  pwindow=nil
-  s1wbutton=nil
-  sliderdisp=nil
+  --pwindow=nil
+  --s1wbutton=nil
+  --sliderdisp=nil
   
   pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "WordCloud")
   
@@ -486,8 +521,6 @@ end --end function
   slider1stwords:step(10)
   slider1stwords:value( finocc )
   st = finocc .. " first words"
-  --slider1stwords:value( finocc-10 )
-  --st = finocc-10 .. " first words"
   s1wbutton:label( st )
   s1wbutton:box(0)
   
@@ -548,8 +581,18 @@ end --end function
 
   -- UPDATE button
   dec_button = dec_button+35
-  updatebutton=fltk:Fl_Button(dec_button, height_pwindow-height_button, 40, height_button, "@fileopen")
-  updatebutton:tooltip("Open another file")
+  fileopenbutton=fltk:Fl_Button(dec_button, height_pwindow-height_button, 40, height_button, "@fileopen")
+  fileopenbutton:tooltip("Open another file")
+  fileopenbutton:callback(load_disp_data)
+  
+  --display 300 empty "words-buttons"
+  for i=1,300 do
+      table.insert(word_button, fltk:Fl_Button(0,0,20,20, ""))
+      word_button[ #word_button]:box(0)
+  end
+  
+  
+  
   
   display_cloud()
   
