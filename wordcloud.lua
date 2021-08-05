@@ -4,6 +4,11 @@ f=0
 st=""
 proportion_factor=0
 max_font_size=80 -- word with highest occurence will be displaid with this font size 
+-- GUI variables ----------------------------------------------------------
+width_pwindow = 500
+height_pwindow = 500
+width_button = 160
+dec_button = 0
   
 -- main data tables -------------------------------------------------------
 words={}
@@ -130,7 +135,6 @@ function erasepunct()
   local remp=" "
   
   count=0
-  --[-[
   --1rst pass group replace accentuated french caracters with non-accentuated ones ----------------
   count=0
   for i=1,#convert.ascii_car do
@@ -144,8 +148,8 @@ function erasepunct()
       end
   end
   print("Replacements (accentuated cars) = " .. count)
-  --]]--
-  read_data = string.upper(read_data)
+  
+  read_data = string.lower(read_data)
   
   --2nd pass group replace special caracter with spaces ----------------
   --st = "%A%c*" --pattern : all NON characters and escape sequences, zero or more occurences
@@ -175,8 +179,10 @@ print("Replacements (espaces) = " .. count)
   --Fourth pass erasing small words whose size <=2 ((or 3 cars)) ----------------
   local p, p0
   local replace="\n"
-  local excluded_short_strings="LES POUR AUCUN AVEC SANS FAIT PLUS MOINS AVANT APRES UNE BIS NON OUI MME DES HORS PUISQU RIEN BILAN BLDM PAR SUR DANS PAS ANNUEL PDF MEDICAL PEC VUE INITIE MEDECINS ANNEE DOCS MON VERS MOIS"
+  local excluded_short_strings="LES CES POUR AUCUN AVEC SANS FAIT PLUS MOINS AVANT APRES UNE BIS NON OUI MME DES HORS PUISQU RIEN BILAN BLDM PAR SUR DANS PAS ANNUEL PDF MEDICAL PEC VUE INITIE MEDECINS ANNEE DOCS MON VERS MOIS"
   local buffer=""
+  excluded_short_strings = string.lower(excluded_short_strings)
+  
   p0 = 1
   while 1 do
       p = find(read_data, replace, p0)
@@ -294,10 +300,27 @@ print("function occurs() over")
 print("#words = " .. #words .. ", #read_data = " .. #read_data)
 end --end function
 
+function check_out_of_box(x,y,h_widget,w_widget)
+  local xx,yy
+
+  yy=y
+  if x<0 then
+     xx=0
+  else
+     xx=x
+  end
+  if (x+w_widget) <= width_pwindow then
+     xx = x
+  else
+     xx = (width_pwindow-w_widget)
+  end
+  return xx,yy
+end --end function
+
 function display_cloud()
   local diml,dimh --dimension chaine lxh
   local posx,posy,sizefactor
-  local i,j,a,b,x,y,w,h,st
+  local i,j,a,b,x,y,w,h,st,xx,yy
   local centerw=(width_pwindow/2)
   local centerh=((height_pwindow-height_button)/2)
   local h_widget,w_widget
@@ -305,6 +328,7 @@ function display_cloud()
   proportion_factor=0
 
   proportion_factor = occur_words[ words_ordering[ 1 ] ]/max_font_size
+  --question to process : if less than 300 words ????
   for i=1,300 do
       j = words_ordering[ i ]
       --sizefactor means "size of font" proportional to nb of word's occurences : max should equal to variable "max_font_size"
@@ -319,8 +343,8 @@ function display_cloud()
       word_button[ i ]:labelcolor(i)
       word_button[ i ]:labelsize(dimh)
       --height and width of the widget = word_button
-      h_widget = word_button[ i ]:h()
-      w_widget = word_button[ i ]:w()
+      h_widget = word_button[ i ]:h(h)
+      w_widget = word_button[ i ]:w(w)
       --now changing position of button for alignment
       if shapedisp:label() == "@square" then
          x=centerw-(w_widget/2)+rand(-200,200)
@@ -331,10 +355,12 @@ function display_cloud()
          x=centerw-(w_widget/2)+(rand(0,200) * cos(rad))
          y=centerh-(h_widget/2)+(rand(0,200) * sin(rad))
       end
+      --chek if words is inside the window
+      xx,yy = check_out_of_box(x,y,h_widget,w_widget)
       word_button[ i ]:position(x,y)
       
       --number of occurences in tooltip
-      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\""
+      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\"\nx=" .. x .. "/y=" .. y .. "\nw=" .. w  .. "/h=" .. h
       word_button[ i ]:tooltip(st)
       word_button[ i ]:show()
     end
@@ -342,7 +368,7 @@ end --end function
 
 function update_cloud()
   local d,d2
-  local i,x,y,h_widget,w_widget
+  local i,x,y,h_widget,w_widget,xx,yy
   local centerw=(width_pwindow/2)
   local centerh=((height_pwindow-40)/2)
   
@@ -374,7 +400,8 @@ function update_cloud()
 	 x=centerw-(w_widget/2)+(rand(0,d2) * cos(ran))
          y=centerh-(h_widget/2)+(rand(0,d2) * sin(ran))
       end
-      
+      --chek if words is inside the window
+      xx,yy = check_out_of_box(x,y,h_widget,w_widget)
       word_button[ i ]:position(x,y)
   end
   pwindow:redraw()
@@ -432,7 +459,7 @@ print("Hostname ? " .. buffer)
      f = io.open(filename,"rb")
      if f then
         read_data = f:read("*all")
-        read_data = string.upper(read_data)
+        read_data = string.lower(read_data)
         print("Reading successfully file " .. filename .. ", taille=" .. #read_data .. " bytes")
         io.close(f)
         sysfile = define_textfile_origin(read_data)
@@ -509,9 +536,6 @@ end --end function
   height_pwindow = 500
   width_button = 160
   dec_button = 0
-  --pwindow=nil
-  --s1wbutton=nil
-  --sliderdisp=nil
   
   pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "WordCloud")
   
