@@ -26,4 +26,4 @@ and last contribution at John's github on May 12, 2020 : https://github.com/John
 RIP John de Murga</br></br>
 Binaries for murgaLua on web.archive.org</br>
 http://web.archive.org/web/20140702173559/http://murga-projects.com/murgaLua/murgaLua-0.6.6.tar.gz</br>
-And i found a special binary for MacOSX 10.4 "PowerPC" (made by John)  (on this page, zipped file is murgaLuaUB064.zip)
+And i found a special binary for MacOSX 10.4 "PowerPC" (made by John)  (on murgaLua page, zipped file is https://github.com/mterras01/murgaLua/blob/main/murgaLuaUB064.zip)
