@@ -9,7 +9,12 @@ width_pwindow = 500
 height_pwindow = 500
 width_button = 160
 dec_button = 0
-  
+visibility_word_box=0 --0 for button without any visible borders/ 2 for button aspect
+-- SLIDERS variables ------------------------------------------------------
+debocc=30
+finocc=300 --select 30 to 300 words  with max occurrences in panel
+debdisp=50
+findisp=200 --dispersion 5 to 200 pixels between words
 -- main data tables -------------------------------------------------------
 words={}
 occur_words={}
@@ -300,19 +305,30 @@ print("function occurs() over")
 print("#words = " .. #words .. ", #read_data = " .. #read_data)
 end --end function
 
-function check_out_of_box(x,y,h_widget,w_widget)
+function round(nb)
+  if nb then
+     if nb >= 0 then
+	    return math.floor(nb)
+	 else
+	    return math.ceil(nb)
+	 end
+  else
+     return 0
+  end
+end --end function
+
+function check_out_of_box(x,y,h,w)
   local xx,yy
 
-  yy=y
-  if x<0 then
+  yy=round(y)
+  if x<=0 then
      xx=0
   else
-     xx=x
-  end
-  if (x+w_widget) <= width_pwindow then
-     xx = x
-  else
-     xx = (width_pwindow-w_widget)
+     if x <= (width_pwindow-w) then
+        xx = round(x)
+     else
+        xx = (width_pwindow-w-10)
+     end
   end
   return xx,yy
 end --end function
@@ -323,7 +339,6 @@ function display_cloud()
   local i,j,a,b,x,y,w,h,st,xx,yy
   local centerw=(width_pwindow/2)
   local centerh=((height_pwindow-height_button)/2)
-  local h_widget,w_widget
   local ran,rad=0,0
   proportion_factor=0
 
@@ -334,33 +349,32 @@ function display_cloud()
       --sizefactor means "size of font" proportional to nb of word's occurences : max should equal to variable "max_font_size"
       sizefactor = occur_words[j]/proportion_factor
       dimh = sizefactor
-      diml = sizefactor*#words[j]
-      w=diml
-      h=dimh
-      st=words[j]
-      word_button[ i ]:label(st)
-      word_button[ i ]:box(0)
+
+	  w = #words[j] * dimh /1.7
+      h = dimh
+	  word_button[ i ]:labelsize(dimh)
+	  word_button[ i ]:labelfont(fltk.fl_screen)
+	  word_button[ i ]:label( words[j] )
+	  word_button[ i ]:position(10,10)
+      word_button[ i ]:box(visibility_word_box)
       word_button[ i ]:labelcolor(i)
-      word_button[ i ]:labelsize(dimh)
-      --height and width of the widget = word_button
-      h_widget = word_button[ i ]:h(h)
-      w_widget = word_button[ i ]:w(w)
+  
       --now changing position of button for alignment
       if shapedisp:label() == "@square" then
-         x=centerw-(w_widget/2)+rand(-200,200)
-         y=centerh-(h_widget/2)+rand(-200,200)
+		 x=centerw-(w/2)+rand(-200,200)
+         y=centerh-(h/2)+rand(-200,200)
       else
-	 ran=rand(0,359) --random angle in degrees
-	 rad = (ran*pi/180)--in radians for cos() and sin() functions
-         x=centerw-(w_widget/2)+(rand(0,200) * cos(rad))
-         y=centerh-(h_widget/2)+(rand(0,200) * sin(rad))
+	     ran=rand(0,359) --random angle in degrees
+	     rad = (ran*pi/180)--in radians for cos() and sin() functions
+		 x=centerw-(w/2)+(rand(0,200) * cos(rad))
+         y=centerh-(h/2)+(rand(0,200) * sin(rad))		 
       end
       --chek if words is inside the window
-      xx,yy = check_out_of_box(x,y,h_widget,w_widget)
-      word_button[ i ]:position(x,y)
-      
+	  xx,yy = check_out_of_box(x,y,h,w)
+      word_button[ i ]:position(xx,yy)
+	  word_button[ i ]:size(w,h)
       --number of occurences in tooltip
-      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\"\nx=" .. x .. "/y=" .. y .. "\nw=" .. w  .. "/h=" .. h
+      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\"\nx=" .. xx .. "/y=" .. yy .. "\nw=" .. round(w)  .. "/h=" .. round(h)
       word_button[ i ]:tooltip(st)
       word_button[ i ]:show()
     end
@@ -368,9 +382,15 @@ end --end function
 
 function update_cloud()
   local d,d2
-  local i,x,y,h_widget,w_widget,xx,yy
+  local i,j,x,y,h,w,xx,yy
   local centerw=(width_pwindow/2)
   local centerh=((height_pwindow-40)/2)
+  local st
+  local diml,dimh --dimension chaine lxh
+  local posx,posy,sizefactor
+  proportion_factor=0
+
+  proportion_factor = occur_words[ words_ordering[ 1 ] ]/max_font_size
   
   --first update: make words visible/hidden according to slider1stwords
   d = slider1stwords:value()
@@ -388,21 +408,29 @@ function update_cloud()
   --2nd update: make words more or less "dispersed". ALL words are processed, even those hidden 
   d2 = sliderdisp:value()
   for i=1,300 do
+      j = words_ordering[ i ]
+	  sizefactor = occur_words[j]/proportion_factor
+	  w = #words[j] * sizefactor /1.7
+      h = sizefactor
+	  
       --height and width of the widget = word_button
-      h_widget = word_button[ i ]:h()
-      w_widget = word_button[ i ]:w()
+      --h = word_button[ i ]:h()
+      --w = word_button[ i ]:w()
       --now changing position of ALL buttons (even hidden) for alignment according to d2 dispersion parameter
       if shapedisp:label() == "@square" then
-         x=centerw-(w_widget/2)+rand(-1*d2,d2)
-         y=centerh-(h_widget/2)+rand(-1*d2,d2)
+         x=centerw-(w/2)+rand(-1*d2,d2)
+         y=centerh-(h/2)+rand(-1*d2,d2)
       else
-	 ran=rand(0,359)
-	 x=centerw-(w_widget/2)+(rand(0,d2) * cos(ran))
-         y=centerh-(h_widget/2)+(rand(0,d2) * sin(ran))
+	     ran=rand(0,359)
+	     x=centerw-(w/2)+(rand(0,d2) * cos(ran))
+         y=centerh-(h/2)+(rand(0,d2) * sin(ran))
       end
       --chek if words is inside the window
-      xx,yy = check_out_of_box(x,y,h_widget,w_widget)
-      word_button[ i ]:position(x,y)
+      xx,yy = check_out_of_box(x,y,h,w)
+      word_button[ i ]:position(xx,yy)
+	  --number of occurences in tooltip, update x-y-w-h position & size
+      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\"\nx=" .. xx .. "/y=" .. yy .. "\nw=" .. round(w)  .. "/h=" .. round(h)
+      word_button[ i ]:tooltip(st)
   end
   pwindow:redraw()
 end --end function
@@ -477,7 +505,7 @@ print("Hostname ? " .. buffer)
 end --end function
 
 function load_disp_data()  
-  local i
+  local i, st
   
   if words and occur_words then
      if #words and #occur_words then
@@ -499,6 +527,10 @@ function load_disp_data()
       slider1stwords:value( finocc )
       sliderdisp:value( findisp )
       display_cloud()
+	  --next code fixes a presentation issue
+	  st = finocc .. " first words"
+      s1wbutton:label( st )
+	  update_cloud()
    else
      print("load_data() != 1 !!!")
    end
@@ -624,8 +656,9 @@ end --end function
   
   --display 300 empty "words-buttons"
   for i=1,300 do
-      table.insert(word_button, fltk:Fl_Button(0,0,20,20, ""))
-      word_button[ #word_button]:box(0)
+      --table.insert(word_button, fltk:Fl_Button(0,0,20,20, ""))
+	  table.insert(word_button, fltk:Fl_Box(0,0,20, 20, ""))
+	  word_button[ #word_button]:box(visibility_word_box)
   end
     
   display_cloud()
