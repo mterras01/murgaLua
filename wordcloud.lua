@@ -665,12 +665,7 @@ end --end function
   
   
 --[[
-  --st="Ceci est un test de message d'alerte"
-  st=""
-  for i=1,#type_chart do
-    st = st .. "type[" .. i .. "] = " .. type_chart[i] .. ", "
-  end
-  fltk:fl_alert(st)
+  fltk:fl_alert("Ceci est un test de message d'alerte")
   ]]    
 
   --Fl:check()
