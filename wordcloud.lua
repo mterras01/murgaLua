@@ -4,20 +4,25 @@ f=0
 st=""
 proportion_factor=0
 max_font_size=80 -- word with highest occurence will be displaid with this font size 
-
 -- GUI variables ----------------------------------------------------------
-width_pwindow = 500
+width_pwindow = 500 --dim main window for wordcloud
 height_pwindow = 500
 width_button = 160
 dec_button = 0
+cwindow=nil -- window for charts/stats
+pie=nil --var for charts
+width_cwindow = 500 --dim window for charts/stats
+height_cwindow = 500
+decx_chart   = 20 --dim & position charts in this widow
+decy_chart   = 0
+width_chart  = 450
+height_chart = 450
 visibility_word_box=0 --0 for button without any visible borders/ 2 for button aspect
-
 -- SLIDERS variables ------------------------------------------------------
 debocc=30
 finocc=300 --select 30 to 300 words  with max occurrences in panel
 debdisp=50
-findisp=200 --dispersion 50 to 200 pixels between words
-
+findisp=200 --dispersion 5 to 200 pixels between words
 -- main data tables -------------------------------------------------------
 words={}
 occur_words={}
@@ -98,12 +103,12 @@ end
 separator = ";"
 co,li = 0,0
 
-read_data = "" --read buffer
-size_eol = 0 -- size of End Of Line according to the origin of text file : Unices (Linux,MacOs...) or Windows
+read_data = "" --tampon de lecture (et d'ecriture) des données sauvegardées au format CSV
+size_eol = 0 -- varie selon Unix (MacOs) ou Windows
 
--- if using luajit, comment this line
+-- si luajit est utilisé, commenter cette ligne 
 osName="OS=" .. murgaLua.getHostOsName()
---if using luajit, replace previous line with next one
+--si luajit, remplacer la ligne ci-dessus par
 --osName="OS=linux"
 
 t00=0
@@ -118,7 +123,6 @@ cos = math.cos
 sin = math.sin
 pi = math.pi
 rand = math.random
-max = math.max
 
 function define_textfile_origin(data)
   local i,st
@@ -216,21 +220,20 @@ print("Replacements (espaces) = " .. count)
   end
   --ordering list by alphanumeric car
   table.sort(words)
+--[[
+  for i=1,#words do
+      print(i .. ". " .. words[i])
+  end
+]]--
+
 print("function erasepunct() over")
 --print(read_data)
 end --end function
 
 function occurs()
-  local i, j, p, p0
+  local i, p, p0
   local st,s,c
-  local max_value = 0
-  local max_order=1  
-  local processed = {}
-  
-  for i =1,#words do
-      table.insert(processed, 0)
-  end
-  
+
   p0 = 1
       --st =  words[i]
   for i =1,#words do
@@ -248,7 +251,7 @@ function occurs()
       end
 --print(i .. ". " .. words[i] .. " (size=" .. #words[i] .. ") occurs " .. occur_words[i] .. " times")
   end
-print("before removing \"weak\" occurences, #words = " .. #words)
+print("before removing weak occurences, #words = " .. #words)
 
 
   --2nd pass: removing words whith occurs <=3 
@@ -260,9 +263,17 @@ print("before removing \"weak\" occurences, #words = " .. #words)
 --print(i .. ". " .. words[i] .. " (size=" .. #words[i] .. ") occurs " .. occur_words[i] .. " times")
       end
   end
-print("After removing \"weak\" occurences, #words = " .. #words)
+print("After removing weak occurences, #words = " .. #words)
+
 
   --3rd pass: ordering occurs by descending order 
+  local max_value = 0
+  local max_order=1  
+  local processed = {}
+  for i =1,#words do
+      table.insert(processed, 0)
+  end
+  
   --reset table words_ordering, if already used/filled
   if words_ordering then
      if #words_ordering then
@@ -271,6 +282,7 @@ print("After removing \"weak\" occurences, #words = " .. #words)
 	end
      end
   end
+  
   
   while 1 do
     max_value = 0
@@ -290,10 +302,11 @@ print("After removing \"weak\" occurences, #words = " .. #words)
     processed[ max_order ] = 1
   end
   
+  local j
   --display results
   for i =#words_ordering,1,-1 do
       j = words_ordering[ i ]
---print(i .. ". word " .. words[j] .. " occurs " .. occur_words[j] .. " times") --for debug/control
+print(i .. ". word " .. words[j] .. " occurs " .. occur_words[j] .. " times")
     end
   
 print("function occurs() over")
@@ -312,40 +325,8 @@ function round(nb)
   end
 end --end function
 
-function check_superposition(xx,yy,h,w,prevboxrange)
-  local xs,ys
-  local prev_x, prev_y, prev_h, prev_w --coordinates previous box : top-left point
-  local center_x, center_y --coordinates actual tested box : center point
-  local nx,ny --new coordinates for actual tested box : top-left point
-  local signe=0
-  
-  if prevboxrange >= 1 then
-     prev_h = word_button[ prevboxrange ]:h() -- previous box 
-     prev_w = word_button[ prevboxrange ]:w() -- previous box 
-     prev_x = word_button[ prevboxrange ]:x() -- previous box 
-     prev_y = word_button[ prevboxrange ]:y() -- previous box 
-     center_x = round(xx + (w/2)) --actual box (center)
-     center_y = round(yy + (h/2)) --actual box (center)
-     if center_x >= xx and center_x <= (xx+w) and center_y >= yy and center_y <= (yy+h) then
-        --center of actual box is INSIDE previous box : GET OUT OF BOX !
-        --up or down at this stage
-        if rand(0,500) > 250 then
-	   signe=1
-	else
-	   signe=-1
-	end
-	xs = xx
-        ys = round(yy+(signe*(prev_h/2)))
-     else
-        --center of actual box is OUTSIDE previous box : ok 
-        xs,ys = xx,yy
-     end
-  end
-  return xs,ys
-end --end function
-
-function check_out_of_box(x,y,h,w,range_box)
-  local xx,yy,xs,ys
+function check_out_of_box(x,y,h,w)
+  local xx,yy
 
   yy=round(y)
   if x<=0 then
@@ -357,12 +338,29 @@ function check_out_of_box(x,y,h,w,range_box)
         xx = (width_pwindow-w-10)
      end
   end
-  if range_box>1 then
-     xs,ys = check_superposition(xx,yy,h,w,range_box-1)
-  else
-     xs,ys = xx,yy
+  return xx,yy
+end --end function
+
+function display_charts()
+  local i, j, st
+  
+  cwindow = fltk:Fl_Window(width_cwindow, height_cwindow, "Charts Window")
+  pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
+
+  --fltk:fl_alert("cwindow & pie built! ")
+
+  pie:position(decx_chart, decy_chart)
+  pie:size(width_chart, height_chart)
+  pie:label("Group words by occurences")
+  pie:type( 1 )
+  pie:box(3)
+  pie:labelcolor(1)
+  for i=1,30 do
+      j = words_ordering[ i ]
+      st = words[j] .. " : " .. occur_words[j]
+      pie:add(occur_words[j], st, i) -- ORDRE = value, label and colour
   end
-  return xs,ys
+  cwindow:show()
 end --end function
 
 function display_cloud()
@@ -382,32 +380,31 @@ function display_cloud()
       sizefactor = occur_words[j]/proportion_factor
       dimh = sizefactor
 
-      w = #words[j] * dimh /1.7
+	  w = #words[j] * dimh /1.7
       h = dimh
-      word_button[ i ]:labelsize(dimh)
-      word_button[ i ]:labelfont(fltk.fl_screen)
-      word_button[ i ]:label( words[j] )
-      word_button[ i ]:position(10,10)
+	  word_button[ i ]:labelsize(dimh)
+	  word_button[ i ]:labelfont(fltk.fl_screen)
+	  word_button[ i ]:label( words[j] )
+	  word_button[ i ]:position(10,10)
       word_button[ i ]:box(visibility_word_box)
       word_button[ i ]:labelcolor(i)
   
       --now changing position of button for alignment
       if shapedisp:label() == "@square" then
-         x=centerw-(w/2)+rand(-200,200)
+		 x=centerw-(w/2)+rand(-200,200)
          y=centerh-(h/2)+rand(-200,200)
       else
-         ran=rand(0,359) --random angle in degrees
-         rad = (ran*pi/180)--in radians for cos() and sin() functions
-         x=centerw-(w/2)+(rand(0,200) * cos(rad))
+	     ran=rand(0,359) --random angle in degrees
+	     rad = (ran*pi/180)--in radians for cos() and sin() functions
+		 x=centerw-(w/2)+(rand(0,200) * cos(rad))
          y=centerh-(h/2)+(rand(0,200) * sin(rad))		 
       end
       --chek if words is inside the window
-      xx,yy = check_out_of_box(x,y,h,w,i)
+	  xx,yy = check_out_of_box(x,y,h,w)
       word_button[ i ]:position(xx,yy)
-      word_button[ i ]:size(w,h)
+	  word_button[ i ]:size(w,h)
       --number of occurences in tooltip
-      --st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\"\nx=" .. xx .. "/y=" .. yy .. "\nw=" .. round(w)  .. "/h=" .. round(h)
-      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j]
+      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\"\nx=" .. xx .. "/y=" .. yy .. "\nw=" .. round(w)  .. "/h=" .. round(h)
       word_button[ i ]:tooltip(st)
       word_button[ i ]:show()
     end
@@ -415,7 +412,7 @@ end --end function
 
 function update_cloud()
   local d,d2
-  local i,j,x,y,h,w,xx,yy,a
+  local i,j,x,y,h,w,xx,yy
   local centerw=(width_pwindow/2)
   local centerh=((height_pwindow-40)/2)
   local st
@@ -427,6 +424,7 @@ function update_cloud()
   
   --first update: make words visible/hidden according to slider1stwords
   d = slider1stwords:value()
+--print("slider1stwords:value() = " .. d .. " ( in fct update_cloud)")
   for i=1,300 do
       word_button[ i ]:show() --all words are visible at this stage
   end
@@ -441,25 +439,27 @@ function update_cloud()
   d2 = sliderdisp:value()
   for i=1,300 do
       j = words_ordering[ i ]
-      sizefactor = occur_words[j]/proportion_factor
-      --computing height and width of the widget = word_box
-      w = #words[j] * sizefactor /1.7
+	  sizefactor = occur_words[j]/proportion_factor
+	  w = #words[j] * sizefactor /1.7
       h = sizefactor
+	  
+      --height and width of the widget = word_button
+      --h = word_button[ i ]:h()
+      --w = word_button[ i ]:w()
       --now changing position of ALL buttons (even hidden) for alignment according to d2 dispersion parameter
       if shapedisp:label() == "@square" then
          x=centerw-(w/2)+rand(-1*d2,d2)
          y=centerh-(h/2)+rand(-1*d2,d2)
       else
-         ran=rand(0,359)
-         x=centerw-(w/2)+(rand(0,d2) * cos(ran))
+	     ran=rand(0,359)
+	     x=centerw-(w/2)+(rand(0,d2) * cos(ran))
          y=centerh-(h/2)+(rand(0,d2) * sin(ran))
       end
       --chek if words is inside the window
-      xx,yy = check_out_of_box(x,y,h,w,i)
+      xx,yy = check_out_of_box(x,y,h,w)
       word_button[ i ]:position(xx,yy)
-      --number of occurences in tooltip, update x-y-w-h position & size
-      --st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\"\nx=" .. xx .. "/y=" .. yy .. "\nw=" .. round(w)  .. "/h=" .. round(h)
-      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j]
+	  --number of occurences in tooltip, update x-y-w-h position & size
+      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\"\nx=" .. xx .. "/y=" .. yy .. "\nw=" .. round(w)  .. "/h=" .. round(h)
       word_button[ i ]:tooltip(st)
   end
   pwindow:redraw()
@@ -593,6 +593,12 @@ end --end function
   --st="Ceci est une pause" 
   --fltk:fl_alert(st)
   
+  --GUI --------------------------------------------------------------------
+  width_pwindow = 500
+  height_pwindow = 500
+  width_button = 160
+  dec_button = 0
+  
   pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "WordCloud")
   
   --centrage du bouton en bas de la fenetre pwindow
@@ -608,6 +614,8 @@ end --end function
   s1wbutton=fltk:Fl_Button(dec_button, height_pwindow-35, 180, 15, "")
   s1wbutton:box(0)
   slider1stwords:type(1)
+  debocc=30
+  finocc=300 --select 30 to 300 words  with max occurrences in panel
   slider1stwords:range(debocc, finocc)
   slider1stwords:step(10)
   slider1stwords:value( finocc )
@@ -621,6 +629,8 @@ end --end function
   sdispbutton=fltk:Fl_Button(dec_button, height_pwindow-35, 180, 15, "")
   sdispbutton:box(0)
   sliderdisp:type(1)
+  debdisp=50
+  findisp=200 --select 50 to 200 pixels "from-center-of-window-words'dispersion"
   sliderdisp:range(debdisp, findisp)
   sliderdisp:step(10)
   sliderdisp:value( findisp )
@@ -679,9 +689,11 @@ end --end function
       --table.insert(word_button, fltk:Fl_Button(0,0,20,20, ""))
 	  table.insert(word_button, fltk:Fl_Box(0,0,20, 20, ""))
 	  word_button[ #word_button]:box(visibility_word_box)
-  end
-    
+  end  
   display_cloud()
+  
+  --now display charts
+  display_charts()
   
   
 --[[
