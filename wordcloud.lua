@@ -1,4 +1,13 @@
 #!/bin/murgaLua
+
+--[[ 
+problems to resolve
+1/ text with less than 300 distinct words
+2/ minimum space dispersion ... allowing real time display
+3/ improve residual superpositions of boxes
+4/ 
+]]
+
 i=0
 f=0
 st=""
@@ -128,6 +137,7 @@ cos = math.cos
 sin = math.sin
 pi = math.pi
 rand = math.random
+
 
 function define_textfile_origin(data)
   local i,st
@@ -336,10 +346,12 @@ function check_xy_superposition(x,y,h,w,i)
   local ix,iy -- center of actual box
   local j,k
   local testsinside=0
+  local d2
 
   if i == 1 then
      xx,yy = round(x),round(y)    
   else
+     d2 = sliderdisp:value()
      --testsinside=0
      --ix = x+(w/2) --middle of actual box
      --iy = y+(h/2)
@@ -365,11 +377,16 @@ function check_xy_superposition(x,y,h,w,i)
 	       --opposite points of actual box are both INSIDE previous box
 		--if x>=px and x <=(px+pw) and (x+w)>=px and (x+w) <=(px+pw) and y>=py and y <=(py+ph) and (y+h)>=py and (y+h) <=(py+ph) and xcenter>=px and xcenter<=(px+pw) and ycenter>=py and ycenter<=(py+ph) then
 	       --opposite points & center of actual box are ALL INSIDE previous box
-		    if x>px and x <ppw and wx>px and wx <ppw and y>py and y <pph and hx>py and hx <pph then
-	           --ALL four points of actual box are ALL INSIDE previous box
+		    if x>=px and x<=ppw and wx>=px and wx<=ppw and y>=py and y<=pph and hx>=py and hx<=pph then
+	           --ALL four points of actual box are ALL INSIDE previous box : BAD (random) CHOICE => new position required 
 	           testsinside=testsinside+1
 	           break --end of for..next loop
 	        end
+            -- if x<0 and x>(width_pwindow-w) then
+			   -- --box is OUTSIDE display window : BAD (random) CHOICE => new position required 
+			   -- testsinside=testsinside+1
+	           -- break --end of for..next loop
+			-- end
         end --for..next loop
         if testsinside == 0 then
            --keep current position for box
@@ -378,13 +395,13 @@ print("box " .. i .. " is positionned!")
         else
            --compute new random position
            if shapedisp:label() == "@square" then
-              x=centerw-(w/2)+rand(-200,200)
-              y=centerh-(h/2)+rand(-200,200)
+              x=centerw-(w/2)+rand(-1*d2,d2)
+              y=centerh-(h/2)+rand(-1*d2,d2)
            else
               ran=rand(0,359) --random angle in degrees
               rad = (ran*pi/180)--in radians for cos() and sin() functions
-              x=centerw-(w/2)+(rand(0,200) * cos(rad))
-              y=centerh-(h/2)+(rand(0,200) * sin(rad))		 
+              x=centerw-(w/2)+(rand(0,d2) * cos(rad))
+              y=centerh-(h/2)+(rand(0,d2) * sin(rad))		 
            end
 	    end
      end --while.. end loop
@@ -420,8 +437,7 @@ function display_cloud()
   local diml,dimh --dimension chaine lxh
   local posx,posy,sizefactor
   local i,j,a,b,x,y,w,h,st,xx,yy
-  --local centerw=(width_pwindow/2)
-  --local centerh=((height_pwindow-height_button)/2)
+  
   ran,rad=0,0
   proportion_factor=0
 
@@ -430,7 +446,18 @@ function display_cloud()
   for i=1,300 do
       j = words_ordering[ i ]
       --sizefactor means "size of font" proportional to nb of word's occurences : max should equal to variable "max_font_size"
-      sizefactor = occur_words[j]/proportion_factor
+	  --fltk:fl_alert("Check Point 2 pre display cloud")
+	  if occur_words[j] and proportion_factor then
+         sizefactor = occur_words[j]/proportion_factor
+	  else
+	      if occur_words[j] == nil then
+		     print("occur_words[j] == nil")
+		  end
+          if proportion_factor == nil then
+		     print("proportion_factor == nil")
+		  end
+	     os.exit(0)
+	  end
       dimh = sizefactor
 
       --w = #words[j] * dimh /1.7
@@ -475,6 +502,7 @@ function display_cloud()
       word_box[ i ]:tooltip(st)
       word_box[ i ]:show()
     end
+	
 end --end function
 
 function update_cloud()
@@ -506,17 +534,17 @@ function update_cloud()
   d2 = sliderdisp:value()
   for i=1,300 do
       j = words_ordering[ i ]
-	  sizefactor = occur_words[j]/proportion_factor
+	  --sizefactor = occur_words[j]/proportion_factor
 	  --w = #words[j] * sizefactor /1.7
-	  w = #words[j] * sizefactor /fontfactor
-      h = sizefactor
+	  --w = #words[j] * sizefactor /fontfactor
+      --h = sizefactor
 	  
+	  --this function updates ONLY position of boxes BUT NOT boxes'dimensions (defined by function display_cloud)
       --height and width of the widget = word_box
-      --h = word_box[ i ]:h()
-      --w = word_box[ i ]:w()
+      h = word_box[ i ]:h()
+      w = word_box[ i ]:w()
       --now changing position of ALL buttons (even hidden) for alignment according to d2 dispersion parameter
       if shapedisp:label() == "@square" then
-         --x=centerw-(w/2)+rand(-1*d2,d2)
 		 while 1 do
              x=centerw-(w/2)+rand(-1*d2,d2)
 			 if x>=0 and x <= (width_pwindow-w) then
@@ -528,7 +556,6 @@ function update_cloud()
       else
 	     ran=rand(0,359)
 		 rad = (ran*pi/180)--in radians for cos() and sin() functions
-	     --x=centerw-(w/2)+(rand(0,d2) * cos(ran))
 		 while 1 do
              x=centerw-(w/2)+(rand(0,d2) * cos(rad))
 			 if x>=0 and x <= (width_pwindow-w) then
@@ -773,6 +800,7 @@ end --end function
 	  table.insert(word_box, fltk:Fl_Box(0,0,20, 20, ""))
 	  word_box[ #word_box]:box(visibility_word_box)
   end  
+  --fltk:fl_alert("Check Point 1 post 300 boxes definition")
   display_cloud()
   
   --now display charts
