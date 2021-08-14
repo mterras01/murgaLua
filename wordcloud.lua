@@ -353,44 +353,72 @@ function check_xy_superposition(x,y,h,w,i)
   else
      d2 = sliderdisp:value()
      --testsinside=0
-     --ix = x+(w/2) --middle of actual box
-     --iy = y+(h/2)
-	 testtoto=0
+     --update ix & iy = center of actaul box
+     ix = x+(w/2) --center of actual box
+     iy = y+(h/2)
+     testtoto=0
      while 1 do
         testsinside=0
-		--xcenter = x+(w/2)
-		--ycenter = y+(h/2)
-		hx = y+h
-		wx = x+w
+	--xcenter = x+(w/2)
+	--ycenter = y+(h/2)
+	hy = y+h
+	wx = x+w
         for k=1,i-1 do
             --j = words_ordering[ k ]
-	        px=word_box[ k ]:x()
-	        py=word_box[ k ]:y()
-	        pw=word_box[ k ]:w()
-	        ph=word_box[ k ]:h()
-			pph = py+ph
-			ppw = px+pw
+	    px=word_box[ k ]:x()
+	    py=word_box[ k ]:y()
+	    pw=word_box[ k ]:w()
+	    ph=word_box[ k ]:h()
+	    pph = py+ph
+	    ppw = px+pw
 	    --test of actual box(x,y,w,h) inside previous boxes(px,py,pw,ph)
 	    --if ix>=px and ix <=(px+pw) and iy>=py and iy <=(px+ph) then
 	       --middle of actual box INSIDE previous box
 	    --if x>=px and x <=(px+pw) and (x+w)>=px and (x+w) <=(px+pw) and y>=py and y <=(py+ph) and (y+h)>=py and (y+h) <=(py+ph) then
 	       --opposite points of actual box are both INSIDE previous box
-		--if x>=px and x <=(px+pw) and (x+w)>=px and (x+w) <=(px+pw) and y>=py and y <=(py+ph) and (y+h)>=py and (y+h) <=(py+ph) and xcenter>=px and xcenter<=(px+pw) and ycenter>=py and ycenter<=(py+ph) then
+	    --if x>=px and x <=(px+pw) and (x+w)>=px and (x+w) <=(px+pw) and y>=py and y <=(py+ph) and (y+h)>=py and (y+h) <=(py+ph) and xcenter>=px and xcenter<=(px+pw) and ycenter>=py and ycenter<=(py+ph) then
 	       --opposite points & center of actual box are ALL INSIDE previous box
-		    if x>=px and x<=ppw and wx>=px and wx<=ppw and y>=py and y<=pph and hx>=py and hx<=pph then
-	           --ALL four points of actual box are ALL INSIDE previous box : BAD (random) CHOICE => new position required 
-	           testsinside=testsinside+1
-	           break --end of for..next loop
-	        end
-            -- if x<0 and x>(width_pwindow-w) then
-			   -- --box is OUTSIDE display window : BAD (random) CHOICE => new position required 
-			   -- testsinside=testsinside+1
-	           -- break --end of for..next loop
-			-- end
+--[[
+	    if x>=px and x<=ppw and wx>=px and wx<=ppw and y>=py and y<=pph and hy>=py and hy<=pph then
+	       --ALL four points of actual box are ALL INSIDE previous box : BAD (random) CHOICE => new position required 
+	       testsinside=testsinside+1
+	       break --end of for..next loop
+	    end
+]]
+	    -- adding condition center of acual box INSID previous box creates new superpositions !
+	    -- ie, this condition  and ix>=px and ix<=ppw and iy>=py and iy<=pph 
+	    if x>=px and x<=ppw and y>=py and y<=pph then
+	       --ONE point of actual box INSIDE previous box : BAD
+	       testsinside=1
+	       break --end of for..next loop
+	    end
+	    if wx>=px and wx<=ppw and y>=py and y<=pph then
+	       --ONE point of actual box INSIDE previous box : BAD
+	       testsinside=1
+	       break --end of for..next loop
+	    end
+	    if x>=px and x<=ppw and hy>=py and hy<=pph then
+	       --ONE point of actual box INSIDE previous box : BAD
+	       testsinside=1
+	       break --end of for..next loop
+	    end
+            if wx>=px and wx<=ppw and hy>=py and hy<=pph then
+	       --ONE point of actual box INSIDE previous box : BAD
+	       testsinside=1
+	       break --end of for..next loop
+	    end
+--[[    
+            if x<0 and x>(width_pwindow-w) then
+	       --box is OUTSIDE display window : BAD (random) CHOICE => new position required 
+	       testsinside=1
+	       break --end of for..next loop
+	    end
+]]
+    
         end --for..next loop
         if testsinside == 0 then
            --keep current position for box
-print("box " .. i .. " is positionned!")
+--print("box " .. i .. " is positionned!")
            break --end of while.. end loop
         else
            --compute new random position
@@ -401,9 +429,12 @@ print("box " .. i .. " is positionned!")
               ran=rand(0,359) --random angle in degrees
               rad = (ran*pi/180)--in radians for cos() and sin() functions
               x=centerw-(w/2)+(rand(0,d2) * cos(rad))
-              y=centerh-(h/2)+(rand(0,d2) * sin(rad))		 
+              y=centerh-(h/2)+(rand(0,d2) * sin(rad))
            end
-	    end
+	   --update ix & iy = center of actual box
+           ix = x+(w/2) --center of actual box
+           iy = y+(h/2)
+	end
      end --while.. end loop
      yy=round(y)
      xx=round(x)
@@ -446,22 +477,21 @@ function display_cloud()
   for i=1,300 do
       j = words_ordering[ i ]
       --sizefactor means "size of font" proportional to nb of word's occurences : max should equal to variable "max_font_size"
-	  --fltk:fl_alert("Check Point 2 pre display cloud")
-	  if occur_words[j] and proportion_factor then
+      if occur_words[j] and proportion_factor then
          sizefactor = occur_words[j]/proportion_factor
-	  else
-	      if occur_words[j] == nil then
-		     print("occur_words[j] == nil")
-		  end
-          if proportion_factor == nil then
-		     print("proportion_factor == nil")
-		  end
-	     os.exit(0)
-	  end
+      else
+         if occur_words[j] == nil then
+            print("occur_words[j] == nil")
+         end
+         if proportion_factor == nil then
+            print("proportion_factor == nil")
+         end
+         os.exit(0)
+      end
       dimh = sizefactor
 
       --w = #words[j] * dimh /1.7
-	  w = #words[j] * dimh /fontfactor
+      w = #words[j] * dimh /fontfactor
       h = dimh
       word_box[ i ]:labelsize(dimh)
       word_box[ i ]:labelfont(fltk.fl_screen)
@@ -472,24 +502,24 @@ function display_cloud()
   
       --now changing position of button for alignment
       if shapedisp:label() == "@square" then
-	     while 1 do
-             x=centerw-(w/2)+rand(-200,200)
-			 if x>=0 and x <= (width_pwindow-w) then
-                --keep x value
-				break
-             end
-		 end
+         while 1 do
+            x=centerw-(w/2)+rand(-200,200)
+            if x>=0 and x <= (width_pwindow-w) then
+               --keep x value
+               break
+            end
+         end
          y=centerh-(h/2)+rand(-200,200)
       else
          ran=rand(0,359) --random angle in degrees
          rad = (ran*pi/180)--in radians for cos() and sin() functions
-		 while 1 do
-             x=centerw-(w/2)+(rand(0,200) * cos(rad))
-			 if x>=0 and x <= (width_pwindow-w) then
-                --keep x value
-				break
-             end
-		 end
+         while 1 do
+            x=centerw-(w/2)+(rand(0,200) * cos(rad))
+            if x>=0 and x <= (width_pwindow-w) then
+               --keep x value
+               break
+            end
+         end
          y=centerh-(h/2)+(rand(0,200) * sin(rad))		 
       end
       --check if words is inside the window
@@ -498,11 +528,10 @@ function display_cloud()
       word_box[ i ]:size(w,h)
       --number of occurences in tooltip
       --st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\"\nx=" .. xx .. "/y=" .. yy .. "\nw=" .. round(w)  .. "/h=" .. round(h)
-	  st = occur_words[j] .. " occurences\nfor Word \"" .. words[j]
+      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j]
       word_box[ i ]:tooltip(st)
       word_box[ i ]:show()
     end
-	
 end --end function
 
 function update_cloud()
@@ -525,51 +554,52 @@ function update_cloud()
   end
   for i=1,300 do
       if i < d+10 then 
-	 word_box[ i ]:show() --some words are visible at this stage
+         word_box[ i ]:show() --some words are visible at this stage
       else
-	 word_box[ i ]:hide() --other words are hidden according to d (nb of occurences) threshold
+         word_box[ i ]:hide() --other words are hidden according to d (nb of occurences) threshold
       end
   end
   --2nd update: make words more or less "dispersed". ALL words are processed, even those hidden 
   d2 = sliderdisp:value()
   for i=1,300 do
       j = words_ordering[ i ]
-	  --sizefactor = occur_words[j]/proportion_factor
-	  --w = #words[j] * sizefactor /1.7
-	  --w = #words[j] * sizefactor /fontfactor
+      --sizefactor = occur_words[j]/proportion_factor
+      --w = #words[j] * sizefactor /1.7
+      --w = #words[j] * sizefactor /fontfactor
       --h = sizefactor
-	  
-	  --this function updates ONLY position of boxes BUT NOT boxes'dimensions (defined by function display_cloud)
+  
+      --this function updates ONLY position of boxes BUT NOT boxes' dimensions (defined by function display_cloud)
       --height and width of the widget = word_box
       h = word_box[ i ]:h()
       w = word_box[ i ]:w()
       --now changing position of ALL buttons (even hidden) for alignment according to d2 dispersion parameter
       if shapedisp:label() == "@square" then
-		 while 1 do
-             x=centerw-(w/2)+rand(-1*d2,d2)
-			 if x>=0 and x <= (width_pwindow-w) then
-                --keep x value
-				break
-             end
-		 end
+         while 1 do
+            x=centerw-(w/2)+rand(-1*d2,d2)
+            if x>=0 and x <= (width_pwindow-w) then
+               --keep x value
+               break
+            end
+         end
          y=centerh-(h/2)+rand(-1*d2,d2)
       else
-	     ran=rand(0,359)
-		 rad = (ran*pi/180)--in radians for cos() and sin() functions
-		 while 1 do
-             x=centerw-(w/2)+(rand(0,d2) * cos(rad))
-			 if x>=0 and x <= (width_pwindow-w) then
-                --keep x value
-				break
-             end
-		 end
+         ran=rand(0,359)
+         rad = (ran*pi/180)--in radians for cos() and sin() functions
+         while 1 do
+            x=centerw-(w/2)+(rand(0,d2) * cos(rad))
+            if x>=0 and x <= (width_pwindow-w) then
+               --keep x value
+               break
+            end
+         end
          y=centerh-(h/2)+(rand(0,d2) * sin(rad))
       end
       --chek if words is inside the window
-	  xx,yy = check_xy_superposition(x,y,h,w,i)
+      xx,yy = check_xy_superposition(x,y,h,w,i)
       word_box[ i ]:position(xx,yy)
-	  --number of occurences in tooltip, update x-y-w-h position & size
-      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\"\nx=" .. xx .. "/y=" .. yy .. "\nw=" .. round(w)  .. "/h=" .. round(h)
+      --number of occurences in tooltip, update x-y-w-h position & size
+      --st = occur_words[j] .. " occurences\nfor Word \"" .. words[j] .. "\"\nx=" .. xx .. "/y=" .. yy .. "\nw=" .. round(w)  .. "/h=" .. round(h)
+      st = occur_words[j] .. " occurences\nfor Word \"" .. words[j]
       word_box[ i ]:tooltip(st)
   end
   pwindow:redraw()
@@ -667,10 +697,13 @@ function load_disp_data()
       slider1stwords:value( finocc )
       sliderdisp:value( findisp )
       display_cloud()
-	  --next code fixes a presentation issue
-	  st = finocc .. " first words"
+      pwindow:redraw()
+--[[      
+      --next code fixes a presentation issue
+      st = finocc .. " first words"
       s1wbutton:label( st )
-	  update_cloud()
+      update_cloud()
+      ]]
    else
      print("load_data() != 1 !!!")
    end
