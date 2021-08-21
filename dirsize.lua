@@ -24,10 +24,10 @@ height_pwindow = 500
 width_button = 160
 height_button = 40
 dec_button = 0
-cwindow=nil -- window for charts/stats
-pie=nil --var for charts
-width_cwindow = 500 --dim window for charts/stats
-height_cwindow = 500
+--cwindow=nil -- window for charts/stats
+--pie=nil --var for charts
+--width_cwindow = 500 --dim window for charts/stats
+--height_cwindow = 500
 decx_chart   = 20 --dim & position charts in this widow
 decy_chart   = 0
 width_chart  = 450
@@ -38,8 +38,10 @@ ran,rad=0,0
 
 
 dirs_labels={}
+dirs_labels_ASCII={}
 dirs_size={}
---dirs_ordering={}
+dirs_size_label={} --size "string formatted" 4,4G ou 163M ou 144k
+dirs_button={}
 
 -- encoding cars -------------------------------------------------------
 table_convert={}
@@ -108,10 +110,13 @@ convert.ascii_char[29]= "."
 
 -- control of ASCII table --
 --[[
+st = ""
 for i=1,#convert.ascii_car do
-    print("initial ASCII char = " .. convert.ascii_car[i] .. " / converted char = " .. convert.ascii_char[i])
+    --print("initial ASCII char = " .. convert.ascii_car[i] .. " / converted char = " .. convert.ascii_char[i])
+    st = st .. "//initial ASCII char = " .. convert.ascii_car[i] .. " / converted char = " .. convert.ascii_char[i]
 end
-]]--
+fltk:fl_alert(st)
+]]
 
 
 -- if using luajit, comment next line
@@ -130,6 +135,21 @@ sub = string.sub
 pi = math.pi
 rand = math.random
 
+function deaccentuate(str)
+  local i,j,str2,s,c
+  
+  str2=str
+  --finding accentuated chars and deaccentuate them
+  for i=1,#str do
+      for j=1,#convert.ascii_car do
+          s,c = string.gsub(str2, convert.ascii_car[j], convert.ascii_char[j])
+          if s then
+	     str2 = s
+	  end
+      end
+  end
+  return(str2)
+end --end function
 
 function define_textfile_origin(data)
   local i,st
@@ -163,31 +183,22 @@ function round(nb)
 end --end function
 
 function display_charts()
-  local i, j, st
+  local i, p, w, st
   
-  cwindow = fltk:Fl_Window(width_cwindow, height_cwindow, "Charts Window")
-  pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
-
-  --fltk:fl_alert("cwindow & pie built! ")
-
-  pie:position(decx_chart, decy_chart)
-  pie:size(width_chart, height_chart)
-  pie:label("Directories by size")
-  pie:type( 1 )
-  pie:box(3)
-  pie:labelcolor(1)
+  --adjusting  buttons size, propertie, color according to tables dirs_size, dirs_size_label, dirs_labels
+  p = dirs_size[i] -- size as number
   for i=1,30 do
-      --j = dirs_ordering[ i ]
-      st = dirs_labels[ i ] .. " : " .. dirs_size[ i ]
-      pie:add(dirs_size[ i ], st, i) -- ORDRE = value, label and colour
-  end
-  cwindow:show()
+      st = dirs_labels_ASCII[i] .. "\nsize = " .. dirs_size_label[i] --size as tring
+      dirs_button[i]:tooltip(st)
+      --word_box[ #word_box]:box(visibility_word_box)
+      dec_button = dec_button + height_button 
+  end  
 end --end function
 
 function populate_tables()
   local p,p0,q,w1,w2
   local multi=1
-  local size,st,s,c
+  local size,st,st2,s,c
   
   --here, give values to tables
   --dirs_labels
@@ -238,7 +249,14 @@ print("conversion string of size to number = " .. size)
 print( (#dirs_labels+1) .. ". size=" .. w1 .. " // label=" .. w2)
            if w2 ~= nil and size ~= nil then
               table.insert(dirs_labels, w2)
-	      table.insert(dirs_size, size)
+	      table.insert(dirs_size, size) --size as a number defining width of button
+	      table.insert(dirs_size_label,w1) -- size "string formatted" like 4,3G or 144k
+	      st2 = deaccentuate( dirs_labels[ #dirs_labels ] )
+	      if st2 then
+	         table.insert(dirs_labels_ASCII, st2)
+	      else
+		 table.insert(dirs_labels_ASCII, "pb technique")
+	      end
 	   end
            p0 = p+1
         else
@@ -380,7 +398,7 @@ end --end function
   end
   print("Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. (os.difftime(os.time(), t00)/60) .. " mn, soit en " .. (os.difftime(os.time(), t00)/3600).. " heures")
     
-  --os.setlocale'fr_FR'
+  os.setlocale'fr_FR'
   --os.setlocale'fr_FR.ISO-8859-1'
   --os.setlocale'C'
   --st="Ceci est une pause" 
@@ -419,6 +437,17 @@ end --end function
 	      end
 	      update_charts()
         end)  
+	
+  --display 30 empty "directory buttons"
+  dec_button = 0
+  height_button = 15
+  for i=1,30 do
+      st = i .. "."
+      table.insert(dirs_button, fltk:Fl_Button(30,dec_button,300,height_button, st))
+      --word_box[ #word_box]:box(visibility_word_box)
+      dec_button = dec_button + height_button 
+  end  
+  
   --now display charts
   display_charts()
   
