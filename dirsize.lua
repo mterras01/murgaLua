@@ -32,7 +32,6 @@ decx_chart   = 20 --dim & position charts in this widow
 decy_chart   = 0
 width_chart  = 450
 height_chart = 450
-visibility_word_box=0 --0 for button without any visible borders/ 2 for button aspect
 centerw=(width_pwindow/2)
 centerh=((height_pwindow-height_button)/2)
 ran,rad=0,0
@@ -211,14 +210,19 @@ function populate_tables()
 	   w1 = string.upper(sub(line, 1, q-1))
 	   if find(w1,"P",1,true) then
 	      multi=1024^5
+	      --multi=2^5
 	   elseif find(w1,"T",1,true) then
 	      multi=1024^4
+	      --multi=2^4
 	   elseif find(w1,"G",1,true) then
 	      multi=1024^3
+	      --multi=2^3
 	   elseif find(w1,"M",1,true) then
 	      multi=1024^2
+	      --multi=2^2
 	   elseif find(w1,"K",1,true) then
 	      multi=1024
+	      --multi=2
 	   else
 	      multi=1
 	   end
@@ -228,7 +232,7 @@ function populate_tables()
 	      st = s
 	   end
 print("conversion string of size to number = " .. st .. ", size of string = " .. #st)
-	   size = tonumber( st )
+	   size = multi * tonumber( st )
 print("conversion string of size to number = " .. size)
 	   w2 = sub(line, q+1)
 print( (#dirs_labels+1) .. ". size=" .. w1 .. " // label=" .. w2)
