@@ -31,6 +31,7 @@ dec_button = 0
 centerw=(width_pwindow/2)
 centerh=((height_pwindow-height_button)/2)
 ran,rad=0,0
+_LOG_SCALING=0
 TYPE_CHARTS="HORIZONTAL BARS" --other choice="PIE"
 
 dirs_labels={}
@@ -187,13 +188,18 @@ function display_charts()
   --first button has the biggest size 
   
   for i=1,30 do
-      st = dirs_labels_ASCII[i] .. "\nsize = " .. dirs_size_label[i] --size as tring
+      st = i .. ". " .. dirs_labels_ASCII[i] .. "\nsize = " .. dirs_size_label[i] --size as tring
       dirs_button[i]:tooltip(st)
-      --word_box[ #word_box]:box(visibility_word_box)
       dec_button = dec_button + height_button
-      --ajusting width
-      --pwidth = (dirs_size[i]/dirs_size[1])*disp_width_for_button_bars -- without "log viz"
-      pwidth = (math.log(dirs_size[i])/math.log(dirs_size[1]))*disp_width_for_button_bars
+      --ajusting width current scaling rules (log scaling or not)
+      if _LOG_SCALING == 1 then
+         pwidth = (math.log(dirs_size[i])/math.log(dirs_size[1]))*disp_width_for_button_bars
+      else
+	 pwidth = (dirs_size[i]/dirs_size[1])*disp_width_for_button_bars -- without "log viz"
+      end
+      if pwidth < 20 then
+	 pwidth=20
+      end
       pwidth = round(pwidth)
       h = dirs_button[i]:h()
       dirs_button[i]:size( pwidth, h )
@@ -417,13 +423,13 @@ end --end function
   dec_button = 0
   disp_width_for_button_bars = (width_pwindow-20) --disponible width for buttons-bars (charts)
   
-  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "YOUR biggest Directories")
+  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "YOUR 30 biggest Directories")
 
   --centrage du bouton en bas de la fenetre pwindow
   width_button = 40
   height_button = 25
   quit = fltk:Fl_Button(dec_button+5, height_pwindow-height_button, width_button, height_button, "Quit")
-  quit:tooltip("Quitter cette appli!")
+  quit:tooltip("Quit this app!")
   quit:callback(quit_callback_app)
   --frame bordering charts part
   charts_border = fltk:Fl_Box(5, 5, width_pwindow-10, height_pwindow-height_button-10)
@@ -431,12 +437,31 @@ end --end function
   --charts_border:color(fltk.FL_DARK_GREEN)
   charts_border:color(25)
 
+  --LOG button for "sweeter" data scaling
+  dec_button = dec_button+width_button+10
+  _LOG_SCALING=0
+  logbutton = fltk:Fl_Button(dec_button, height_pwindow-height_button, width_button, height_button, "Log")
+  logbutton:tooltip("Logarithmic scaling OFF")
+  logbutton:color(1)
+  logbutton:callback(
+        function(Logarithmic_scaling)
+	      _LOG_SCALING = 1-_LOG_SCALING
+	      local sc={}
+	      sc[0] = "OFF"
+	      sc[1] = "ON"
+	      local st="Logarithmic scaling "
+	      st = st .. sc[_LOG_SCALING]
+	      logbutton:tooltip(st)
+	      logbutton:color((_LOG_SCALING+1))
+	      display_charts()
+	      pwindow:redraw()
+        end)
 
   -- shape of charts = square (bars) or circle (pie)
-  dec_button = dec_button+180
+  dec_button = dec_button+width_button+5
   width_button = 30
   height_button = 25
-  shapedisp = fltk:Fl_Button(dec_button+5, height_pwindow-height_button, width_button, height_button, "@square")
+  shapedisp = fltk:Fl_Button(dec_button, height_pwindow-height_button, width_button, height_button, "@square")
   shapedisp:labelcolor(19)
   shapedisp:tooltip("click for toggle Bar/pie charts")
   shapedisp:callback(
@@ -446,7 +471,7 @@ end --end function
 	      else
 		 shapedisp:label("@square")
 	      end
-	      update_charts()
+	      display_charts()
         end)  
 	
   --display 30 empty "directory buttons"
@@ -454,8 +479,8 @@ end --end function
   height_button = 15
   
   for i=1,30 do
-      st = i .. "."
-      table.insert(dirs_button, fltk:Fl_Button(10,dec_button,300,height_button, st))
+      --st = i .. "."
+      table.insert(dirs_button, fltk:Fl_Button(10,dec_button,300,height_button, ""))
       --word_box[ #word_box]:box(visibility_word_box)
       dec_button = dec_button + height_button
   end  
