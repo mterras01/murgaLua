@@ -1,14 +1,18 @@
 #!/bin/murgaLua
 
 --[[ 
---- Questions to answer:
+------- Questions to answer :
 -where are all your data?
--where are the "fullest" directories?
----- Problems to resolve
+-where are the X "fullest" directories?
+------- Problems to resolve
 1/ fine-tune windows / linux command lines for getting directories' size
 2/ process text files with dirs'size
 3/ define vizualisation's charts 
 4/ zooming on charts ?
+------- things to do :
+1/ create special charts (and no native-fltk charts, too limited/restricted in terms of visualization)
+2/ create clickable charts, ie generate stats & charts for a new parent-directory et its subdirectories
+3/ progress bar (especially for Windows OS!)
 ]]
 
 i=0
@@ -24,18 +28,10 @@ height_pwindow = 500
 width_button = 160
 height_button = 40
 dec_button = 0
---cwindow=nil -- window for charts/stats
---pie=nil --var for charts
---width_cwindow = 500 --dim window for charts/stats
---height_cwindow = 500
-decx_chart   = 20 --dim & position charts in this widow
-decy_chart   = 0
-width_chart  = 450
-height_chart = 450
 centerw=(width_pwindow/2)
 centerh=((height_pwindow-height_button)/2)
 ran,rad=0,0
-
+TYPE_CHARTS="HORIZONTAL BARS" --other choice="PIE"
 
 dirs_labels={}
 dirs_labels_ASCII={}
@@ -183,15 +179,25 @@ function round(nb)
 end --end function
 
 function display_charts()
-  local i, p, w, st
+  local i, h, p, w, st
+  local pwidth=0
   
   --adjusting  buttons size, propertie, color according to tables dirs_size, dirs_size_label, dirs_labels
   p = dirs_size[i] -- size as number
+  --first button has the biggest size 
+  
   for i=1,30 do
       st = dirs_labels_ASCII[i] .. "\nsize = " .. dirs_size_label[i] --size as tring
       dirs_button[i]:tooltip(st)
       --word_box[ #word_box]:box(visibility_word_box)
-      dec_button = dec_button + height_button 
+      dec_button = dec_button + height_button
+      --ajusting width
+      --pwidth = (dirs_size[i]/dirs_size[1])*disp_width_for_button_bars -- without "log viz"
+      pwidth = (math.log(dirs_size[i])/math.log(dirs_size[1]))*disp_width_for_button_bars
+      pwidth = round(pwidth)
+      h = dirs_button[i]:h()
+      dirs_button[i]:size( pwidth, h )
+      dirs_button[i]:color( i )
   end  
 end --end function
 
@@ -398,7 +404,7 @@ end --end function
   end
   print("Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. (os.difftime(os.time(), t00)/60) .. " mn, soit en " .. (os.difftime(os.time(), t00)/3600).. " heures")
     
-  os.setlocale'fr_FR'
+  --os.setlocale'fr_FR'
   --os.setlocale'fr_FR.ISO-8859-1'
   --os.setlocale'C'
   --st="Ceci est une pause" 
@@ -409,22 +415,27 @@ end --end function
   height_pwindow = 500
   width_button = 160
   dec_button = 0
+  disp_width_for_button_bars = (width_pwindow-20) --disponible width for buttons-bars (charts)
   
-  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "WordCloud")
-  
+  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, "YOUR biggest Directories")
+
   --centrage du bouton en bas de la fenetre pwindow
   width_button = 40
-  height_button = 40
+  height_button = 25
   quit = fltk:Fl_Button(dec_button+5, height_pwindow-height_button, width_button, height_button, "Quit")
   quit:tooltip("Quitter cette appli!")
   quit:callback(quit_callback_app)
-  
+  --frame bordering charts part
+  charts_border = fltk:Fl_Box(5, 5, width_pwindow-10, height_pwindow-height_button-10)
+  charts_border:box(2)
+  --charts_border:color(fltk.FL_DARK_GREEN)
+  charts_border:color(25)
 
 
   -- shape of charts = square (bars) or circle (pie)
   dec_button = dec_button+180
   width_button = 30
-  height_button = 40
+  height_button = 25
   shapedisp = fltk:Fl_Button(dec_button+5, height_pwindow-height_button, width_button, height_button, "@square")
   shapedisp:labelcolor(19)
   shapedisp:tooltip("click for toggle Bar/pie charts")
@@ -439,13 +450,14 @@ end --end function
         end)  
 	
   --display 30 empty "directory buttons"
-  dec_button = 0
+  dec_button = 10
   height_button = 15
+  
   for i=1,30 do
       st = i .. "."
-      table.insert(dirs_button, fltk:Fl_Button(30,dec_button,300,height_button, st))
+      table.insert(dirs_button, fltk:Fl_Button(10,dec_button,300,height_button, st))
       --word_box[ #word_box]:box(visibility_word_box)
-      dec_button = dec_button + height_button 
+      dec_button = dec_button + height_button
   end  
   
   --now display charts
