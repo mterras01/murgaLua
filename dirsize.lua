@@ -210,6 +210,11 @@ function display_charts()
       pwidth = round(pwidth)
       h = dirs_button[i]:h()
       dirs_button[i]:size( pwidth, h )
+      if dirs_size[i] == 0 then
+	 dirs_button[i]:hide()
+      else
+	 dirs_button[i]:show()
+      end
       dirs_button[i]:color( i )
   end  
   --updating dirname in charts window's tooltip
@@ -311,7 +316,7 @@ print( (#dirs_labels+1) .. ". size=" .. w1 .. " // label=" .. w2)
   if #dirs_labels < 30 then
      for i=(#dirs_labels+1),30 do
          table.insert(dirs_labels, "")
-	 table.insert(dirs_size, 1)
+	 table.insert(dirs_size, 0)
 	 table.insert(dirs_size_label,"")
 	 table.insert(dirs_labels_ASCII, "")
      end
