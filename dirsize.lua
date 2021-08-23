@@ -22,7 +22,7 @@
 
 i=0
 f=0
-st=""
+st,st2="",""
 -- BUFFER and vars for file -----------------------------------------------
 separator = ";"
 read_data = "" --read buffer
@@ -187,7 +187,7 @@ function round(nb)
 end --end function
 
 function display_charts()
-  local i, h, p, w, st
+  local i, h, p, w, st, st2
   local pwidth=0
   
   --adjusting  buttons size, propertie, color according to tables dirs_size, dirs_size_label, dirs_labels
@@ -212,10 +212,18 @@ function display_charts()
       dirs_button[i]:size( pwidth, h )
       dirs_button[i]:color( i )
   end  
+  --updating dirname in charts window's tooltip
+  st2=deaccentuate(dirname)
+  if st2 then
+     st="Parent Directory presented here is\n".. st2
+  else
+     st="Parent Directory presented here is\n".. dirname
+  end
+  charts_border:tooltip(st)
 end --end function
 
 function populate_tables()
-  local p,p0,q,w1,w2
+  local i,p,p0,q,w1,w2
   local multi=1
   local size,st,st2,s,c
   
@@ -223,6 +231,16 @@ function populate_tables()
   --dirs_labels
   --dirs_size
   --dirs_ordering
+  
+  if #dirs_labels > 1 then
+     for p=1,#dirs_labels do
+         table.remove(dirs_labels)
+	 table.remove(dirs_size)
+	 table.remove(dirs_size_label)
+	 table.remove(dirs_size_label)
+	 table.remove(dirs_labels_ASCII)
+     end
+  end
   if osName == "OS=linux" then
      --structure of linux results in file
 --[[
@@ -261,9 +279,9 @@ function populate_tables()
 	   if s then 
 	      st = s
 	   end
-print("conversion string of size to number = " .. st .. ", size of string = " .. #st)
+--print("conversion string of size to number = " .. st .. ", size of string = " .. #st)
 	   size = multi * tonumber( st )
-print("conversion string of size to number = " .. size)
+--print("conversion string of size to number = " .. size)
 	   w2 = sub(line, q+1)
 print( (#dirs_labels+1) .. ". size=" .. w1 .. " // label=" .. w2)
            if w2 ~= nil and size ~= nil then
@@ -288,6 +306,15 @@ print( (#dirs_labels+1) .. ". size=" .. w1 .. " // label=" .. w2)
      --not sure about this dev
   else
      --????
+  end
+  -- filling tables, if less than 30 directories
+  if #dirs_labels < 30 then
+     for i=(#dirs_labels+1),30 do
+         table.insert(dirs_labels, "")
+	 table.insert(dirs_size, 1)
+	 table.insert(dirs_size_label,"")
+	 table.insert(dirs_labels_ASCII, "")
+     end
   end
 end --end function
 
@@ -457,7 +484,12 @@ end --end function
   charts_border:box(2)
   --charts_border:color(fltk.FL_DARK_GREEN)
   charts_border:color(25)
-  st="Parent Directory presented here is\n".. dirname
+  st2=deaccentuate(dirname)
+  if st2 then
+     st="Parent Directory presented here is\n".. st2
+  else
+     st="Parent Directory presented here is\n".. dirname
+  end
   charts_border:tooltip(st)
 
   --LOG button for "sweeter" data scaling
@@ -484,7 +516,17 @@ end --end function
   dec_button = dec_button+width_button+10
   filebutton = fltk:Fl_Button(dec_button, height_pwindow-height_button, width_button, height_button, "@fileopen")
   filebutton:tooltip("Open another directory")
-  filebutton:callback(load_dir)
+  filebutton:callback(
+        function(reload_dir)
+	      dirname = fltk.fl_dir_chooser("Directory selector", "", SINGLE, nil)
+              if load_data(dirname) then
+                 display_charts()
+		 pwindow:redraw()
+		 return 1
+              else
+                 return 0
+              end
+        end)
 	
   -- shape of charts = square (bars) or circle (pie)
   dec_button = dec_button+width_button+5
