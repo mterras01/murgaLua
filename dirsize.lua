@@ -28,6 +28,7 @@ separator = ";"
 read_data = "" --read buffer
 size_eol = 0 -- EOL size Unix / MacOs / Windows
 dirname = "" --parent directory as string, default is home
+nb_subdirs_in_dir=0 --no comment
 
 -- GUI variables ----------------------------------------------------------
 width_pwindow = 500 --dim main window for wordcloud
@@ -220,9 +221,17 @@ function display_charts()
   --updating dirname in charts window's tooltip
   st2=deaccentuate(dirname)
   if st2 then
-     st="Parent Directory presented here is\n".. st2
+     if nb_subdirs_in_dir <30 then
+        st="Parent Directory presented here is\n".. st2 .. "\n" .. nb_subdirs_in_dir .. " subdirs"
+     else
+        st="Parent Directory presented here is\n".. st2 .. "\n30 biggest subdirs"
+     end
   else
-     st="Parent Directory presented here is\n".. dirname
+     if nb_subdirs_in_dir <30 then
+        st="Parent Directory presented here is\n".. dirname .. "\n" .. nb_subdirs_in_dir .. " subdirs"
+     else
+        st="Parent Directory presented here is\n".. dirname .. "\n30 biggest subdirs"
+     end
   end
   charts_border:tooltip(st)
 end --end function
@@ -236,6 +245,7 @@ function populate_tables()
   --dirs_labels
   --dirs_size
   --dirs_ordering
+  nb_subdirs_in_dir=0 --global var
   
   if #dirs_labels > 1 then
      for p=1,#dirs_labels do
@@ -288,9 +298,10 @@ function populate_tables()
 	   size = multi * tonumber( st )
 --print("conversion string of size to number = " .. size)
 	   w2 = sub(line, q+1)
-print( (#dirs_labels+1) .. ". size=" .. w1 .. " // label=" .. w2)
+--print( (#dirs_labels+1) .. ". size=" .. w1 .. " // label=" .. w2)
            if w2 ~= nil and size ~= nil then
               table.insert(dirs_labels, w2)
+	      nb_subdirs_in_dir = nb_subdirs_in_dir+1
 	      table.insert(dirs_size, size) --size as a number defining width of button
 	      table.insert(dirs_size_label,w1) -- size "string formatted" like 4,3G or 144k
 	      st2 = deaccentuate( dirs_labels[ #dirs_labels ] )
@@ -326,6 +337,10 @@ end --end function
 function cmdline(dirname)
   local res
   local cmdl=""
+  
+  if dirname == nil then
+     os.exit(0)
+  end
   if osName == "OS=linux" then
      --30 "most full" directories
      --cmdl="du -k */ | sort -nr | cut -f2 | xargs -d '\n' du -sh | head -n 30 > /home/terras/testcmd.txt"
@@ -339,7 +354,8 @@ print("du command was successfull!")
      else
         --epic fail
 print("du command was an epic fail!")
-        return 0
+        os.exit(0)
+	--return 0
      end
   elseif osName == "OS=windows" then
      --30 "most full" directories
@@ -415,7 +431,8 @@ print("Hostname ? " .. buffer)
      f = io.open(filename,"rb")
      if f then
         read_data = f:read("*all")
-        read_data = string.lower(read_data)
+        --read_data = string.lower(read_data)
+	read_data = read_data
 print("Reading successfully file " .. filename .. ", taille=" .. #read_data .. " bytes")
         io.close(f)
         sysfile = define_textfile_origin(read_data)
@@ -437,6 +454,37 @@ function load_dir()
      return 1
   else
      return 0
+  end
+end --end function
+
+function clicksubdir()
+  --computing x and y mouse coordinates when clicked and retrieving button's range = subdir
+  local i,st
+  
+  --One subdir button was clicked : which one?
+  for i=1,30 do 
+      if Fl:event_inside( dirs_button[ i ] ) == 1 then 
+	 dirname = dirs_labels[i]
+print("clicked button was number " .. i)
+print("dirname is now " .. dirname)
+         break
+      end
+  end
+  --as for unices systems, 
+  --dirname needs to be scanned for "double slashes" (//), 
+  --these couple of cars have to be converted into "one slash" (/)
+  --and final / has to be removed
+  if osName == "OS=linux" then
+     st = string.gsub(dirname, "//", "/")
+     dirname = sub(st,1,-2)
+     print("dirname is now " .. dirname)
+  end
+  --click on a subdir will select this one as new parent-dir
+  --have to launch cmdline with this dir
+  if load_data(dirname) then
+print("calling to load_data() was succefull")
+     display_charts()
+     pwindow:redraw()
   end
 end --end function
 
@@ -527,9 +575,6 @@ end --end function
               if load_data(dirname) then
                  display_charts()
 		 pwindow:redraw()
-		 return 1
-              else
-                 return 0
               end
         end)
 	
@@ -555,10 +600,9 @@ end --end function
   height_button = 15
   
   for i=1,30 do
-      --st = i .. "."
       table.insert(dirs_button, fltk:Fl_Button(10,dec_button,300,height_button, ""))
-      --word_box[ #word_box]:box(visibility_word_box)
       dec_button = dec_button + height_button
+      dirs_button[ i ]:callback( clicksubdir )
   end  
   
   --now display charts
