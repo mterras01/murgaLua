@@ -11,7 +11,12 @@
 4/ zooming on charts ?
 ------- things to do :
 1/ create special charts (and no native-fltk charts, too limited/restricted in terms of visualization)
-2/ create clickable charts, ie generate stats & charts for a new parent-directory et its subdirectories
+-bar chart: ok
+-pie-chart: to do
+2/ integration of fltk dir chooser function to select a specific directory
+-integration in murgaLua code : ok
+-integration into command line (called from script) for linux (ok), windows (todo) (macos ?)
+3/ create clickable charts, ie generate stats & charts for a new parent-directory et its subdirectories
 3/ progress bar (especially for Windows OS!)
 ]]
 
@@ -22,6 +27,8 @@ st=""
 separator = ";"
 read_data = "" --read buffer
 size_eol = 0 -- EOL size Unix / MacOs / Windows
+dirname = "" --parent directory as string, default is home
+
 -- GUI variables ----------------------------------------------------------
 width_pwindow = 500 --dim main window for wordcloud
 height_pwindow = 500
@@ -284,7 +291,43 @@ print( (#dirs_labels+1) .. ". size=" .. w1 .. " // label=" .. w2)
   end
 end --end function
 
-function load_data()
+function cmdline(dirname)
+  local res
+  local cmdl=""
+  if osName == "OS=linux" then
+     --30 "most full" directories
+     --cmdl="du -k */ | sort -nr | cut -f2 | xargs -d '\n' du -sh | head -n 30 > /home/terras/testcmd.txt"
+     cmdl="du -k \"" .. dirname .. "\"/*/ | sort -nr | cut -f2 | xargs -d '\n' du -sh | head -n 30 > /home/terras/testcmd.txt"
+--print(cmdl)
+     res = os.execute(cmdl)
+     if res == 0 then
+        --success
+print("du command was successfull!")
+        return 1
+     else
+        --epic fail
+print("du command was an epic fail!")
+        return 0
+     end
+  elseif osName == "OS=windows" then
+     --30 "most full" directories
+     cmdl="dir /S /A:D /O:S | FIND "/" > testcmd.txt"
+     res = os.execute(cmdl)
+     if res == 0 then
+        --success
+        return 1
+     else
+        --epic fail
+       print("Resultat de " .. cmdl .. " = " .. res)
+        return 0
+     end
+  else
+     --MacOS
+     return 0
+  end
+end
+
+function load_data(dirname)
   local st, sysfile = "", ""
   local nbl,nbc = 0, 0  
   
@@ -292,7 +335,7 @@ function load_data()
   f=0
   st=""
   
-  if cmdline() ~= 1 then
+  if cmdline(dirname) ~= 1 then
      return nil
   end
   
@@ -356,38 +399,14 @@ print("filesystem Origin (according to CR/LF) = " .. sysfile )
   end
 end --end function
 
-function cmdline()
-  local res
-  local cmdl=""
-  if osName == "OS=linux" then
-     --30 "most full" directories
-     cmdl="du -k */ | sort -nr | cut -f2 | xargs -d '\n' du -sh | head -n 30 > /home/terras/testcmd.txt"
-     res = os.execute(cmdl)
-     if res == 0 then
-        --success
-print("du command was successfull!")
-        return 1
-     else
-        --epic fail
-print("du command was an epic fail!")
-        return 0
-     end
-  elseif osName == "OS=windows" then
-     --30 "most full" directories
-     cmdl="dir /S /A:D /O:S | FIND "/" > testcmd.txt"
-     res = os.execute(cmdl)
-     if res == 0 then
-        --success
-        return 1
-     else
-        --epic fail
-       print("Resultat de " .. cmdl .. " = " .. res)
-        return 0
-     end
+function load_dir()
+  dirname = fltk.fl_dir_chooser("Directory selector", "", SINGLE, nil)
+  if load_data(dirname) then
+     return 1
   else
-      --MacOS
+     return 0
   end
-end
+end --end function
 
 function quit_callback_app()
   if pwindow then
@@ -403,7 +422,9 @@ end --end function
   --version FLTK
   print("Fltk version "  .. fltk.FL_MAJOR_VERSION .. "." .. fltk.FL_MINOR_VERSION .. fltk.FL_PATCH_VERSION)
   --premiere partie : chargement des données  
-  if load_data() then
+  
+  --if load_data() then
+  if load_dir() then
      print(#read_data .. " octets")
   else
      os.exit(0)
@@ -436,6 +457,8 @@ end --end function
   charts_border:box(2)
   --charts_border:color(fltk.FL_DARK_GREEN)
   charts_border:color(25)
+  st="Parent Directory presented here is\n".. dirname
+  charts_border:tooltip(st)
 
   --LOG button for "sweeter" data scaling
   dec_button = dec_button+width_button+10
@@ -456,7 +479,13 @@ end --end function
 	      display_charts()
 	      pwindow:redraw()
         end)
-
+	
+  --change parent directory
+  dec_button = dec_button+width_button+10
+  filebutton = fltk:Fl_Button(dec_button, height_pwindow-height_button, width_button, height_button, "@fileopen")
+  filebutton:tooltip("Open another directory")
+  filebutton:callback(load_dir)
+	
   -- shape of charts = square (bars) or circle (pie)
   dec_button = dec_button+width_button+5
   width_button = 30
