@@ -23,6 +23,8 @@
 i=0
 f=0
 st,st2="",""
+-- vars for host ----------------------------------------------------------
+hostname=""
 -- BUFFER and vars for file -----------------------------------------------
 separator = ";"
 read_data = "" --read buffer
@@ -152,6 +154,11 @@ function deaccentuate(str)
 	     str2 = s
 	  end
       end
+  end
+  --finding double slashes and remove one of them (linux)
+  s,c = string.gsub(str2, "//", "/")
+  if s then
+     str2 = s
   end
   return(str2)
 end --end function
@@ -317,7 +324,23 @@ function populate_tables()
         end
     end
   elseif osName == "OS=windows" then
-     --windows
+     --structure of Windows results in file
+--[[
+ Le volume dans le lecteur G s'appelle MSFC-Dedup
+ Le numéro de série du volume est 327E-3C2A
+
+ Répertoire de G:\Dim
+
+               3 fichier(s)          743 335 octets
+
+ Répertoire de G:\Dim\%appdata%\Google\Chrome
+
+               0 fichier(s)                0 octets
+
+ Répertoire de G:\Dim\%appdata%\Google\Chrome\Default
+
+               1 fichier(s)           24 925 octets
+]]
   elseif osName == "OS=macos" then
      --not sure about this dev
   else
@@ -358,8 +381,10 @@ print("du command was an epic fail!")
 	--return 0
      end
   elseif osName == "OS=windows" then
-     --30 "most full" directories
-     cmdl="dir /S /A:D /O:S | FIND "/" > testcmd.txt"
+     --ALL directories and subdirectories sorting by size /O:S (AND NOT ONLY 30 biggest one)
+     --cmdl="dir /S /A:D /O:S | FIND /v \"/\"  | FIND /v \"..\" > testcmd.txt"
+    --cmdl="dir \"" .. dirname .. "\" /S | FIND /V \"/\" > testcmd.txt"
+    cmdl="dir \"" .. dirname .. "\" /S /-C | FIND /V \"/\" > testcmd.txt"
      res = os.execute(cmdl)
      if res == 0 then
         --success
@@ -373,6 +398,58 @@ print("du command was an epic fail!")
      --MacOS
      return 0
   end
+  
+  
+  --[[
+   TWO  windows command line scripts for listing subdirectories with depth "x" from a parent dir
+   source = https://stackoverflow.com/questions/12479250/set-recursive-depth-for-dir-command-in-dos
+   first batch/cmd----
+@echo off
+setlocal
+set currentLevel=0
+set maxLevel=%2
+if not defined maxLevel set maxLevel=1
+
+:procFolder
+pushd %1 2>nul || exit /b
+if %currentLevel% lss %maxLevel% (
+  for /d %%F in (*) do (
+    echo %%~fF
+    set /a currentLevel+=1
+    call :procFolder "%%F"
+    set /a currentLevel-=1
+  )
+)
+popd
+  ------
+   second batch/cmd----
+@echo off
+setlocal
+set currentLevel=0
+set maxLevel=%2
+if not defined maxLevel set maxLevel=1
+
+:procFolder
+pushd %1 2>nul || exit /b
+if %currentLevel% lss %maxLevel% (
+  for /d %%F in (*) do echo %%~fF
+  for /d %%F in (*) do (
+    set /a currentLevel+=1
+    call :procFolder "%%F"
+    set /a currentLevel-=1
+  )
+)
+popd
+  ------
+  USAGE
+Both scripts expect two arguments:
+arg1 = the path of the root directory to be listed
+arg2 = the number of levels to list.
+So to list 3 levels of the current directory, you could use
+listDirs.bat . 3
+To list 5 levels of a different directory, you could use
+listDirs.bat "d:\my folder\" 5
+  ]]
 end
 
 function load_data(dirname)
@@ -394,10 +471,12 @@ function load_data(dirname)
         f = io.open("temp.txt", "rb")
         if f then
            buffer = f:read("*all")
-print("Hostname ? " .. buffer)
+print("Hostname is " .. buffer)
 	   if find(buffer, "terras-Aspire-5733Z",1,true) then
+	      hostname = "terras-Aspire-5733Z"
 	      filename = "/home/terras/testcmd.txt" -- ACER
 	   elseif find(buffer, "HP6200",1,true) then
+	      hostname = "HP6200"
 	      filename = "/home/terras/testcmd.txt"
 	   else
 	      filename=nil
@@ -406,8 +485,24 @@ print("Hostname ? " .. buffer)
 	end
      end
   elseif osName == "OS=windows" then
-     --filename = "G:\\Dim\\dsl-not\\scripts-murgaLua\\testcmd.txt"
-	 filename = "G:\\Dim\\dsl-not\\scripts-murgaLua\\testcmd_linux.txt"
+     linecmd = "hostname > temp.txt";
+     res = os.execute(linecmd)
+     if res == 0 then
+        f = io.open("temp.txt", "rb")
+        if f then
+           buffer = f:read("*all")
+print("Hostname is " .. buffer)
+	   if find(buffer, "optiplex320",1,true) then
+	      hostname = "optiplex320"
+	      filename = "testcmd.txt" --OPTIPLEX (current dir)
+	   else
+	      filename = "G:\\Dim\\dsl-not\\scripts-murgaLua\\testcmd.txt"
+	      --filename=nil
+	   end
+           io.close(f)
+	end
+     end
+     
   elseif osName == "OS=macos" then
      --nothing for macos
 	 return nil
@@ -440,7 +535,7 @@ print("filesystem Origin (according to CR/LF) = " .. sysfile )
         populate_tables()
         return 1
      else
-        print("Inexistent of file " .. filename)
+        print("Inexistent file " .. filename)
         return nil, nil
      end
   else
