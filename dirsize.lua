@@ -131,6 +131,20 @@ osName="OS=" .. murgaLua.getHostOsName()
 -- if using luajit, uncomment next line
 --osName="OS=linux"
 
+--Check pre-requisite for Windows OS
+if osName == "OS=windows" then
+   --REQUIRED 2K/XP RESSOURCE KIT with diruse in PATH
+   cmdl="diruse /*  > testcmd.txt"
+   res = os.execute(cmdl)
+   if res == 0 then
+      --success
+   else
+      --Fail => message & exit
+      st = "Sorry Windows User !\nThis app REQUIRE the 2K/XP RESSOURCE KIT with diruse.exe in PATH"
+      fltk:fl_alert(st)
+   end
+end
+
 t00=0
 t11=0
 
@@ -324,23 +338,49 @@ function populate_tables()
         end
     end
   elseif osName == "OS=windows" then
-     --structure of Windows results in file
+     --structure of Windows "diruse" results
 --[[
- Le volume dans le lecteur G s'appelle MSFC-Dedup
- Le numéro de série du volume est 327E-3C2A
-
- Répertoire de G:\Dim
-
-               3 fichier(s)          743 335 octets
-
- Répertoire de G:\Dim\%appdata%\Google\Chrome
-
-               0 fichier(s)                0 octets
-
- Répertoire de G:\Dim\%appdata%\Google\Chrome\Default
-
-               1 fichier(s)           24 925 octets
+    Size  (b)  Files  Directory
+       249480      8  SUB-TOTAL: C:\DELL
+    472864242   1144  SUB-TOTAL: C:\Documents and Settings
+   5915557493   1701  SUB-TOTAL: C:\Jeux
+   4509644718   6041  SUB-TOTAL: C:\Program Files
+           85      2  SUB-TOTAL: C:\RECYCLER
+   1436116846   4491  SUB-TOTAL: C:\System Volume Information
+   2204896574  14397  SUB-TOTAL: C:\WINDOWS
+    513248857    142  SUB-TOTAL: C:\zip
+  15052578299  27926  TOTAL
 ]]
+         p0=1
+     while 1 do
+        p = find(read_data, "\n", p0, true)
+        if p then
+           line = sub(read_data, p0, p-1)
+	   w1 = sub(line, 1, 13)
+	   if w1 then
+	      size = tonumber( w1 )
+	   else
+	     size = 0
+	   end
+	   w2 = sub(line, 34)
+print( (#dirs_labels+1) .. ". size=" .. w1 .. " // label=" .. w2)
+           if w2 ~= nil and size ~= nil then
+              table.insert(dirs_labels, w2)
+	      nb_subdirs_in_dir = nb_subdirs_in_dir+1
+	      table.insert(dirs_size, size) --size as a number defining width of button
+	      table.insert(dirs_size_label,w1) -- size "string formatted" like 4,3G or 144k
+	      st2 = deaccentuate( dirs_labels[ #dirs_labels ] )
+	      if st2 then
+	         table.insert(dirs_labels_ASCII, st2)
+	      else
+		 table.insert(dirs_labels_ASCII, "pb technique")
+	      end
+	   end
+           p0 = p+1
+        else
+           break
+        end
+    end
   elseif osName == "OS=macos" then
      --not sure about this dev
   else
@@ -381,10 +421,9 @@ print("du command was an epic fail!")
 	--return 0
      end
   elseif osName == "OS=windows" then
-     --ALL directories and subdirectories sorting by size /O:S (AND NOT ONLY 30 biggest one)
-     --cmdl="dir /S /A:D /O:S | FIND /v \"/\"  | FIND /v \"..\" > testcmd.txt"
-    --cmdl="dir \"" .. dirname .. "\" /S | FIND /V \"/\" > testcmd.txt"
-    cmdl="dir \"" .. dirname .. "\" /S /-C | FIND /V \"/\" > testcmd.txt"
+     --REQUIRED 2K/XP RESSOURCE KIT with diruse in PATH
+     --cmdl="dir \"" .. dirname .. "\" /S /-C | FIND /V \"/\" > testcmd.txt"
+     cmdl="diruse /* \"" .. dirname .. "\" > testcmd.txt"
      res = os.execute(cmdl)
      if res == 0 then
         --success
@@ -594,9 +633,8 @@ end --end function
 
   t00 = os.time() --top chrono
 
-  --version FLTK
+  --FLTK Version
   print("Fltk version "  .. fltk.FL_MAJOR_VERSION .. "." .. fltk.FL_MINOR_VERSION .. fltk.FL_PATCH_VERSION)
-  --premiere partie : chargement des données  
   
   --if load_data() then
   if load_dir() then
