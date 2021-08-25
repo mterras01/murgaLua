@@ -15,9 +15,8 @@
 -pie-chart: to do
 2/ integration of fltk dir chooser function to select a specific directory
 -integration in murgaLua code : ok
--integration into command line (called from script) for linux (ok), windows (todo) (macos ?)
-3/ create clickable charts, ie generate stats & charts for a new parent-directory et its subdirectories
-3/ progress bar (especially for Windows OS!)
+-integration into command line (called from script) for linux (ok), windows (ok) (macos ?)
+3/ create clickable charts, ie generate stats & charts for a new parent-directory et its subdirectories (ok)
 ]]
 
 i=0
@@ -31,6 +30,7 @@ read_data = "" --read buffer
 size_eol = 0 -- EOL size Unix / MacOs / Windows
 dirname = "" --parent directory as string, default is home
 nb_subdirs_in_dir=0 --no comment
+total_dir_size = 0
 
 -- GUI variables ----------------------------------------------------------
 width_pwindow = 500 --dim main window for wordcloud
@@ -254,6 +254,9 @@ function display_charts()
         st="Parent Directory presented here is\n".. dirname .. "\n30 biggest subdirs"
      end
   end
+  if total_dir_size > 0 then
+     st = st .. "\n Total size of this dir is " .. total_dir_size .. " bytes"
+  end
   charts_border:tooltip(st)
 end --end function
 
@@ -338,24 +341,37 @@ function populate_tables()
         end
     end
   elseif osName == "OS=windows" then
-     --structure of Windows "diruse" results
+     --structure of Windows "diruse" results (including a sorting in cmdline)
 --[[
     Size  (b)  Files  Directory
-       249480      8  SUB-TOTAL: C:\DELL
-    472864242   1144  SUB-TOTAL: C:\Documents and Settings
-   5915557493   1701  SUB-TOTAL: C:\Jeux
-   4509644718   6041  SUB-TOTAL: C:\Program Files
-           85      2  SUB-TOTAL: C:\RECYCLER
-   1436116846   4491  SUB-TOTAL: C:\System Volume Information
-   2204896574  14397  SUB-TOTAL: C:\WINDOWS
-    513248857    142  SUB-TOTAL: C:\zip
-  15052578299  27926  TOTAL
+    406274261    619  TOTAL
+    384702882    374  SUB-TOTAL: C:/DOCUMENTS AND SETTINGS/TERRAS/\Local Settings
+     20451687     95  SUB-TOTAL: C:/DOCUMENTS AND SETTINGS/TERRAS/\Mes documents
+      1007447     55  SUB-TOTAL: C:/DOCUMENTS AND SETTINGS/TERRAS/\Application Data
+...    
 ]]
-         p0=1
+     --1st line means cols' labels
+     p = find(read_data, "\n", p0, true)
+     p0 = p+1
+     --2nd line means total size for this parent directory (=dirname)
+     p = find(read_data, "\n", p0, true)
+     if p then
+        line = sub(read_data, p0, p-size_eol)
+        w1 = sub(line, 1, 13)
+	if w1 then
+           total_dir_size = tonumber(w1)
+	   if total_dir_size == nil then
+	      total_dir_size = 0
+	   end
+	else
+	   total_dir_size = 0
+	end
+	p0 = p+1
+     end
      while 1 do
         p = find(read_data, "\n", p0, true)
         if p then
-           line = sub(read_data, p0, p-1)
+           line = sub(read_data, p0, p-size_eol)
 	   w1 = sub(line, 1, 13)
 	   if w1 then
 	      size = tonumber( w1 )
@@ -363,24 +379,31 @@ function populate_tables()
 	     size = 0
 	   end
 	   w2 = sub(line, 34)
-print( (#dirs_labels+1) .. ". size=" .. w1 .. " // label=" .. w2)
            if w2 ~= nil and size ~= nil then
-              table.insert(dirs_labels, w2)
-	      nb_subdirs_in_dir = nb_subdirs_in_dir+1
-	      table.insert(dirs_size, size) --size as a number defining width of button
-	      table.insert(dirs_size_label,w1) -- size "string formatted" like 4,3G or 144k
-	      st2 = deaccentuate( dirs_labels[ #dirs_labels ] )
-	      if st2 then
-	         table.insert(dirs_labels_ASCII, st2)
+print( (#dirs_labels+1) .. ". size=" .. w1 .. " // label=" .. w2)
+	      if dirs_labels [#dirs_labels] == "" and dirs_size_label[#dirs_size_label] == ""  then
+	         break
 	      else
-		 table.insert(dirs_labels_ASCII, "pb technique")
+                 table.insert(dirs_labels, w2)
+	         nb_subdirs_in_dir = nb_subdirs_in_dir+1
+	         table.insert(dirs_size, size) --size as a number defining width of button
+	         table.insert(dirs_size_label,w1) -- size "string formatted" like 4,3G or 144k
+	         st2 = deaccentuate( dirs_labels[ #dirs_labels ] )
+	         if st2 then
+	            table.insert(dirs_labels_ASCII, st2)
+	         else
+		    table.insert(dirs_labels_ASCII, "pb technique")
+	         end
 	      end
 	   end
            p0 = p+1
         else
            break
         end
-    end
+	if #dirs_labels > 30 then
+	   break
+	end
+     end --end while
   elseif osName == "OS=macos" then
      --not sure about this dev
   else
@@ -423,7 +446,8 @@ print("du command was an epic fail!")
   elseif osName == "OS=windows" then
      --REQUIRED 2K/XP RESSOURCE KIT with diruse in PATH
      --cmdl="dir \"" .. dirname .. "\" /S /-C | FIND /V \"/\" > testcmd.txt"
-     cmdl="diruse /* \"" .. dirname .. "\" > testcmd.txt"
+     --cmdl="diruse /* \"" .. dirname .. "\" > testcmd.txt"
+     cmdl="diruse /* \"" .. dirname .. "\" | SORT /r /o testcmd.txt"
      res = os.execute(cmdl)
      if res == 0 then
         --success
@@ -433,62 +457,12 @@ print("du command was an epic fail!")
        print("Resultat de " .. cmdl .. " = " .. res)
         return 0
      end
-  else
-     --MacOS
+  elseif osName == "OS=macos" then
      return 0
+  else
+     print("Unknown OS !")
+     os.exit(0)
   end
-  
-  
-  --[[
-   TWO  windows command line scripts for listing subdirectories with depth "x" from a parent dir
-   source = https://stackoverflow.com/questions/12479250/set-recursive-depth-for-dir-command-in-dos
-   first batch/cmd----
-@echo off
-setlocal
-set currentLevel=0
-set maxLevel=%2
-if not defined maxLevel set maxLevel=1
-
-:procFolder
-pushd %1 2>nul || exit /b
-if %currentLevel% lss %maxLevel% (
-  for /d %%F in (*) do (
-    echo %%~fF
-    set /a currentLevel+=1
-    call :procFolder "%%F"
-    set /a currentLevel-=1
-  )
-)
-popd
-  ------
-   second batch/cmd----
-@echo off
-setlocal
-set currentLevel=0
-set maxLevel=%2
-if not defined maxLevel set maxLevel=1
-
-:procFolder
-pushd %1 2>nul || exit /b
-if %currentLevel% lss %maxLevel% (
-  for /d %%F in (*) do echo %%~fF
-  for /d %%F in (*) do (
-    set /a currentLevel+=1
-    call :procFolder "%%F"
-    set /a currentLevel-=1
-  )
-)
-popd
-  ------
-  USAGE
-Both scripts expect two arguments:
-arg1 = the path of the root directory to be listed
-arg2 = the number of levels to list.
-So to list 3 levels of the current directory, you could use
-listDirs.bat . 3
-To list 5 levels of a different directory, you could use
-listDirs.bat "d:\my folder\" 5
-  ]]
 end
 
 function load_data(dirname)
