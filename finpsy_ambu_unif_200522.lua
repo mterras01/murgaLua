@@ -1,10 +1,16 @@
 #!/bin/murgaLua
 --Calculs pour le FINANCEMENT PSY MAI 2022-AMBULATOIRE ETAB
 -- calculer les exclusions : > 730 actes cumulés
---                          > 15 actes journaliers
+--                          >= 15 actes journaliers
 --integration des 3eme et 4eme criteres PECI : 
 ----> 3 semaines actives pour les 15 actes
-----> 2 intervenants au moins pour chacun des 15 actes
+----> suppression le 110722 de la fonction calcul_peci(buffer_dates_peci), obsolète
+----> 2 intervenants au moins pour CHACUN des 15 actes : NON, pas sur cette version !!!
+------------> implémentation d'un critère PECI de 2 intervenants AU MOINS sur la période des 15 actes le 300722
+------------> présence de 2 intervenants AU MOINS sur une des 3 semaines actives (actes avec 2 intervenants de la même catégorie professionnelle inclus)
+
+version_pluri_intervenant="PLURI_INTERV" -- autre valeur="PLURI_INTERV" / "PLURI_CAT_PRO"
+ 
 i=0
 
 find = string.find
@@ -221,116 +227,116 @@ function get_data_from_line_RAA( line_raa )
  return ipp_local,date_nais_local,date_acte_local,nature_acte_local,lieu_acte_local,catprof_local, nb_intervenants, age_acte
 end --end function
 
-function calcul_peci(buffer_dates_peci)
-
-local i, j, k, l, m, n
-local  sem, date_acte, nb_jours, str, code_sem
-local buffer_week=""
-local s1,s2,s3
-
-
-nb_jours = (#buffer_dates_peci/9)
-m = #buffer_dates_peci-(11*9) -- taille date_PECI=9
---print("nb_jours = " .. nb_jours .. ", compteur 1 a m = " .. m) ------------------------------------ PT CONTROLE
---st = " fonction calcul_peci"
---fltk:fl_alert(st)
-
-for i=1,m,9 do
-    buffer_week=""
-    for j = 1,12 do 
-	    k = i+((j-1)*9)
-	    --str = sub(buffer_dates_peci,k+1, k+8) 
-		str = sub(buffer_dates_peci,k+1, k+8) 
-		if str then
-		   sem = get_weeknumber_from_day(str)
-		   code_sem = "*" .. string.format('%02d', sem)
-		   if find(buffer_week, code_sem) then
-		      --on ne fait rien, code semaine deja present dans le tampon
-		   else
-		      buffer_week = buffer_week .. code_sem
-		   end
-		end
-	end
---print("buffer_week = " .. buffer_week)     ------------------------------------------------------------------ PT CONTROLE
-	if #buffer_week >= 9 then 
-	   --12 jours d'acte pour lesquels on va calculer s'ils sont realises sur 3 semaines consecutives
-	   n = #buffer_week-(2*3)  -- taille format numero de semaine = 3 
-	   for l=1,n,3 do
-	       s1 = tonumber( sub(buffer_week,l+1, l+2) )
-		   s2 = tonumber( sub(buffer_week,l+4, l+5) )
-		   s3 = tonumber( sub(buffer_week,l+7, l+8) )
-		   if s1 and s2 and s3 then
-		      if s2 == (s1+1) and s3 == (s1+2) then
-print("PECI !!! " .. s1,s2,s3)              -------------------------------------------------------------------------------- PT CONTROLE 
-	             return(1) --3 semaines consecutives
-			  end
-	       end 
-	   end
-	end
-end
-
-return(0)
-
-end -- end function
-
-function calcul_peci2(buffer_jours_peci)
-
-local i, j, k, l, m, n
+function calcul_peci3(buffer_jours_peci_comp)
+local i, j, k, l, m, n,p,q
 local  sem, date_acte, str, str2, code_sem, nb_actes
 local buffer_week=""
+local buffer_week_multipro=""
 local buffer_day=""
 local nb_jours=0
 local s1,s2,s3
+local plurimono="M"
+local nb_jours_distincts_semaine=0
+local buffer_week_details=""
+local jours_distincts_d_actes_semaine={}
+local actes_distincts_semaine={}
+local semaine_pluri_mono={}
 
-nb_actes = (#buffer_jours_peci/9)
-m = #buffer_jours_peci-(14*9) -- taille date_PECI=9
+--initialisation tables
+for i=0,54 do
+    jours_distincts_d_actes_semaine[i]=0
+    actes_distincts_semaine[i]=0
+    semaine_pluri_mono[i]="M" --par défaut => mono-professionnel
+end
+
+print("buffer_jours_peci_comp = " .. buffer_jours_peci_comp)
+
+-- on va transformer ce buffer "jours d'acte" en buffer semaine avec les infos suivantes :
+-- *01P0405
+-- * = caractère de début de semaine,
+--01 = (%02d) = N° de semaine dans l'année
+--P = au moins un acte Pluriprofessionnel, sinon M
+--04 = (%02d) = nb d'actes effectués dans la semaine (sans double compte)
+--05 = (%02d) = nb de jours actifs de la semaine = avec au moins un acte
+
+m = #buffer_jours_peci_comp-(14*10) -- taille date_PECI=10, on remonte à 14 jours avant la fin du buffer
 --st = " fonction calcul_peci"
 --fltk:fl_alert(st)
 
-for i=1,m,9 do
-    buffer_week=""
-	nb_jours=0
-    for j = 1,15 do 
-	    k = i+((j-1)*9)
-		str = sub(buffer_jours_peci,k+1, k+8) 
-		if str then
-		   sem = get_weeknumber_from_day(str)
-		   code_sem = "*" .. string.format('%02d', sem)
-		   if find(buffer_week, code_sem) then
-		      --on ne fait rien, code semaine deja present dans le tampon
-		   else
-		      buffer_week = buffer_week .. code_sem
-		   end
-		   str2 = "*" .. str
-		   if find(buffer_day, str2) then
-		      --on ne fait rien, jour deja present dans le tampon
-		   else
-		      buffer_day = buffer_day .. str2
-			  nb_jours = nb_jours+1
-		   end
-		end
-	end
---print("buffer_week = " .. buffer_week)     ------------------------------------------------------------------ PT CONTROLE
-	if #buffer_week == 9 and nb_jours >= 12 then 
-	   --12 jours d'acte pour lesquels on va calculer s'ils sont realises sur 3 semaines consecutives
-	   n = #buffer_week-(2*3)  -- taille format numero de semaine = 3 
-	   for l=1,n,3 do
-	       s1 = tonumber( sub(buffer_week,l+1, l+2) )
-		   s2 = tonumber( sub(buffer_week,l+4, l+5) )
-		   s3 = tonumber( sub(buffer_week,l+7, l+8) )
-		   if s1 and s2 and s3 then
-		      if s2 == (s1+1) and s3 == (s1+2) then
-print("PECI !!! " .. s1,s2,s3)              -------------------------------------------------------------------------------- PT CONTROLE 
-	             return(1) --3 semaines consecutives
-			  end
-	       end 
-	   end
-	end
+-- construction la plus récente --------------------------
+for i=1,#buffer_jours_peci_comp,10 do
+     str = sub(buffer_jours_peci_comp,i+1, i+8) -- jour d'acte
+     plurimono = sub(buffer_jours_peci_comp,i+9, i+9) -- "P" pour pluri, "M" pour mono
+     
+     if str then
+        sem = get_weeknumber_from_day(str)
+        code_sem = "*" .. string.format('%02d', sem)
+        if plurimono == "P" then
+           semaine_pluri_mono[ sem ] = "P"
+        end
+        if find(buffer_week, code_sem) then
+           --on ne fait rien pour le tampon, code semaine deja present dans le tampon
+        else
+           buffer_week = buffer_week .. code_sem
+        end
+        --on incrémente le nb d'actes de la semaine
+        actes_distincts_semaine[ sem ]=actes_distincts_semaine[ sem ]+1
+        
+        str2 = "*" .. str
+        if find(buffer_day, str2) then
+           --on ne fait rien, jour deja present dans le tampon
+        else
+           buffer_day = buffer_day .. str2
+           --nb_jours = nb_jours+1
+           --on incrémente le nb de jours distincts actifs  de la semaine
+           jours_distincts_d_actes_semaine[ sem ] = jours_distincts_d_actes_semaine[ sem ]+1
+        end
+     end
 end
+--construction la plus récente du tampon semaine du patient (IPP)
+for i=0,54 do
+     if jours_distincts_d_actes_semaine[ i ] ~= 0 then
+        buffer_week_details = buffer_week_details .. "*" .. string.format("%02d", i) .. semaine_pluri_mono[ i ] .. string.format("%02d",actes_distincts_semaine[ i ]) .. string.format("%02d",jours_distincts_d_actes_semaine[ i ])
+     end
+end
+print("buffer_week_details = " .. buffer_week_details)
 
+-- -- analyse de ce buffer ---------------------------------------
+for i=1,#buffer_week_details,8 do
+     s1_num = tonumber( sub(buffer_week_details, i+1, i+2) )
+     s1_pluri = sub(buffer_week_details, i+3, i+3)
+     s1_actes = tonumber( sub(buffer_week_details, i+4, i+5) )
+     s1_jours = tonumber( sub(buffer_week_details, i+6, i+7) )
+     
+     if #buffer_week_details <= (i +24) then
+        s2_num = tonumber( sub(buffer_week_details, i+9, i+10) )
+        s2_pluri = sub(buffer_week_details, i+11, i+11)
+        s2_actes = tonumber( sub(buffer_week_details, i+12, i+13) )
+        s2_jours = tonumber( sub(buffer_week_details, i+14, i+15) )
+
+        s3_num = tonumber( sub(buffer_week_details, i+17, i+18) )
+        s3_pluri = sub(buffer_week_details, i+19, i+19)
+        s3_actes = tonumber( sub(buffer_week_details, i+20, i+21) )
+        s3_jours = tonumber( sub(buffer_week_details, i+22, i+23) )
+        --critères finaux PECI
+        if s2_num == (s1_num+1) and s3_num == (s1_num+2) then --3 semaines consécutives
+           if s1_pluri == "P" or s2_pluri == "P" or s3_pluri == "P" then --au moins 2 intervenants
+              if (s1_actes + s2_actes + s3_actes) >= 15 then --au moins 15 actes
+                 if (s1_jours + s2_jours + s3_jours) >= 12 then --au moins 12 jours actifs
+print("PECI !!! " .. s1_num,s2_num,s3_num)              -------------------------------------------------------------------------------- PT CONTROLE 
+	                return(1) --3 semaines consecutives
+                 end
+              end
+           end
+        end
+--    else
+--          break
+     end
+end
 return(0)
+-- FIN construction la plus récente --------------------------
 
-end -- end function
+end --end function
 
 function process(line_raa)
  local i,str,pos,age
@@ -561,7 +567,7 @@ function create_csv_file()
   
   csv_buffer = ""
   legende_csv = "MAJEURS\n" .. "bornes groupe (actes)" .. separator .. "patients EGA" .. separator .. "actes EGA" .. separator .. "patients PECI" .. separator .. "dont patients HLS" .. separator .. "actes HLS" .. separator .. "%actes HLS" .. separator .. "dont patients DR" .. separator .. "actes DR\n"
-  csv_buffer = "Annee_RAA " .. Annee_RAA .. "___FORMAT RAA " ..  format_RAA .. "\n\n" .. legende_csv
+  csv_buffer = csv_buffer .. "version_pluri_intervenant (PECI) =" .. version_pluri_intervenant .. "\nAnnee_RAA " .. Annee_RAA .. "___FORMAT RAA " ..  format_RAA .. "\n\n" .. legende_csv
   
   for i=1,#borne do
       b1 = borne[i] .. "-"
@@ -759,12 +765,14 @@ fltk:fl_alert(st)
 ---- patients avec au moins 15 actes effectués sur 3 semaines avec au moins 12 jours actifs et au moins 2 intervenants
 for j=1,#ipp do
     --nouveau patient eligible au bonus PECI, à rechercher dans les RAA
-   buffer_dates=""
-   buffer_dates_peci="" --jours d'acte eligibles PECI sans double compte
-   buffer_jours_peci="" --TOUS les jours d'acte eligibles PECI, avec double compte
-   buffer_weeks_peci=""
-
-    nb_acte_jour=0
+    buffer_dates=""
+    buffer_dates_peci="" --jours d'acte eligibles PECI sans double compte
+    buffer_jours_peci="" --TOUS les jours d'acte eligibles PECI, avec double compte
+    buffer_jours_peci_comp="" --TOUS les jours d'acte eligibles PECI, avec double compte, avec nb interv
+    buffer_weeks_peci=""
+    nb_actes=0
+    
+    nbic = 0 --nb cumulés des intervenants, si supérieur au nb d'actes, il y a 2 intervenants sur au mois un acte
    if ipp_730actes[ j ] == 0 then
     if ipp_ega_HORS_06_09_10_HS_2i[ j ] > 14 then 
        pos=1
@@ -776,44 +784,44 @@ for j=1,#ipp do
                ipp_local = sub(line_raa,22,27)
                if ipp_local == ipp[j] then
 			      ipp_local,date_nais_local,date_acte_local,nature_acte_local,lieu_acte_local,catprof_local, nb_intervenants, age_acte = get_data_from_line_RAA( line_raa )
-				  --[[
-                  date_nais_local = sub(line_raa,42,49)
-                  date_acte_local = sub(line_raa,70,77)
-                  nature_acte_local = sub(line_raa,78,79)
-                  lieu_acte_local = sub(line_raa,80,82)
-                  catprof_local = sub(line_raa,84,84)
-		  nb_intervenants = sub(line_raa,85,85)
-          age_acte = math.floor(get_years_between_acte_and_birth(date_nais_local, date_acte_local))
-		  ]]--
-		  nbi = tonumber(nb_intervenants)
+                  
+		          nbi = tonumber(nb_intervenants)
                   if age_acte >= 18 then
-				  buffer_dates = buffer_dates .. "*" .. date_acte_local --sert pour le calcul d'exclusion 15 actes/j
-		     if nbi >= 2 then
-		        d1=tonumber(sub(date_acte_local,1,2))
-                        m1=tonumber(sub(date_acte_local,3,4))
-                        y1=tonumber(sub(date_acte_local,5,8))
-                        reference1 = os.time{day=d1, year=y1, month=m1}
-			d2=1
-                        m2=1
-                        reference2 = os.time{day=d2, year=y1, month=m2}
-			w = os.difftime(reference1, reference2) / (24*60*60*7) -- delta en jours entre les dates
-			week = "*" .. string.format('%02d', math.floor(w) )
-			buffer_jours_peci = buffer_jours_peci .. "*" .. date_acte_local
-			if find(buffer_weeks_peci, week) then
-			   --rien
+                     nb_actes = nb_actes+1
+				     buffer_dates = buffer_dates .. "*" .. date_acte_local --sert pour le calcul d'exclusion 15 actes/j
+                        w = get_weeknumber_from_day(date_acte_local)
+			            week = "*" .. string.format('%02d', math.floor(w) )
+			            buffer_jours_peci = buffer_jours_peci .. "*" .. date_acte_local
+                        --autre méthodo possible pour les PECI : 
+                        ---------> au moins 2 intrevenants = au moins 2 catégorie professionnelle (catprof_local="X" ou "Y")
+                        ---------> on peut remplacer la condition if nbi >=2 par if (catprof_local=="X" or catprof_local=="Y") then  insérer en remplacement de "P"
+                        if version_pluri_intervenant == "PLURI_INTERV" then
+                           if nbi >= 2 then
+                              buffer_jours_peci_comp = buffer_jours_peci_comp .. "*" .. date_acte_local .. "P" --taille=10, P=acte pluri-professionnel
+                           else
+                              buffer_jours_peci_comp = buffer_jours_peci_comp .. "*" .. date_acte_local .. "M" --taille=10, M=acte mono-professionnel
+                           end
+                        else
+                           -- version_pluri_intervenant == "PLURI_CAT_PRO"
+                           if (catprof_local=="X" or catprof_local=="Y") then
+                              buffer_jours_peci_comp = buffer_jours_peci_comp .. "*" .. date_acte_local .. "P" --taille=10, P=acte pluri-professionnel
+                           else
+                              buffer_jours_peci_comp = buffer_jours_peci_comp .. "*" .. date_acte_local .. "M" --taille=10, M=acte mono-professionnel
+                           end
+                        end
+			            if find(buffer_weeks_peci, week) then
+                           --rien à faire: week est déjà dans le tampon semaine
                         else
                            buffer_weeks_peci = buffer_weeks_peci .. week
                            --nb entier de semaines eligibles PECI = (#buffer_weeks_peci+2)/3
                         end
-		        
                         if find(buffer_dates_peci, date_acte_local) then
                            --rien
                         else
                            buffer_dates_peci = buffer_dates_peci .. "*" .. date_acte_local
                            --nb entier d'actes eligibles PECI = (#buffer_dates_peci+8)/9
-			end
-		     end
-		  end
+			            end
+		          end
                end
             end
             pos = i+size_eol
@@ -822,13 +830,21 @@ for j=1,#ipp do
          end
        end
     end
+    --premier tri : éliminer les patients qui n'ont pas 3 semaines actives et/ou pas  12 jours actifs
     if #buffer_weeks_peci >= 9 and (#buffer_dates_peci/9) >= 12 then 
+print("ipp_local = " .. ipp_local)
+        --le premier 9 = au moins 3 semaines actives (codées sur 3 caractères)
+        --le deuxième 12 = au moins 12 jours actifs distincts (codés sur 9 caractères)
 	-- actes sur au moins sur 3 semaines consécutives et 12 jours actifs
 --print("buffer_weeks_peci = " .. buffer_weeks_peci)
 --print("buffer_dates_peci = " .. buffer_dates_peci)
        --ipp_ega_peci[j] = math.floor( (#buffer_dates_peci+8)/9 )
 	   --fonction calcul_peci
-	   ipp_ega_peci[j] = calcul_peci2(buffer_jours_peci)
+	   --ipp_ega_peci[j] = calcul_peci2(buffer_jours_peci, buffer_weeks_peci)
+       ipp_ega_peci[j] = calcul_peci3(buffer_jours_peci_comp)
+       if ipp_local == "134332" then
+           fltk:fl_alert("Point d'arret IPP TEST 134332!")
+       end
     else
        ipp_ega_peci[j] = 0
     end
@@ -883,8 +899,11 @@ for j=1,#ipp_min do
    buffer_dates=""
    buffer_dates_peci="" --jours d'acte eligibles PECI sans double compte
    buffer_jours_peci="" --TOUS les jours d'acte eligibles PECI, avec double compte
+   buffer_jours_peci_comp="" --TOUS les jours d'acte eligibles PECI, avec double compte, avec nb interv
    buffer_weeks_peci=""
-    
+   nb_actes=0
+   
+   nbic = 0 --nb cumulés des intervenants, si supérieur au nb d'actes, il y a 2 intervenants sur au mois un acte
    if ipp_730actes_min[ j ] == 0 then
     if ipp_ega_HORS_06_09_10_HS_2i_min[ j ] > 14 then 
        pos=1
@@ -896,34 +915,37 @@ for j=1,#ipp_min do
                ipp_local = sub(line_raa,22,27)
                if ipp_local == ipp[j] then
 			      ipp_local,date_nais_local,date_acte_local,nature_acte_local,lieu_acte_local,catprof_local, nb_intervenants, age_acte = get_data_from_line_RAA( line_raa )
-				  --[[
-                  date_nais_local = sub(line_raa,42,49)
-                  date_acte_local = sub(line_raa,70,77)
-                  nature_acte_local = sub(line_raa,78,79)
-                  lieu_acte_local = sub(line_raa,80,82)
-                  catprof_local = sub(line_raa,84,84)
-		  nb_intervenants = sub(line_raa,85,85)
-		  age_acte = math.floor(get_years_between_acte_and_birth(date_nais_local, date_acte_local))
-		  ]]--
-		  nbi = tonumber(nb_intervenants)
+		          nbi = tonumber(nb_intervenants)
+                  --autre méthodo possible pour les PECI : 
+                  ---------> au moins 2 intrevenants = au moins 2 catégorie professionnelle (catprof_local="X" ou "Y")
+                  ---------> on peut remplacer la condition if nbi >=2 par if (catprof_local=="X" or catprof_local=="Y") then  insérer en remplacement de "P"
                   if age_acte < 18 then
-		     buffer_dates = buffer_dates .. "*" .. date_acte_local --sert pour le calcul d'exclusion 15 actes/j
-		     if nbi >= 2 then
-		        d1=tonumber(sub(date_acte_local,1,2))
-                        m1=tonumber(sub(date_acte_local,3,4))
-                        y1=tonumber(sub(date_acte_local,5,8))
-                        reference1 = os.time{day=d1, year=y1, month=m1}
-			d2=1
-                        m2=1
-                        reference2 = os.time{day=d2, year=y1, month=m2}
-			w = os.difftime(reference1, reference2) / (24*60*60*7) -- delta en jours entre les dates
-			week = "*" .. string.format('%02d', math.floor(w) )
-			buffer_jours_peci = buffer_jours_peci .. "*" .. date_acte_local
-			if find(buffer_weeks_peci, week) then
-			   --rien
+		             buffer_dates = buffer_dates .. "*" .. date_acte_local --sert pour le calcul d'exclusion 15 actes/j
+                        w = get_weeknumber_from_day(date_acte_local)
+			            week = "*" .. string.format('%02d', math.floor(w) )
+			            buffer_jours_peci = buffer_jours_peci .. "*" .. date_acte_local
+                        --autre méthodo possible pour les PECI : 
+                        ---------> au moins 2 intrevenants = au moins 2 catégorie professionnelle (catprof_local="X" ou "Y")
+                        ---------> on peut remplacer la condition if nbi >=2 par if (catprof_local=="X" or catprof_local=="Y") then  insérer en remplacement de "P"
+                         if version_pluri_intervenant == "PLURI_INTERV" then
+                           if nbi >= 2 then
+                              buffer_jours_peci_comp = buffer_jours_peci_comp .. "*" .. date_acte_local .. "P" --taille=10, P=acte pluri-professionnel
+                           else
+                              buffer_jours_peci_comp = buffer_jours_peci_comp .. "*" .. date_acte_local .. "M" --taille=10, M=acte mono-professionnel
+                           end
+                        else
+                           -- version_pluri_intervenant == "PLURI_CAT_PRO"
+                           if (catprof_local=="X" or catprof_local=="Y") then
+                              buffer_jours_peci_comp = buffer_jours_peci_comp .. "*" .. date_acte_local .. "P" --taille=10, P=acte pluri-professionnel
+                           else
+                              buffer_jours_peci_comp = buffer_jours_peci_comp .. "*" .. date_acte_local .. "M" --taille=10, M=acte mono-professionnel
+                           end
+                        end
+			            if find(buffer_weeks_peci, week) then
+                           --rien à faire: week est déjà dans le tampon semaine
                         else
                            buffer_weeks_peci = buffer_weeks_peci .. week
-                           --nb entier de semaines eligibles PECI = (#buffer_weeks_peci+2)/3
+                           --nb entier de semaines eligibles PECI = (#buffer_weeks_peci+2)/3 --obsolète
                         end
                         if find(buffer_dates_peci, date_acte_local) then
                            --rien
@@ -931,7 +953,6 @@ for j=1,#ipp_min do
                            buffer_dates_peci = buffer_dates_peci .. "*" .. date_acte_local
                            --nb de jours distincts de realisation des actes eligibles PECI = (#buffer_dates_peci+8)/9
                         end
-		     end
                   end
                end
             end
@@ -941,12 +962,17 @@ for j=1,#ipp_min do
          end
        end
     end
+    --premier tri : éliminer les patients qui n'ont pas 3 semaines actives et/ou pas  12 jours actifs
     if #buffer_weeks_peci >= 9 and (#buffer_dates_peci/9) >= 12 then 
+print("ipp_local = " .. ipp_local)
+        --le premier 9 = au moins 3 semaines actives (codées sur 3 caractères)
+        --le deuxième 12 = au moins 12 jours actifs distincts (codés sur 9 caractères)
 	-- actes sur au moins sur 3 semaines consécutives et 12 jours actifs
 --print("buffer_weeks_peci = " .. buffer_weeks_peci)
        --ipp_ega_peci_min[j] = math.floor( (#buffer_dates_peci+8)/9 )
 	   --fonction calcul_peci
-	   ipp_ega_peci_min[j] = calcul_peci2(buffer_jours_peci)
+	   --ipp_ega_peci_min[j] = calcul_peci2(buffer_jours_peci, buffer_weeks_peci)
+       ipp_ega_peci_min[j] = calcul_peci3(buffer_jours_peci_comp)
     else
        ipp_ega_peci_min[j] = 0
     end
