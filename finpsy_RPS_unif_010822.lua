@@ -27,6 +27,8 @@ Annee_RPS=0
 ipp={}						---------------- MAJEURS
 ipp_temps_plein={}
 ipp_temps_plein_ssc={}
+ipp_temps_plein_ssc_sdre={}
+ipp_temps_plein_ssc_sdt={}
 ipp_temps_plein_isolement={}
 ipp_temps_plein_journees={}
 ipp_temps_plein_journees_ssc={}
@@ -51,6 +53,8 @@ ipp_temps_partiel_hdj_demi_journees_ssc={}
 ipp_min={}					---------------- MINEURS
 ipp_min_temps_plein={}	
 ipp_min_temps_plein_ssc={}
+ipp_min_temps_plein_ssc_sdre={}
+ipp_min_temps_plein_ssc_sdt={}
 ipp_min_temps_plein_isolement={}
 ipp_min_temps_plein_journees={}
 ipp_min_temps_plein_journees_ssc={}
@@ -74,6 +78,8 @@ buffer_ipp_temps_plein_jeunead=""
 buffer_ipp_temps_plein_geronto=""
 buffer_ipp_temps_plein_isolement=""
 buffer_ipp_temps_plein_ssc=""
+buffer_ipp_temps_plein_ssc_spdre=""
+buffer_ipp_temps_plein_ssc_spdt=""
 buffer_ipp_temps_partiel_hdj=""
 buffer_ipp_temps_partiel_hdj_ssc=""
 --MINEURS
@@ -81,6 +87,8 @@ buffer_ipp_min=""
 nbpati_min=0 -- nb de patients distincts
 buffer_ipp_min_temps_plein=""
 buffer_ipp_min_temps_plein_ssc=""
+buffer_ipp_min_temps_plein_ssc_spdre=""
+buffer_ipp_min_temps_plein_ssc_spdt=""
 buffer_ipp_min_temps_plein_isolement=""
 buffer_ipp_min_temps_partiel_hdj=""
 buffer_ipp_min_temps_partiel_hdj_ssc=""
@@ -296,7 +304,7 @@ end --end function
 
 function process(line_rps)
  local i,str,pos,age
- local posplein, pospleinssc, pospleinisolement,pospleinmin
+ local posplein, pospleinssc, pospleinisolement,pospleinmin,pospleinsscsdre,pospleinsscsdt
  local pospartiel_hdj, pospartiel_hdj_ssc
  local idx=1
  local idxplein=1
@@ -337,29 +345,10 @@ function process(line_rps)
               --ipp deja comptabilise : trouver l'index table (methode 1)
                idxplein = (posplein+6)/7
                ipp_temps_plein_journees[ idxplein ] =  ipp_temps_plein_journees[ idxplein ]+nb_jours_presence
---[[
-               if age_sequence>=18 and age_sequence < 26 then
-                   ipp_temps_plein_journees_jeunes_ad[ idxplein ] =  ipp_temps_plein_journees_jeunes_ad[ idxplein ]+nb_jours_presence
-               end
-               if age_sequence>=65 then
-                  ipp_temps_plein_journees_geronto[ idxplein ] =  ipp_temps_plein_journees_geronto[ idxplein ]+nb_jours_presence
-               end
-]]--
            else
                buffer_ipp_temps_plein = buffer_ipp_temps_plein .. "*" .. ipp_local
                table.insert(ipp_temps_plein, ipp_local)
                table.insert(ipp_temps_plein_journees, nb_jours_presence)
---[[
-               if age_sequence>=18 and age_sequence < 26 then
-                  --table.insert(ipp_temps_plein_jeunes_ad, ipp_local)
-                  table.insert(ipp_temps_plein_journees_jeunes_ad, nb_jours_presence)
-                  ipp_temps_plein_journees_geronto[ idxplein ] =  ipp_temps_plein_journees_geronto[ idxplein ]+nb_jours_presence
-               end
-               if age_sequence>=65 then
-                  --table.insert(ipp_temps_plein_geronto, ipp_local)
-                  table.insert(ipp_temps_plein_journees_geronto, nb_jours_presence)
-               end
-]]--
            end
            if age_sequence>=18 and age_sequence < 26 then
               pospleinjeunead = find(buffer_ipp_temps_plein_jeunead, str, 1, true)
@@ -395,6 +384,26 @@ function process(line_rps)
                  buffer_ipp_temps_plein_ssc = buffer_ipp_temps_plein_ssc .. "*" .. ipp_local
                  table.insert(ipp_temps_plein_ssc, ipp_local)
                  table.insert(ipp_temps_plein_journees_ssc, nb_jours_presence)
+              end
+              if mode_legal_soins == 3 then
+                 --SPDRE
+                 pospleinsscsdre = find(buffer_ipp_temps_plein_ssc_spdre, str, 1, true)
+                 if pospleinsscsdre then
+                    --rien
+                 else
+                     table.insert(ipp_temps_plein_ssc_sdre, ipp_local)
+                     buffer_ipp_temps_plein_ssc_spdre = buffer_ipp_temps_plein_ssc_spdre .. "*" .. ipp_local
+                 end
+              end
+              if mode_legal_soins == 7 then
+                 --SPDT
+                 pospleinsscsdt = find(buffer_ipp_temps_plein_ssc_spdt, str, 1, true)
+                 if pospleinsscsdt then
+                    --rien
+                 else
+                    table.insert(ipp_temps_plein_ssc_sdt, ipp_local)
+                    buffer_ipp_temps_plein_ssc_spdt = buffer_ipp_temps_plein_ssc_spdt .. "*" .. ipp_local
+                 end
               end
            end
            if nb_jours_isolement > 0 then
@@ -479,6 +488,26 @@ function process(line_rps)
                  buffer_ipp_min_temps_plein_ssc = buffer_ipp_min_temps_plein_ssc .. "*" .. ipp_local
                  table.insert(ipp_min_temps_plein_ssc, ipp_local)
                  table.insert(ipp_min_temps_plein_journees_ssc, nb_jours_presence)
+              end
+              if mode_legal_soins == 3 then
+                 --SPDRE
+                 pospleinsscsdre = find(buffer_ipp_min_temps_plein_ssc_spdre, str, 1, true)
+                 if pospleinsscsdre then
+                    --rien
+                 else
+                     table.insert(ipp_min_temps_plein_ssc_sdre, ipp_local)
+                     buffer_ipp_min_temps_plein_ssc_spdre = buffer_ipp_min_temps_plein_ssc_spdre .. "*" .. ipp_local
+                 end
+              end
+              if mode_legal_soins == 7 then
+                 --SPDT
+                 pospleinsscsdt = find(buffer_ipp_min_temps_plein_ssc_spdt, str, 1, true)
+                 if pospleinsscsdt then
+                    --rien
+                 else
+                    table.insert(ipp_min_temps_plein_ssc_sdt, ipp_local)
+                    buffer_ipp_min_temps_plein_ssc_spdt = buffer_ipp_min_temps_plein_ssc_spdt .. "*" .. ipp_local
+                 end
               end
            end
            if nb_jours_isolement > 0 then
@@ -686,6 +715,18 @@ function create_csv_file()
   legende_csv = "MINEURS TEMPS PARTIEL HDJ\n" .. "patients"  .. separator .. "journees"  .. separator .. "demi-journees" .. separator .. "equivalent journees" .. separator .. "patients zero venue\n"
   csv_buffer = csv_buffer .. "\n\n" .. legende_csv
   str = effectifs_gr_min_hdj .. separator .. journees_gr_min_hdj .. separator .. demi_journees_gr_min_hdj .. separator .. (journees_gr_min_hdj+math.ceil(demi_journees_gr_min_hdj/2)) .. separator .. effectifs_gr_min_hdj_0_venue .. "\n"
+  csv_buffer = csv_buffer .. str
+  
+  --MAJEURS SPDRE / SPDT
+  legende_csv = "MAJEURS SPDRE/SPDT\n" .. "patients SPDRE"  .. separator .. "patients SPDT\n"
+  csv_buffer = csv_buffer .. "\n\n" .. legende_csv
+  str = #ipp_temps_plein_ssc_sdre .. separator .. #ipp_temps_plein_ssc_sdt .. "\n"
+  csv_buffer = csv_buffer .. str
+  
+  --MINEURS SPDRE / SPDT
+  legende_csv = "MINEURS SPDRE/SPDT\n" .. "patients SPDRE"  .. separator .. "patients SPDT\n"
+  csv_buffer = csv_buffer .. "\n\n" .. legende_csv
+  str = #ipp_min_temps_plein_ssc_sdre .. separator .. #ipp_min_temps_plein_ssc_sdt .. "\n"
   csv_buffer = csv_buffer .. str
   
  end  --end function  
