@@ -31,6 +31,11 @@ ipp_ega_HORS_06_09_10_HS_2i={} -- actes EGA 2 intervenants
 ipp_ega_HLS_HS={}
 ipp_ega_DR_HS={}
 ipp_ega_peci={}  --patients avec au moins 15 actes effectués sur 3 semaines avec au moins 12 jours actifs et au moins 2 intervenants 
+--dernier tableau files actives et actes L06, L09 et L10
+ipp_L06={} --centre pénitentiaire
+ipp_L09={} --psy de liaison
+ipp_L10={} --SAU
+nb_RAA_L06, nb_RAA_L09, nb_RAA_L10 = 0,0,0
 
 buffer_dates_peci="" --tampon pour les date d'actes = au moins 12 jours distincts
 buffer_weeks_peci="" --tampon pour les semaines d'actes = au moins 3 semaines distinctes (N° de semaine de l'annee)
@@ -59,6 +64,9 @@ buffer_ipp=""
 nbpati=0 -- nb de patients distincts
 buffer_ipp_min=""
 nbpati_min=0 -- nb de patients distincts
+buffer_ipp_L06=""
+buffer_ipp_L09=""
+buffer_ipp_L10=""
 
 filename=""
 
@@ -249,7 +257,7 @@ for i=0,54 do
     semaine_pluri_mono[i]="M" --par défaut => mono-professionnel
 end
 
-print("buffer_jours_peci_comp = " .. buffer_jours_peci_comp)
+--print("buffer_jours_peci_comp = " .. buffer_jours_peci_comp)
 
 -- on va transformer ce buffer "jours d'acte" en buffer semaine avec les infos suivantes :
 -- *01P0405
@@ -299,7 +307,7 @@ for i=0,54 do
         buffer_week_details = buffer_week_details .. "*" .. string.format("%02d", i) .. semaine_pluri_mono[ i ] .. string.format("%02d",actes_distincts_semaine[ i ]) .. string.format("%02d",jours_distincts_d_actes_semaine[ i ])
      end
 end
-print("buffer_week_details = " .. buffer_week_details)
+--print("buffer_week_details = " .. buffer_week_details)
 
 -- -- analyse de ce buffer ---------------------------------------
 for i=1,#buffer_week_details,8 do
@@ -347,36 +355,10 @@ function process(line_raa)
 --st = line_raa .. " envoyee a la fonction process()"
 --fltk:fl_alert(st)
  
- --[[
- if line_raa then
-    ipp_local = sub(line_raa,22,27) --ATTENTION format RAA PO14
-    date_nais_local = sub(line_raa,42,49)
-    --sexe_local = sub(line_raa,50,50)
-    date_acte_local = sub(line_raa,70,77)
-    nature_acte_local = sub(line_raa,78,79)
-    lieu_acte_local = sub(line_raa,80,82)
-    --modalite_acte_local = sub(line_raa,83,83)
-    catprof_local = sub(line_raa,84,84)
-    nb_intervenants = tonumber( sub(line_raa,85,85) )
-    age_acte = math.floor(get_years_between_acte_and_birth(date_nais_local, date_acte_local))
-  end
-  ]]--
   if line_raa then 
      ipp_local,date_nais_local,date_acte_local,nature_acte_local,lieu_acte_local,catprof_local, nb_intervenants, age_acte = get_data_from_line_RAA( line_raa )
   end
 
-
---[[
- st = ipp_local .. " = IPP\n"
- st = st .. date_nais_local .. " = date_nais\n" 
- st = st .. sexe_local .. " = Sexe\n"
- st = st .. date_acte_local .. " = date_acte\n"
- st = st .. nature_acte_local .. " = EDGAR\n"
- st = st .. lieu_acte_local .. " = LIEU\n"
- st = st .. catprof_local .. " = CATPROF\n"
- st = st .. age_acte .. "(floor=" .. math.floor(age_acte) .. ") = AGE_ACTE\n"
- fltk:fl_alert(st)
-]]--
   
   str = "*" .. ipp_local
   
@@ -483,6 +465,40 @@ function process(line_raa)
      end	 
   end
 
+  --calcul des activités spécifiques L06, L09, L10 : l'age N'EST PAS pris en compte
+  if sub(nature_acte_local,1,1) == 'E' or sub(nature_acte_local,1,1) == 'G' or sub(nature_acte_local,1,1) == 'A' then
+     if lieu_acte_local == 'L06' then
+        pos = find(buffer_ipp_L06, str, 1, true) --PENITENTIAIRE
+        nb_RAA_L06 = nb_RAA_L06+1
+        if pos then
+           --ipp deja comptabilise : rien à faire
+        else
+           buffer_ipp_L06 = buffer_ipp_L06 .. "*" .. ipp_local
+           table.insert(ipp_L06, ipp_local)
+        end
+     end
+     if lieu_acte_local == 'L09' then
+        pos = find(buffer_ipp_L09, str, 1, true) --PSY DE LIAISON
+        nb_RAA_L09 = nb_RAA_L09+1
+        if pos then
+           --ipp deja comptabilise : rien à faire
+        else
+           buffer_ipp_L09 = buffer_ipp_L09 .. "*" .. ipp_local
+           table.insert(ipp_L09, ipp_local)
+        end
+     end
+     if lieu_acte_local == 'L10' then
+        pos = find(buffer_ipp_L10, str, 1, true) --SAU
+        nb_RAA_L10 = nb_RAA_L10+1
+        if pos then
+           --ipp deja comptabilise : rien à faire
+        else
+           buffer_ipp_L10 = buffer_ipp_L10 .. "*" .. ipp_local
+           table.insert(ipp_L10, ipp_local)
+        end
+     end
+  end
+  
 end   --end function  
 
 function build_base() 
@@ -612,11 +628,25 @@ function create_csv_file()
   for i=1,#ipp_min do
       if ipp_ega_peci_min[ i ] == 1 then 
          str = ipp_min[ i ]  .. separator .. ipp_ega_HORS_06_09_10_HS_2i_min[ i ] .. "\n"
-	 csv_buffer = csv_buffer .. str
+         csv_buffer = csv_buffer .. str
       end
   end
- end  --end function  
-    
+ 
+
+  legende_csv = "\n\nL06-AMBULATOIRE PENITENTIAIRE\n" .. "PATIENTS" .. separator .. "RAA\n"  
+  csv_buffer = csv_buffer .. legende_csv
+  str = #ipp_L06  .. separator .. nb_RAA_L06 .. "\n"
+  csv_buffer = csv_buffer .. str
+  legende_csv = "\nL09-AMBULATOIRE PSY LIAISON\n" .. "PATIENTS" .. separator .. "RAA\n"  
+  csv_buffer = csv_buffer .. legende_csv
+  str = #ipp_L09  .. separator .. nb_RAA_L09 .. "\n"
+  csv_buffer = csv_buffer .. str
+  legende_csv = "\nL10-AMBULATOIRE SAU\n" .. "PATIENTS" .. separator .. "RAA\n"  
+  csv_buffer = csv_buffer .. legende_csv
+  str = #ipp_L10  .. separator .. nb_RAA_L10 .. "\n"
+  csv_buffer = csv_buffer .. str
+  
+end --end function
 
 t00 = os.time() --top chrono
 
@@ -832,7 +862,7 @@ for j=1,#ipp do
     end
     --premier tri : éliminer les patients qui n'ont pas 3 semaines actives et/ou pas  12 jours actifs
     if #buffer_weeks_peci >= 9 and (#buffer_dates_peci/9) >= 12 then 
-print("ipp_local = " .. ipp_local)
+--print("ipp_local = " .. ipp_local)
         --le premier 9 = au moins 3 semaines actives (codées sur 3 caractères)
         --le deuxième 12 = au moins 12 jours actifs distincts (codés sur 9 caractères)
 	-- actes sur au moins sur 3 semaines consécutives et 12 jours actifs
@@ -964,7 +994,7 @@ for j=1,#ipp_min do
     end
     --premier tri : éliminer les patients qui n'ont pas 3 semaines actives et/ou pas  12 jours actifs
     if #buffer_weeks_peci >= 9 and (#buffer_dates_peci/9) >= 12 then 
-print("ipp_local = " .. ipp_local)
+--print("ipp_local = " .. ipp_local)
         --le premier 9 = au moins 3 semaines actives (codées sur 3 caractères)
         --le deuxième 12 = au moins 12 jours actifs distincts (codés sur 9 caractères)
 	-- actes sur au moins sur 3 semaines consécutives et 12 jours actifs
