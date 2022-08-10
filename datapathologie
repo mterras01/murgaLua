@@ -73,13 +73,22 @@ lib_reg={"GUADELOUPE","MARTINIQUE","GUYANE","LA REUNION","MAYOTTE","ILE-DE-FRANC
 code_dep ={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102}
 lib_dep={"Ain","Aisne","Allier","Alpes-de-Haute-Provence", "Hautes-Alpes", "Alpes-Maritimes", "Ardeche","Ardennes","Ariege","Aube","Aude","Aveyron","Bouches-du-Rhone","Calvados","Cantal","Charente","Charente-Maritime","Cher","Correze","ND","Cote-d Or","Cotes d Armor","Creuse","Dordogne", "Doubs","Drome","Eure","Eure-et-Loir","Finistere","Gard","Haute-Garonne","Gers","Gironde","Herault","Ille-et-Vilaine","Indre","Indre-et-Loire","Isere","Jura","Landes","Loir-et-Cher","Loire","Haute-Loire","Loire-Atlantique","Loiret","Lot","Lot-et-Garonne","Lozere","Maine-et-Loire","Manche","Marne","Haute-Marne","Mayenne","Meurthe-et-Moselle","Meuse","Morbihan","Moselle","Nievre","Nord","Oise","Orne","Pas-de-Calais","Puy-de-Dome","Pyrenees-Atlantiques","Hautes-Pyrenees","Pyrenees-Orientales","Bas-Rhin","Haut-Rhin","Rhone","Haute-Saone","Saone-et-Loire","Sarthe","Savoie","Haute-Savoie","Paris","Seine-Maritime","Seine-et-Marne","Yvelines","Deux-Sevres","Somme","Tarn","Tarn-et-Garonne","Var","Vaucluse","Vendee","Vienne","Haute-Vienne","Vosges","Yonne","Territoire de Belfort","Essonne","Hauts-de-Seine","Seine-St-Denis","Val-de-Marne","Val-D Oise","Corse-du-Sud","Haute-Corse","GUADELOUPE","MARTINIQUE","GUYANE","LA REUNION","MAYOTTE"}
 lib_grp={"Autres affections de longue duree (dont 31 et 32)", "Cancers","Diabete","Hospitalisations ponctuelles (avec ou sans pathologies, traitements ou maternite)","Insuffisance renale chronique terminale","Maladies cardio-neurovasculaires","Maladies du foie ou du pancreas (hors mucoviscidose)","Maladies inflammatoires ou rares ou VIH ou SIDA","Maladies neurologiques ou degeneratives","Maladies psychiatriques","Maladies respiratoires chroniques (hors mucoviscidose)","Maternite (avec ou sans pathologies)","Pas de pathologies reperees, traitements, maternite, hospitalisations ni traitement antalgique ou anti-inflammatoire","Sejours en hospitalisation complete pour prise en charge de la Covid-19","Traitement antalgique ou anti-inflammatoire (hors pathologies, traitements, maternite ou hospitalisations)","Traitements du risque vasculaire (hors pathologies)","Traitements psychotropes (hors pathologies)"}
+lib_trage={}
+for i=1,19 do
+     lib_trage[i] = "[" .. ((i-1)*5) .. "-" .. ((i*5)-1) .. "]"
+end
+lib_trage[20] = "[95+]"
+lib_trage[21] = "tsage" 
+  
 button_reg={} --select region, by code
 button_dep={}--select departement by code
 button_grp={} --select group of pathologies
+button_trage={} --select group of pathologies
 --criterias from GUI
 criteria_dep=0
 criteria_reg=0
 criteria_grp=0
+criteria_trage=21 --default is "all ages"
 
 --tampons d'écriture pour les fichiers texte et csv de sauvegarde
 csv_buffer = ""
@@ -126,12 +135,22 @@ function get_criterias()
             break
          end
     end
-for i=1,#button_grp do
+    for i=1,#button_grp do
          if button_grp[i]:color() == 1 then
             criteria_grp=i
             break
          end
     end
+    for i=1,#button_trage do
+         if button_trage[i]:color() == 1 then
+            criteria_trage=i
+            break
+         end
+    end
+    if  criteria_trage == 0 then
+        criteria_trage = 21 --default is "all ages"
+    end
+    
     if criteria_grp>0 then
 print("Selected Group of patho is " .. criteria_grp .. "-" .. lib_grp[ criteria_grp ])
     else
@@ -145,6 +164,7 @@ print("Selected Region is " .. code_reg[ criteria_reg ] .. " - " .. lib_reg[ cri
        else
 print("Selected Departement is " .. code_dep[ criteria_dep ] .. " - " .. lib_dep[ criteria_dep ])
        end
+print("Selected group of ages is " .. lib_trage[ criteria_trage ])
        nbl = load_database(filename)
        if nbl then
           str = define_textfile_origin( read_data )
@@ -155,6 +175,9 @@ print("Selected Departement is " .. code_dep[ criteria_dep ] .. " - " .. lib_dep
           fltk:fl_alert(st)
           exit(0)
        end
+       --shutting display
+       cwindow:hide()
+       
        build_base()
        create_csv_file()
        if #csv_buffer >0 then
@@ -163,8 +186,8 @@ print("Selected Departement is " .. code_dep[ criteria_dep ] .. " - " .. lib_dep
        read_data=nil --releasing some 0.5 GB RAM
        print("Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
        
-       --restoring display
-       cwindow:redraw()
+       --display
+       --cwindow:redraw()
     else
        st = " Select at least a Region OR a Departement AND a Group of patho !"
        fltk:fl_alert(st)  
@@ -192,6 +215,40 @@ function reset_criteria()
     cwindow:redraw()
 end --end function
 
+function retbuttrage()
+     --graphic function : select criterias in a graphic fltk screen/window
+     --not compatible with pure lua
+    local i
+    local nb_select=0
+    
+    for i=1,#lib_trage do
+         if Fl:event_inside(button_trage[i]) ==1 then
+            if button_trage[i]:color() == 1 then
+               button_trage[i]:color(29)
+            else
+               button_trage[i]:color(1)
+            end
+         else
+              --coherence control : one only group at a time
+              button_trage[i]:color(29)
+         end
+    end
+    --display nb of selections & coherence control : if one region is selected, departements remains UNselected
+    for i=1,#button_trage do
+         if button_trage[i]:color() == 1 then
+            nb_select = nb_select+1
+         end
+    end
+    if nb_select>0 then
+       str = "\n\nSelect ONE Group of ages " .. nb_select .. " Group selected"
+    else
+       str = "\n\nSelect ONE Group of ages"
+    end
+    trage_box:label(str)
+    
+    cwindow:redraw()  
+end --end function
+
 function retbutgrp()
      --graphic function : select criterias in a graphic fltk screen/window
      --not compatible with pure lua
@@ -217,9 +274,9 @@ function retbutgrp()
          end
     end
     if nb_select>0 then
-       str = "\nSelect ONE Group of patho (France)\n" .. nb_select .. " Group selected"
+       str = "\nSelect ONE Group of patho (France) " .. nb_select .. " Group selected"
     else
-       str = "\nSelect ONE Group of patho (France)\n"
+       str = "\nSelect ONE Group of patho (France)"
     end
     grp_box:label(str)
     
@@ -259,9 +316,9 @@ function retbutdep()
          end
     end
     if nb_select>0 then
-       str = "\n\n\n\n\nSelect one Departement's code (France)\n" .. nb_select .. " Departement selected"
+       str = "\n\n\n\n\nSelect one Departement's code (France) " .. nb_select .. " Departement selected"
     else
-       str = "\n\n\n\n\nSelect one Departement's code (France)\n"
+       str = "\n\n\n\n\nSelect one Departement's code (France) "
     end
     dep_box:label(str)
     
@@ -271,7 +328,7 @@ function retbutdep()
             button_reg[i]:color(29)
        end
     end
-    str = "\nSelect ONE Region's code (France)\n"
+    str = "\nSelect ONE Region's code (France)"
     reg_box:label(str)
     cwindow:redraw()
  end
@@ -304,9 +361,9 @@ function retbutreg()
          end
     end
     if nb_select>0 then
-       str = "\nSelect ONE Region's code (France)\n" .. nb_select .. " Region selected"
+       str = "\nSelect ONE Region's code (France) " .. nb_select .. " Region selected"
     else
-       str = "\nSelect ONE Region's code (France)\n"
+       str = "\nSelect ONE Region's code (France)"
     end
     reg_box:label(str)
     --unselect 
@@ -316,7 +373,7 @@ function retbutreg()
        end
     end    
     --display
-    str = "\n\n\n\n\nSelect one Departement's code (France)\n"
+    str = "\n\n\n\n\nSelect one Departement's code (France)"
     dep_box:label(str)
     
     cwindow:redraw()
@@ -355,7 +412,7 @@ if ca then
        classe_dage = 20
    elseif ca == "tsage" then 
        --all ages
-       classe_dage = -1
+       classe_dage = 21
    else
       -- age group is computed with first number before "-"
       k = find(ca, "-", 1)
@@ -379,6 +436,16 @@ if sub(code_dep,1,2) == "2A" then
    depart=96
 elseif sub(code_dep,1,2) == "2B" then
    depart=97
+elseif sub(code_dep,1,3) == "971" then
+   depart = 98
+elseif sub(code_dep,1,3) == "972" then
+   depart = 99
+elseif sub(code_dep,1,3) == "973" then
+   depart = 100
+elseif sub(code_dep,1,3) == "974" then
+   depart = 101
+elseif sub(code_dep,1,3) == "976" then
+   depart = 102
 else
    depart=tonumber( code_dep )
 end
@@ -406,18 +473,53 @@ function process(line_datapathologies)
   if line_datapathologies then 
      annee, grp_patho,ssgrp_patho,lib_patho,classe_dage,sex,reg,depart,effectif_pati,effectif_p,preval = get_data_from_line_DP( line_datapathologies)
      
+     --compliance testing
+     if depart == nil then
+        --abort
+        return
+     end
+     if depart <1 or depart >102 then
+        --abort
+        return
+     end
+     --test CRITERIAS
+     if criteria_reg>0 then
+        if reg ~= code_reg[ criteria_reg ] then
+            --abort
+            return
+        end
+     end
+     if criteria_dep>0 then
+           idx_dep = tonumber(depart)
+           if idx_dep > 0 and idx_dep < 103 then
+              if depart ~= criteria_dep then
+                 --abort
+                 return
+              end
+           end
+     end
+     if criteria_grp>0 then
+        if grp_patho ~= lib_grp[criteria_grp] then
+            --abort
+            return
+        end
+     end
+     if criteria_trage>0 then
+        if classe_dage ~= criteria_trage then
+            --abort
+            return
+        end
+     end
+     
      if annee then 
         an = annee-2014 --index for tables
+     else
+        --abort
+        return
      end
      
      --SELECT criterias
-    if criteria_reg>0 then
-     if sex == 9 and classe_dage == -1 and reg == code_reg[ criteria_reg ] then
-        if grp_patho == lib_grp[criteria_grp] then
-          if ssgrp_patho ~="" and lib_patho ~= "" then --exclude agregates without labels for ssgrp or patho
-            --index departement
-            if tonumber(depart) then
-               idx_dep = tonumber(depart)
+       if sex == 9 then
                str = "*" .. lib_patho
                if find(buffer_lib_patho,lib_patho,1,true) then
                   --already recorded : compute index 
@@ -431,72 +533,22 @@ function process(line_datapathologies)
                   table.insert(libelle_patho, lib_patho)
                   idx_lib_patho = #libelle_patho
                end
-               if an and idx_dep and idx_lib_patho then
-                  if idx_dep < 100 then
---print("an , idx_dep , idx_lib_patho = " .. an .. ", " .. idx_dep .. ", " .. idx_lib_patho)
-                  table_preval[an][idx_dep][idx_lib_patho] = preval
-                  end
+               if an and idx_lib_patho then
+--print("an , depart , idx_lib_patho = " .. an .. ", " .. depart .. ", " .. idx_lib_patho)
+                  table_preval[an][depart][idx_lib_patho] = preval
                end
-            end
-          end --if ssgrp_patho ~="" and...
-        end
-     end
-  end
-  
-    if criteria_dep>0 then
-     if sex == 9 and classe_dage == -1 and depart == criteria_dep then
-        --if grp_patho == "Maladies psychiatriques" or grp_patho == "Traitements psychotropes (hors pathologies)" then
-        if grp_patho == lib_grp[criteria_grp] then
-          if ssgrp_patho ~="" and lib_patho ~= "" then --exclude agregates without labels for ssgrp or patho
-            --index departement
-            if tonumber(depart) then
-               idx_dep = tonumber(depart)
-               str = "*" .. lib_patho
-               if find(buffer_lib_patho,lib_patho,1,true) then
-                  --already recorded : compute index 
-                  i = find(buffer_lib_patho, str,1,true)
-                  str2 = sub(buffer_lib_patho,1,i)
-                  j, count = gsub(str2, "*", "")
-                  idx_lib_patho = count
-               else
-                  --new record
-                  buffer_lib_patho = buffer_lib_patho .. str
-                  table.insert(libelle_patho, lib_patho)
-                  idx_lib_patho = #libelle_patho
-               end
-               if an and idx_dep and idx_lib_patho then
-                  if idx_dep < 100 then
---print("an , idx_dep , idx_lib_patho = " .. an .. ", " .. idx_dep .. ", " .. idx_lib_patho)
-                  table_preval[an][idx_dep][idx_lib_patho] = preval
-                  end
-               end
-            end
-          end --if ssgrp_patho ~="" and...
-        end
-     end
-  end    
+       end --if sex == 9
 
-if criteria_dep>0 then
    -- effectifs patients departement par annee ------------------------------------------------------------------
-   if tonumber(depart) then
-     if depart < 103 and criteria_dep == depart then
-         if annee then 
-            an = annee-2014
-         end
-      idx=depart
-      if classe_dage == -1 and sex == 9 then
-         --means all ages (-1) and all sexes ("9")
+    if sex == 9 then
          str4 = "*" .. string.format("%02d",depart)
          if find(buffer_dep[an], str4) then
             --déjà enregistré
          else
             buffer_dep[an] = buffer_dep[an] .. str4
-            effectifs_departement[idx][an] = effectif_p
+            effectifs_departement[depart][an] = effectif_p
          end
-      end -- if classe_dage
-     end --if depart < 103
-   end --if tonumber(depart)
-end --if criteria_dep>0
+     end --sex == 9 
 
   end --if line_datapathologies
   
@@ -575,6 +627,9 @@ function save_csv_file()
   if criteria_grp>0 then
      str = str .."_GRP" .. string.format("%02d",criteria_grp)
   end
+  if criteria_trage>0 then
+     str = str .."_AGE" .. string.format("%02d",criteria_trage)
+  end
   
   filename = "STATS_DATAPATHOLOGIES_" .. str .. "_090822.csv"
   f = io.open(filename,"wb")
@@ -593,37 +648,51 @@ end --end function
 
 function create_csv_file() 
   local i,j,legende_csv
-  local str,str2
+  local str,str2,str3
   local car={}
   local legende_age={}
   local an={2015,2016,2017,2018,2019,2020}
   
-  csv_buffer = ""
+  csv_buffer = "CRITERIAS\n"
+  if criteria_dep ~= 0 then
+     csv_buffer = csv_buffer .. "Departement = " .. lib_dep[criteria_dep] .. "\n"
+  end
+  if criteria_reg ~= 0 then
+     csv_buffer = csv_buffer .. "Region = " .. lib_reg[criteria_reg] .. "\n"
+  end
+  if criteria_grp ~= 0 then
+     csv_buffer = csv_buffer .. "Group Patho = " .. lib_grp[criteria_grp] .. "\n"
+  end
+  if criteria_trage ~= 0 then
+     csv_buffer = csv_buffer .. "Group ages = " .. lib_trage[criteria_trage] .. "\n\n"
+  end
+  
   legende_csv = "PREVALENCES PATHOLOGIES\n" .. "Libellé Pathologie" .. separator .. "DEPARTEMENT".. separator .. an[1] .. separator .. an[2] .. separator .. an[3] .. separator .. an[4] .. separator .. an[5] .. separator .. an[6] .. "\n"
   csv_buffer = csv_buffer .. legende_csv
   print("#libelle_patho = " .. #libelle_patho)
   for i=1,#libelle_patho do
       for j=1,102 do 
         if table_preval[1][j][i] ~= "-" then
---print("Num departement en cours = " .. i)
+--print("Num departement en cours = " .. j)
           if j== 96 then 
              str2 = "2A"
-          elseif i== 97 then 
+          elseif j== 97 then 
              str2 = "2B"
              ----98,99,100,101,102 = 971 GUADELOUPE, 972 MARTINIQUE, 973 GUYANE, 974 LA REUNION, 976 MAYOTTE
-          elseif i == 98 then
+          elseif j == 98 then
              str2 = "971"
-          elseif i == 99 then
+          elseif j == 99 then
              str2 = "972"
-          elseif i == 100 then
+          elseif j == 100 then
              str2 = "973"
-          elseif i == 101 then
+          elseif j == 101 then
              str2 = "974"
-          elseif i == 102 then
+          elseif j == 102 then
              str2 = "976"
           else
              str2 = string.format("%02d",j)
           end
+          str2 = str2 .. "-" .. lib_dep[j]
           for k=1,6 do
                if table_preval[k][j][i] then
                   car[k] = table_preval[k][j][i]
@@ -635,33 +704,41 @@ function create_csv_file()
       end
   end
   
-  --mise en place legende
-  if criteria_dep>0 then
-     csv_buffer = csv_buffer .. "\n\n"
-     legende_csv = "POPULATIONS DEPARTEMENT\n".. "CODE DEPARTEMENT" .. separator .. an[1] .. separator .. an[2] .. separator .. an[3] .. separator .. an[4] .. separator .. an[5] .. separator .. an[6] .. "\n"
-     csv_buffer = csv_buffer .. legende_csv
-     i = criteria_dep
-        if criteria_dep == 96 then 
-           str2 = "2A"
-        elseif criteria_dep== 97 then 
-           str2 = "2B"
-             ----98,99,100,101,102 = 971 GUADELOUPE, 972 MARTINIQUE, 973 GUYANE, 974 LA REUNION, 976 MAYOTTE
-          elseif i == 98 then
-             str2 = "971"
-          elseif i == 99 then
-             str2 = "972"
-          elseif i == 100 then
-             str2 = "973"
-          elseif i == 101 then
-             str2 = "974"
-          elseif i == 102 then
-             str2 = "976"
-        else
-           str2 = string.format("%02d",i)
-        end
-        str = str2 .. separator .. effectifs_departement[i][1] .. separator .. effectifs_departement[i][2] .. separator .. effectifs_departement[i][3] .. separator .. effectifs_departement[i][4] .. separator .. effectifs_departement[i][5] .. separator .. effectifs_departement[i][6] .. "\n"
-       csv_buffer = csv_buffer .. str
+  --REGION SELECTED => display all populations from regions's departement
+  if criteria_reg>0 then
+    str3="POPULATIONS DEPARTEMENTS\nREGION ".. lib_reg[criteria_reg] .. "\n"
   end
+  if criteria_dep>0 then
+      str3="POPULATIONS DEPARTEMENT\n"
+  end
+     csv_buffer = csv_buffer .. "\n\n"
+     legende_csv = str3 .. "CODE DEPARTEMENT" .. separator .. an[1] .. separator .. an[2] .. separator .. an[3] .. separator .. an[4] .. separator .. an[5] .. separator .. an[6] .. "\n"
+     csv_buffer = csv_buffer .. legende_csv
+     for i=1,102 do
+        if effectifs_departement[i][1] > 0 then
+           if i == 96 then 
+              str2 = "2A"
+           elseif i == 97 then 
+              str2 = "2B"
+           elseif i == 98 then
+              str2 = "971"
+           elseif i == 99 then
+              str2 = "972"
+           elseif i == 100 then
+              str2 = "973"
+           elseif i == 101 then
+              str2 = "974"
+           elseif i == 102 then
+              str2 = "976"
+           else
+              str2 = string.format("%02d",i)
+           end 
+           str2 = str2 .. "-" .. lib_dep[i]
+           str = str2 .. separator .. effectifs_departement[i][1] .. separator .. effectifs_departement[i][2] .. separator .. effectifs_departement[i][3] .. separator .. effectifs_departement[i][4] .. separator .. effectifs_departement[i][5] .. separator .. effectifs_departement[i][6] .. "\n"
+           csv_buffer = csv_buffer .. str
+        end
+     end
+  --end
   
 end --end function
 
@@ -744,9 +821,9 @@ t00 = os.time() --top chrono
        button_dep[#button_dep]:callback(retbutdep)
   end
   
-  grp_box = fltk:Fl_Box(1, 315, 596, 200, "")
-  grp_box:label("\n\n\n\n\nSelect one group of patho") --CRs for title to be in a downer location
-  grp_box:color(19)
+  grp_box = fltk:Fl_Box(1, 315, 596, 74, "")
+  grp_box:label("\nSelect one group of patho") --CRs for title to be in a downer location
+  grp_box:color(25)
   grp_box:box(3) 
   grp_box:tooltip("Select one Group of patho")
   lines=1
@@ -763,6 +840,26 @@ t00 = os.time() --top chrono
        button_grp[#button_grp]:tooltip(  lib_grp[i] )
        button_grp[#button_grp]:callback(retbutgrp)
   end
+  
+  trage_box = fltk:Fl_Box(1, 395, 596, 74, "")
+  trage_box:label("\n\nSelect one group of ages") --CRs for title to be in a downer location
+  trage_box:color(19)
+  trage_box:box(3) 
+  trage_box:tooltip("Select one Group of ages")
+  lines=1
+  cols=1
+  for i=1,#lib_trage do
+       table.insert(button_trage, fltk:Fl_Button(8+((cols-1)*52), 400+(lines-1)*20, 52, 20, ""))
+       cols=cols+1
+       if cols>11 then
+          cols=1
+          lines=lines+1
+       end
+       button_trage[#button_trage]:label( lib_trage[i] )
+       button_trage[#button_trage]:tooltip(  lib_trage[i] )
+       button_trage[#button_trage]:callback(retbuttrage)
+  end
+  
   cwindow:show()
   cwindow:make_current()
   
