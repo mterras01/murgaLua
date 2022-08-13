@@ -592,7 +592,7 @@ function load_database(filename)
   local pos=1
   local str
   
-  --filename = fltk.fl_file_chooser("SELECTION de FICHIER RAA", "TXT Files (*.{txt,TXT})", SINGLE, nil)
+  filename = fltk.fl_file_chooser("SELECTION du FICHIER datapathologie (CSV)", "CSV Files (*.{csv,CSV})", SINGLE, nil)
   f = io.open(filename,"rb")
   if f then
      read_data = f:read("*all")
