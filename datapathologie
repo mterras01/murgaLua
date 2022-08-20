@@ -194,6 +194,83 @@ print("Selected group of ages is " .. lib_trage[ criteria_trage ])
     end
 end --end function
 
+function build_downsized_base(cod_dep) 
+  local i,j
+  local nbl=1
+  local str    
+  local pos=1
+  local annee, grp_patho,ssgrp_patho,lib_patho,classe_dage,sex,reg,depart,effectif_pati,effectif_p,preval
+  csv_buffer = "" --NOT a local VAR (GLOBAL)
+  
+  while 1 do
+      j = find(read_data,"\n",pos)
+      if j then
+	     line_datapathologies = sub(read_data, pos, j-1)
+		 if line_datapathologies  then
+            if pos ~= 1 then
+               --excluding "legende" line
+  	           --process(line_datapathologies)
+                if line_datapathologies then 
+     annee, grp_patho,ssgrp_patho,lib_patho,classe_dage,sex,reg,depart,effectif_pati,effectif_p,preval = get_data_from_line_DP( line_datapathologies)
+                   if depart == cod_dep then
+                      --keeping line for downsized CSV buffer and file
+                      csv_buffer = csv_buffer .. line_datapathologies .. "\n"
+                   end
+                end
+            else
+                --keeping "legende" line
+                csv_buffer = csv_buffer .. line_datapathologies .. "\n"
+            end
+	        pos = j+size_eol
+	        nbl = nbl+1
+		 else
+st = "line_datapathologies est nulle !"
+fltk:fl_alert(st)
+		 end
+	  else
+	     break
+	  end
+  end
+end  --end function
+
+function downsizing()
+ --graphic function : select criterias in a graphic fltk screen/window
+ --not compatible with pure lua    
+ local i,cod_dep
+ local nb_select=0
+ local nbl,st
+    
+ for i=1,#button_dep do
+      if button_dep[i]:color() == 1 then
+         nb_select = nb_select+1
+         cod_dep=i
+      end
+ end
+ if nb_select ~= 1 then
+    st = "\n\n\n\n\nSelect ONE single Departement's code (France)"
+    fltk:fl_alert(st)
+    --return to main GUI, as prerequisite is not reached
+    return
+ end
+ nbl = load_database(filename)
+ if nbl then
+    str = define_textfile_origin( read_data )
+ else
+    st = filename .. " n'a pu etre ouvert : merci de revoir les noms et chemins pour ce fichier !"
+    fltk:fl_alert(st)
+    exit(0)
+ end
+ build_downsized_base(cod_dep)
+ if #csv_buffer >0 then
+    st = "Downsized_DATAPATHOLOGIES_DEP_" .. lib_dep[ cod_dep ] .. "_200822.csv"
+    save_csv_file(st)
+ end
+ read_data=nil --releasing some 0.5 GB RAM
+ --shutting display
+ cwindow:hide()
+
+end --end function
+
 function reset_criteria()
     --graphic function : select criterias in a graphic fltk screen/window
     --not compatible with pure lua    
@@ -615,30 +692,33 @@ print("Nb de lignes = " .. nbl)
   end
 end --end function
 
-function save_csv_file() 
+function save_csv_file(name_of_file) 
   local f, filename, st, str
   
-  if criteria_dep>0 then
-      str = "DEP" .. string.format("%02d",criteria_dep)
+  if name_of_file then
+     --process= downsizing to a departement CSV
+     filename = name_of_file
+  else
+     --process= stats about big CSV
+     if criteria_dep>0 then
+        str = "DEP" .. string.format("%02d",criteria_dep)
+     end
+     if criteria_reg>0 then
+        str = "REG" .. string.format("%02d",code_reg[ criteria_reg ])
+     end
+     if criteria_grp>0 then
+        str = str .."_GRP" .. string.format("%02d",criteria_grp)
+     end
+     if criteria_trage>0 then
+        str = str .."_AGE" .. string.format("%02d",criteria_trage)
+     end
+     filename = "STATS_DATAPATHOLOGIES_" .. str .. "_090822.csv"
   end
-  if criteria_reg>0 then
-     str = "REG" .. string.format("%02d",code_reg[ criteria_reg ])
-  end
-  if criteria_grp>0 then
-     str = str .."_GRP" .. string.format("%02d",criteria_grp)
-  end
-  if criteria_trage>0 then
-     str = str .."_AGE" .. string.format("%02d",criteria_trage)
-  end
-  
-  filename = "STATS_DATAPATHOLOGIES_" .. str .. "_090822.csv"
   f = io.open(filename,"wb")
   if f then
      f:write(csv_buffer)
      print(filename .. " sauvegarde, taille=" .. #csv_buffer .. " octets.")
      io.close(f)
-	 --st = filename .. " sauvegarde !"
-	 --fltk:fl_alert(st)
   else
     filename=nil
 	 st = "Sauvegarde impossible du CSV!"
@@ -767,7 +847,7 @@ t00 = os.time() --top chrono
   launchbutton:tooltip("Launch query with criteria(s)")
   launchbutton:callback(get_criterias)
   downsbutton = fltk:Fl_Button(195, 2, 90, 20, "DownSizing")
-  downsbutton:tooltip("Downsizing complete CSV to a single Departement")
+  downsbutton:tooltip("Downsizing complete CSV to another CSV with data of a single Departement")
   downsbutton:callback(downsizing)
   --place other buttons 
   reg_box = fltk:Fl_Box(1, 28, 596, 74, "")
