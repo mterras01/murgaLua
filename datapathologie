@@ -15,6 +15,7 @@
 --it's not linked to the available RAM (more than 4gb total in the 2 systems tested, and about 2 Gb available at the beginning of the script.
 --In Linux Ubuntu 20 LTS, yes!
 --> So CHANGING THE loading data code ... to make it work for both OSes (Linux & Windows). As for Linux, i will compare both codes times'execution, as reading a file in one operation will not be as faster as reading in some 3 000 000 operations (=nb of lines of datapathologies CSV)...
+-- graphic bugs Windows/Linux : fixing in progress
 
 i=0
 nbl=0 --lignes du fichier datapathologies
