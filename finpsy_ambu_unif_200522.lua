@@ -232,6 +232,18 @@ function get_data_from_line_RAA( line_raa )
     nb_intervenants = tonumber( sub(line_raa,82,82) )
 	age_acte = math.floor(get_years_between_acte_and_birth(date_nais_local, date_acte_local))
  end
+ if format_RAA == 'P09' then
+    ipp_local = sub(line_raa,22,27) --ATTENTION format RAA 2018 = P09
+    date_nais_local = sub(line_raa,42,49)
+    --sexe_local = sub(line_raa,50,50)
+    date_acte_local = sub(line_raa,68,75)
+    nature_acte_local = sub(line_raa,76,76)
+    lieu_acte_local = sub(line_raa,77,79)
+    --modalite_acte_local = sub(line_raa,80,80)
+    catprof_local = sub(line_raa,80,80)
+    nb_intervenants = tonumber( sub(line_raa,81,81) )
+	age_acte = math.floor(get_years_between_acte_and_birth(date_nais_local, date_acte_local))
+ end
  return ipp_local,date_nais_local,date_acte_local,nature_acte_local,lieu_acte_local,catprof_local, nb_intervenants, age_acte
 end --end function
 
@@ -358,7 +370,6 @@ function process(line_raa)
   if line_raa then 
      ipp_local,date_nais_local,date_acte_local,nature_acte_local,lieu_acte_local,catprof_local, nb_intervenants, age_acte = get_data_from_line_RAA( line_raa )
   end
-
   
   str = "*" .. ipp_local
   
@@ -508,6 +519,8 @@ function build_base()
   local pos=1
   
   get_RAA_format()
+--print( sub(read_data,1,1000) )
+--fltk:fl_alert("read_data")
   while 1 do
       j = find(read_data,"\n",pos)
       if j then
@@ -516,6 +529,7 @@ function build_base()
   	        process(line_raa)
 	        pos = j+size_eol
 	        nbl = nbl+1
+--print("nbl = " .. nbl)
 		 else
 st = "line_raa est nulle !"
 fltk:fl_alert(st)
@@ -562,7 +576,7 @@ end --end function
 function save_csv_file() 
   local f, filename, st
   
-  filename = "FINPSY_RAA_" .. Annee_RAA .. "_" ..  format_RAA .. "_200522.csv"
+  filename = "FINPSY_RAA_" .. Annee_RAA .. "_" ..  format_RAA .. ".csv"
   f = io.open(filename,"wb")
   if f then
      f:write(csv_buffer)
@@ -764,6 +778,7 @@ for i=1,#borne do
                  if ipp_ega_HLS_HS_min[ j ] > 0 then
                     pati_gr_HLS_min[i] = pati_gr_HLS_min[i]+1
                     actes_gr_HLS_min[i] = actes_gr_HLS_min[i]+ipp_ega_HLS_HS_min[ j ]
+
                  end
                  if ipp_ega_DR_HS_min[ j ] > 0 then
                     pati_gr_DR_min[i] = pati_gr_DR_min[i]+1
