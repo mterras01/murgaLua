@@ -50,6 +50,9 @@ ipp_temps_partiel_hdj_demi_journees={}
 ipp_temps_partiel_hdj_journees_ssc={}
 ipp_temps_partiel_hdj_demi_journees_ssc={}
 
+--st = "Tables ipp majeurs ok"
+--fltk:fl_alert(st)
+
 ipp_min={}					---------------- MINEURS
 ipp_min_temps_plein={}	
 ipp_min_temps_plein_ssc={}
@@ -69,6 +72,9 @@ ipp_min_temps_partiel_hdj_journees={}
 ipp_min_temps_partiel_hdj_demi_journees={}
 ipp_min_temps_partiel_hdj_journees_ssc={}
 ipp_min_temps_partiel_hdj_demi_journees_ssc={}
+
+--st = "Tables ipp mineurs ok"
+--fltk:fl_alert(st)
 
 --MAJEURS
 buffer_ipp=""
@@ -185,9 +191,15 @@ csv_buffer = ""
 separator = ";"
 
 osName="OS=" .. murgaLua.getHostOsName()
+print(osName)
+--st = osName
+--fltk:fl_alert(st)
 
 t00=0
 t11=0
+
+modules={}
+modules[#modules+1] = require "date" --https://github.com/LuaDist/luadate/blob/master/date.lua
 
 function define_textfile_origin(data)
   local i,st
@@ -209,23 +221,46 @@ function define_textfile_origin(data)
 end --end function
 
 function get_years_between_sequence_and_birth(date_nais, date_debut_sequence)
-  local d,y,m
+  local d,y,m,d2,m2,y2
   local reference1,reference2,daysfrom, wholedays, age_year
+  local dobj1, dobj2
+  local str, nb_years
   
-  if date_debut_sequence then
-     d=tonumber(sub(date_debut_sequence,1,2))
-     m=tonumber(sub(date_debut_sequence,3,4))
-     y=tonumber(sub(date_debut_sequence,5,8))
-     reference2 = os.time{day=d, year=y, month=m}
+  if OsName == "OS=linux" then
+    if date_debut_sequence then
+       d=tonumber(sub(date_debut_sequence,1,2))
+       m=tonumber(sub(date_debut_sequence,3,4))
+       y=tonumber(sub(date_debut_sequence,5,8))
+       reference2 = os.time{day=d, year=y, month=m}
+    end
+    if date_nais then
+       d=tonumber(sub(date_nais,1,2))
+       m=tonumber(sub(date_nais,3,4))
+       y=tonumber(sub(date_nais,5,8))
+       reference1 = os.time{day=d, year=y, month=m}
+    end
+    age_year = os.difftime(reference1, reference2) / (24*60*60*365.25) -- seconds in a year
+  else
+    if date_debut_sequence then
+       d2=tonumber(sub(date_debut_sequence,1,2))
+       m2=tonumber(sub(date_debut_sequence,3,4))
+       y2=tonumber(sub(date_debut_sequence,5,8))
+	end
+    if date_nais then
+       d=tonumber(sub(date_nais,1,2))
+       m=tonumber(sub(date_nais,3,4))
+       y=tonumber(sub(date_nais,5,8))
+    end
+	str = string.format("%02d/%02d/%04d 00:00:00",d,m,y)
+    dobj1 = date(str)
+	str = string.format("%02d/%02d/%04d",d2,m2,y2)
+    dobj2 = date(str)
+    nb_years =  date.diff(dobj1, dobj2)
+	age_year = nb_years:spandays()/365.25
   end
-  if date_nais then
-     d=tonumber(sub(date_nais,1,2))
-     m=tonumber(sub(date_nais,3,4))
-     y=tonumber(sub(date_nais,5,8))
-     reference1 = os.time{day=d, year=y, month=m}
-  end
-  age_year = os.difftime(reference1, reference2) / (24*60*60*365.25) -- seconds in a year
   return(age_year) 
+  
+  
 end  --end function  
 
 function get_weeknumber_from_day(passed_date)
@@ -274,18 +309,19 @@ function get_RPS_format()
 end --end function
 
 function get_data_from_line_RPS( line_rps )
- local ipp_local,date_nais_local,sexe_local,date_debut_sequence,nature_acte_local,lieu_acte_local,catprof_local, nb_intervenants
+ local ipp_local,date_nais_local,sexe_local,date_debut_sequence,date_fin_sequence,nature_acte_local,lieu_acte_local,catprof_local, nb_intervenants
  if format_RPS == 'P12' then
     ipp_local = sub(line_rps,22,27) --ATTENTION format RPS 2022 PO12
     date_nais_local = sub(line_rps,42,49)
     --sexe_local = sub(line_rps,50,50)
     forme_activite = sub(line_rps,56,59)  -- attention ne pas convertir en nombre car "31S" et "32S"
     date_debut_sequence = sub(line_rps,111,118)
+	--date_fin_sequence = sub(line_rps,119,126)
     mode_legal_soins = tonumber(sub(line_rps,109,109))
     nb_jours_presence = tonumber( sub(line_rps,127,129) )
     nb_demi_journees_presence = tonumber( sub(line_rps,130,132) )
     nb_jours_isolement = tonumber( sub(line_rps,133,135) )
-    age_sequence = math.floor(get_years_between_sequence_and_birth(date_debut_sequence, date_nais_local))
+    age_sequence = get_years_between_sequence_and_birth(date_debut_sequence, date_nais_local)
  end
  if format_RPS == 'P08' then
     ipp_local = sub(line_rps,22,27) --ATTENTION format RPS 2021-20 = P08
@@ -293,11 +329,12 @@ function get_data_from_line_RPS( line_rps )
     --sexe_local = sub(line_rps,50,50)
     forme_activite = sub(line_rps,56,57)
     date_debut_sequence = sub(line_rps,109,116)
+	--date_fin_sequence = sub(line_rps,117,124)
     mode_legal_soins = tonumber(sub(line_rps,107,107))
     nb_jours_presence = tonumber( sub(line_rps,125,127) )
     nb_demi_journees_presence = tonumber( sub(line_rps,128,130) )
     nb_jours_isolement = tonumber( sub(line_rps,131,133) )
-	age_sequence = math.floor(get_years_between_sequence_and_birth(date_debut_sequence, date_nais_local))
+	age_sequence = get_years_between_sequence_and_birth(date_debut_sequence, date_nais_local)
  end
  return ipp_local,date_nais_local,forme_activite,date_debut_sequence,mode_legal_soins,nb_jours_presence,nb_demi_journees_presence,nb_jours_isolement, age_sequence
 end --end function
@@ -314,6 +351,7 @@ function process(line_rps)
  local idxpartiel_hdj=1
  local idxpartielhdjssc=1,1
  local ipp_local,date_nais_local,forme_activite,date_debut_sequence,mode_legal_soins,nb_jours_presence,nb_demi_journees_presence,nb_jours_isolement, age_sequence
+ local pospleinjeunead, pospleingeronto, idxpleinjeunead, idxpleingeronto
  --local modalite_acte_local
  
 --st = line_rps .. " envoyee a la fonction process()"
@@ -322,7 +360,7 @@ function process(line_rps)
   if line_rps then 
      ipp_local,date_nais_local,forme_activite,date_debut_sequence,mode_legal_soins,nb_jours_presence,nb_demi_journees_presence,nb_jours_isolement, age_sequence = get_data_from_line_RPS( line_rps )
   end
-  
+--print("IPP " .. ipp_local .. "// datenais=".. date_nais_local .. "// debseq=" .. date_debut_sequence .. "// age_sequence = " .. age_sequence)
   str = "*" .. ipp_local
   
   if age_sequence >= 18 then 
@@ -362,7 +400,7 @@ function process(line_rps)
                   table.insert(ipp_temps_plein_journees_jeunes_ad, nb_jours_presence)
               end
            end
-           if age_sequence>=65 then
+           if age_sequence >=65 then
               pospleingeronto = find(buffer_ipp_temps_plein_geronto, str, 1, true)
               if pospleingeronto then
                   --ipp deja comptabilise : trouver l'index table (methode 1)
@@ -622,7 +660,7 @@ end --end function
 function save_csv_file() 
   local f, filename, st
   
-  filename = "FINPSY_RPS_" .. Annee_RPS .. "_" ..  format_RPS .. "_020822.csv"
+  filename = "FINPSY_RPS_" .. Annee_RPS .. "_" ..  format_RPS .. ".csv"
   f = io.open(filename,"wb")
   if f then
      f:write(csv_buffer)
@@ -686,7 +724,7 @@ function create_csv_file()
       sum_col2 = sum_col2+journees_gr_min[i]
   end
   --TOTAUX
-  str = "TOTAUX" .. separator .. sum_col1 .. separator .. sum_col2 .. separator .. sum_col3 ..  separator .. sum_col4 .. separator .. sum_col5 .. separator .. sum_col6 ..  "\n\n"
+  str = "TOTAUX" .. separator .. sum_col1 .. separator .. sum_col2 ..  "\n\n"
   csv_buffer = csv_buffer .. str
 
   --MAJEURS TEMPS PARTIEL HDJ : zéro venue
@@ -740,8 +778,8 @@ t00 = os.time() --top chrono
      filename = "RPS_M32022.txt"
   end
 
---st = filename .. " va etre ouvert !"
---fltk:fl_alert(st)
+  --st = filename .. " va etre ouvert !"
+  --fltk:fl_alert(st)
 
   filename, nbl = load_database()
 if nbl then
@@ -903,6 +941,12 @@ create_csv_file()
 if #csv_buffer >0 then
    save_csv_file()
 end
+
+--print("buffer_ipp_temps_plein_geronto = " .. buffer_ipp_temps_plein_geronto .. "\n #ipp_temps_plein_geronto = " .. #ipp_temps_plein_geronto)
+st = "#buffer_ipp_temps_plein_jeunead = " .. #buffer_ipp_temps_plein_jeunead .. "\n #ipp_temps_plein_jeunes_ad = " .. #ipp_temps_plein_jeunes_ad
+st = st .. "\n\n#buffer_ipp_temps_plein_geronto = " .. #buffer_ipp_temps_plein_geronto .. "\n #ipp_temps_plein_geronto = " .. #ipp_temps_plein_geronto
+fltk:fl_alert(st)
+
 
 print("Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
 
