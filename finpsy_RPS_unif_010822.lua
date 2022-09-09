@@ -225,6 +225,10 @@ function get_years_between_sequence_and_birth(date_nais, date_debut_sequence)
   local reference1,reference2,daysfrom, wholedays, age_year
   local dobj1, dobj2
   local str, nb_years
+
+  --[[   https://stackoverflow.com/questions/28550413/compare-dates-in-lua
+  os.time (under Windows, at least) is limited to years from 1970 and up. If, for example, you need a general solution to also find ages in days for people born before 1970, this won't work.
+  ]]--
   
   if OsName == "OS=linux" then
     if date_debut_sequence then
@@ -253,7 +257,7 @@ function get_years_between_sequence_and_birth(date_nais, date_debut_sequence)
     end
 	str = string.format("%02d/%02d/%04d 00:00:00",d,m,y)
     dobj1 = date(str)
-	str = string.format("%02d/%02d/%04d",d2,m2,y2)
+	str = string.format("%02d/%02d/%04d 00:00:00",d2,m2,y2)
     dobj2 = date(str)
     nb_years =  date.diff(dobj1, dobj2)
 	age_year = nb_years:spandays()/365.25
@@ -314,7 +318,7 @@ function get_data_from_line_RPS( line_rps )
     ipp_local = sub(line_rps,22,27) --ATTENTION format RPS 2022 PO12
     date_nais_local = sub(line_rps,42,49)
     --sexe_local = sub(line_rps,50,50)
-    forme_activite = sub(line_rps,56,59)  -- attention ne pas convertir en nombre car "31S" et "32S"
+    forme_activite = sub(line_rps,56,59)  -- attention conversion en nombre problématique pour "20S" modif le 060922
     date_debut_sequence = sub(line_rps,111,118)
 	--date_fin_sequence = sub(line_rps,119,126)
     mode_legal_soins = tonumber(sub(line_rps,109,109))
@@ -324,10 +328,10 @@ function get_data_from_line_RPS( line_rps )
     age_sequence = get_years_between_sequence_and_birth(date_debut_sequence, date_nais_local)
  end
  if format_RPS == 'P08' then
-    ipp_local = sub(line_rps,22,27) --ATTENTION format RPS 2021-20 = P08
+    ipp_local = sub(line_rps,22,27) --ATTENTION format RPS 2018-2021 = P08
     date_nais_local = sub(line_rps,42,49)
     --sexe_local = sub(line_rps,50,50)
-    forme_activite = sub(line_rps,56,57)
+    forme_activite = sub(line_rps,56,57) -- attention conversion en nombre problématique pour "20S"  modif le 060922
     date_debut_sequence = sub(line_rps,109,116)
 	--date_fin_sequence = sub(line_rps,117,124)
     mode_legal_soins = tonumber(sub(line_rps,107,107))
@@ -510,7 +514,8 @@ function process(line_rps)
            if posplein then
               --ipp deja comptabilise : trouver l'index table (methode 1)
                idxpleinmin = (posplein+6)/7
-               ipp_min_temps_plein_journees[ idxplein ] =  ipp_min_temps_plein_journees[ idxplein ]+nb_jours_presence
+               --ipp_min_temps_plein_journees[ idxplein ] =  ipp_min_temps_plein_journees[ idxplein ]+nb_jours_presence --bad index, fixed 070922
+			   ipp_min_temps_plein_journees[ idxpleinmin ] =  ipp_min_temps_plein_journees[ idxpleinmin ]+nb_jours_presence
            else
                buffer_ipp_min_temps_plein = buffer_ipp_min_temps_plein .. "*" .. ipp_local
                table.insert(ipp_min_temps_plein, ipp_local)
@@ -769,6 +774,64 @@ function create_csv_file()
   
  end  --end function  
     
+function create_csv_ipp_jtplein()
+
+  local i, str
+  
+  csv_buffer = ""
+  csv_buffer = "IPP Adulte" .. separator .. "journees temps plein Adultes\n"
+  for i=1,#ipp_temps_plein do
+      str = ipp_temps_plein[i] .. separator .. ipp_temps_plein_journees[i] ..  "\n"
+      csv_buffer = csv_buffer .. str
+  end
+  csv_buffer = csv_buffer .. "----------------------------------------------\n\n\nIPP Mineurs" .. separator .. "journees temps plein Mineurs\n"
+   for i=1,#ipp_min_temps_plein do
+      str = ipp_min_temps_plein[i] .. separator .. ipp_min_temps_plein_journees[i] ..  "\n"
+      csv_buffer = csv_buffer .. str
+  end
+  
+  csv_buffer = csv_buffer .. "----------------------------------------------\n\n\nBuffer IPP Adultes temps plein\n" .. buffer_ipp_temps_plein
+  
+  csv_buffer = csv_buffer .. "----------------------------------------------\n\n\nBuffer IPP Mineurs temps plein\n" .. buffer_ipp_min_temps_plein
+  
+  
+end -- end function
+
+function save_csv_ipp_jtplein()
+  local f, filename, st
+  
+  filename = "TABLE_IPP_JOURNEES_TPLEIN_FINPSY_RPS_" .. Annee_RPS .. "_" ..  format_RPS .. ".csv"
+  f = io.open(filename,"wb")
+  if f then
+     f:write(csv_buffer)
+     print(filename .. " sauvegarde, taille=" .. #csv_buffer .. " octets.")
+     io.close(f)
+	 st = filename .. " sauvegarde !"
+	 fltk:fl_alert(st)
+  else
+    filename=nil
+	 st = "Sauvegarde impossible du CSV!"
+	 fltk:fl_alert(st)
+  end
+
+-- 2nd backup
+  filename = "BUFFER_IPP_TPLEIN_FINPSY_RPS_" .. Annee_RPS .. "_" ..  format_RPS .. ".txt"
+  f = io.open(filename,"wb")
+  csv_buffer = "Buffer adultes temps plein\n" .. buffer_ipp_temps_plein
+  csv_buffer = csv_buffer .. "\n\n\nBuffer mineurs temps plein\n" .. buffer_ipp_min_temps_plein
+  if f then
+     f:write(csv_buffer)
+     print(filename .. " sauvegarde, taille=" .. #csv_buffer .. " octets.")
+     io.close(f)
+	 st = filename .. " sauvegarde !"
+	 fltk:fl_alert(st)
+  else
+    filename=nil
+	 st = "Sauvegarde impossible du CSV!"
+	 fltk:fl_alert(st)
+  end
+  
+end -- end function
 
 t00 = os.time() --top chrono
 
@@ -947,6 +1010,10 @@ st = "#buffer_ipp_temps_plein_jeunead = " .. #buffer_ipp_temps_plein_jeunead .. 
 st = st .. "\n\n#buffer_ipp_temps_plein_geronto = " .. #buffer_ipp_temps_plein_geronto .. "\n #ipp_temps_plein_geronto = " .. #ipp_temps_plein_geronto
 fltk:fl_alert(st)
 
+--[[
+create_csv_ipp_jtplein()
+save_csv_ipp_jtplein()
+]]--
 
 print("Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
 
