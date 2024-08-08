@@ -150,31 +150,6 @@ function separator_csv(first_two_lines)
   --fltk:fl_alert(st)
 end --end function
 
-function get_data_from_line_DP( line_data )
-local line_data_model={}
-local ldlocal, i
-
-if line_data then
-   ldlocal = line_data
-   i = find(ldlocal,"\n",1,true)
-   if i then
-      ldlocal = sub(ldlocal, 1, i-1) 
---print("Catching \\n in " .. ldlocal)
-   end
-   for str in string.gmatch(ldlocal, "([^" .. separator .."]+)") do
-        if str then 
-           table.insert(line_data_model, str)
-        else
-           return nil
-        end
-        --table.insert(line_data_model, str)
-    end
-    return line_data_model
-else
-     return nil
-end
-end --end function
-
 function sorting()
  local i, st
  local s1_classed={}
@@ -193,16 +168,6 @@ function sorting()
  end
  print(st)
 end --end function
-
-function process(line_data)
- local i,str,str2,str3,str4
- local table_data_local={}
- 
-  if line_data then 
-        table_data_local = get_data_from_line_DP( line_data)
-  end
-  return table_data_local
-end   --end function
 
 function process2(line_data)
   local line_data_model={}
@@ -234,47 +199,46 @@ function rapport_base()
  local i,j,k,st,m,st2
  local buffer=""
  
-  print("#table_data = " .. #table_data .. " x " .. #table_data[1])
-  for i=1,#table_data do
---print("Colonne [" .. i .. "] " ..  legend_data[i] .. ", type " .. type(table_data[i][1]) )
+  print("#transftable_data = " .. #transftable_data .. " x " .. #transftable_data[1])
+  for i=1,#transftable_data do
        buffer=" "
 	   occ_values[i]={}
-       if type(table_data[i][1] )== "number" then
+       if type(transftable_data[i][1] )== "number" then
 	      cat_values[i]={} -- pour les nombres, pas de catalogue de valeurs
           --sauf si ...
-          for j=1,#table_data[i] do
-               st=" " .. table_data[i][j] .. " "
+          for j=1,transftable_data[i] do
+               st=" " .. transftable_data[i][j] .. " "
                if find(buffer, st,1,true)  then
                   --rien
                   --trouver le Num occur
                    for k=1,#cat_values[i] do
-                        if table_data[i][j] == cat_values[i][k] then
+                        if transftable_data[i][j] == cat_values[i][k] then
                            occ_values[i][k] = occ_values[i][k]+1
                            break
                         end
                    end
 	           else
-				  buffer = buffer  .. table_data[i][j] .. " "
-				  table.insert(cat_values[i],table_data[i][j])
+				  buffer = buffer  .. transftable_data[i][j] .. " "
+				  table.insert(cat_values[i],transftable_data[i][j])
                   table.insert(occ_values[i],1)
                end
           end
-          median[ i ] = stats.series.median(table_data[i])
-          moyenne[i] = stats.series.mean(table_data[i])
-          variance[i] = stats.series.variance(table_data[i])
-          min[i],max[i] = stats.series.getExtremes(table_data[i])
+          median[ i ] = stats.series.median(transftable_data[i])
+          moyenne[i] = stats.series.mean(transftable_data[i])
+          variance[i] = stats.series.variance(transftable_data[i])
+          min[i],max[i] = stats.series.getExtremes(transftable_data[i])
            --init table
 --print("#buffer = " .. #buffer .. "\n#cat_values[" .. i .. "] = "  .. #cat_values[i])
 --print("Nb de valeurs possibles  = "  .. #cat_values[i])
 
-       elseif type(table_data[i][1] )== "string" then
+       elseif type(transftable_data[i][1] )== "string" then
 	       cat_values[i]={} -- pour les chaines de car, catalogue des valeurs possibles
-           for j=1,#table_data[i] do
-               if find(buffer, table_data[i][j],1,true)  then
+           for j=1,#transftable_data[i] do
+               if find(buffer, transftable_data[i][j],1,true)  then
                   --rien
                else
-                  buffer = buffer .. " " .. table_data[i][j]
-				  table.insert(cat_values[i],table_data[i][j])
+                  buffer = buffer .. " " .. transftable_data[i][j]
+				  table.insert(cat_values[i],transftable_data[i][j])
                end
           end
 		  --init table
@@ -284,9 +248,8 @@ function rapport_base()
 		  if #cat_values[i] > 1 then
              table.sort(cat_values[i]) -- pour avoir les valeurs possibles triées par valeur/par ordre alpha
 --		     print("Catalogue des valeurs = " .. table.concat(cat_values[i],"//") .. "\nNb de valeurs possibles = " .. #cat_values[i])
-             st=table.concat(table_data[i])
+             st=table.concat(transftable_data[i])
 			 for j=1,#cat_values[i] do
-			     --_, occ_values[i][j] = table.concat(table_data[i]):gsub(cat_values[i][j],"")
                  _, occ_values[i][j] = st:gsub(cat_values[i][j],"")
 			 end
 		  end
@@ -518,6 +481,8 @@ function downsize()
   build_new_csv()
   print("build_new_csv() Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
   
+  rapport_base()
+  print("rapport_base() Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
 end  --end function
 
 function select_field_fct()
@@ -692,13 +657,27 @@ function disp_sample2()
       selbuttons[#selbuttons]:color(2)
 	  selbuttons[#selbuttons]:tooltip( "Selected col" )
       selbuttons[#selbuttons]:callback(select_field_fct)
-  end 
+  end  
+  
+--histogram buttons
+i=7
+cy = (i+1)*height_button
+ for j=1,co do
+      cx = j*width_button
+      st = "Hist" .. j
+	  histo= fltk:Fl_Button(cx, cy, width_button, height_button, st )
+	  histo:labelfont( fltk.FL_SCREEN )
+      histo:color(12)
+	  histo:tooltip( "Histogram" )
+      histo:callback(histo_fct)
+  end
+  
 --area for catching query values
-  keyword = fltk:Fl_Input(width_button, (cy+height_button), (2*width_button), height_button)
+  keyword = fltk:Fl_Input(width_button, (cy+(2*height_button)), (2*width_button), height_button)
   keyword:value("")
   keyword:callback(select_val_fct)
 --clear button
-  clearbutton = fltk:Fl_Button(width_button, (cy+(2*height_button)), (2*width_button), height_button, "CLEAR ALL" )
+  clearbutton = fltk:Fl_Button(width_button, (cy+(3*height_button)), (2*width_button), height_button, "CLEAR ALL" )
   clearbutton:callback(clear_val_fct)
    cx, cy=0,0
   i=6
@@ -895,7 +874,7 @@ function histo_fct()
  local i,h,width_button, width_twindow
 
  width_twindow = twindow:w()
- width_button = math.floor(width_twindow/(#table_data+1))                                       
+ width_button = math.floor(width_twindow/(#transftable_data+1))                                       
  h=0
  h=math.floor(Fl.event_x()/width_button)
 --print("X mouse, Y mouse = " .. Fl.event_x() .. "," .. Fl.event_y())
@@ -909,7 +888,11 @@ function histo_fct()
  end
  ]]--
  if h ~= 0 then
-    disp_histo(h)
+    if selcol[h] then
+       if selcol[h] == 2 then
+          disp_histo(h)
+       end
+    end
  end
 end  --end function
 
