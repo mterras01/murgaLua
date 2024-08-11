@@ -615,7 +615,7 @@ function disp_sample2()
   stage2:labelfont( fltk.FL_SCREEN )
   stage2:tooltip( "Next stage" )
   stage2:color(1)
-  stage2:callback(add_disp_s3)
+  stage2:callback(display_sample3)
   
   
   -- progress bar N1 : build table
@@ -723,14 +723,14 @@ function disp_sample2()
   twindow:show()
 end  --end function                  
 
-function add_disp_s3()
+function display_sample3()
  --GUI selecting fields to be analysed
   local i,j,cx,cy,post
   local st,st1,st2,st3
   local cell1=nil
   local u_quit=nil
   local uwindow=nil
-  --local histo=nil
+  local histo={}
   local co=#new_legend
   local table_stats={"NB VAL","MIN","MAX","MOY","MED","VAR","SIGMA"} --legendes abregees pour les stats
   local table_stats_ib={"Nb de valeurs distinctes","Valeur minimale","Valeur maximale","Moyenne","Médiane","Variance","Ecart-type"} --legendes completes (infobulle) pour les stats
@@ -766,7 +766,7 @@ function add_disp_s3()
      uwindow:clear()
      uwindow = nil
   end)
---print("Fct add_disp_s3(), var f_downsize = " .. f_downsize .. "\ncolumns = " .. co .. " // lines #transftable_data = " .. #transftable_data)
+--print("Fct display_sample3(), var f_downsize = " .. f_downsize .. "\ncolumns = " .. co .. " // lines #transftable_data = " .. #transftable_data)
 
   --table legendes
   cx, cy=0,0
@@ -836,7 +836,19 @@ cy = (i+1)*height_button
 	  histo[#histo]:labelfont( fltk.FL_SCREEN )
       histo[#histo]:color(12)
 	  histo[#histo]:tooltip( "Histogram" )
-      histo[#histo]:callback(histo_fct)
+      --histo[#histo]:callback(histo_fct)
+      histo[#histo]:callback(function (histo_fct)
+        local h=0
+        local i
+        for i=1,#histo do
+             if Fl.event_inside(histo[i]) == 1 then
+                h=i
+print("selcol[" .. h .. "] = " .. selcol[h])
+                disp_histo(h)
+                break
+             end
+        end
+  end) --end local function
   end
   Fl:check()
   uwindow:show()
@@ -983,19 +995,19 @@ function disp_histo(h)
  --type_graphics=1
   type_graphics=4
   --fenetre graphique pour la representation graphique et dynamique
-  st = "Histo " .. legend_data[ h ]
+  st = "Histo " .. new_legend[ h ]
   pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, st)
   
   --centrage du bouton en bas de la fenetre pwindow
   width_button = 100
   quit = fltk:Fl_Button(dec_button+10, height_pwindow-30, width_button, 25, "Quit")
-  quit:tooltip("Quitter cette appli!")
+  quit:tooltip("Quit")
   quit:callback(quit_callbackapp)
   --chart
   pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
   pie:position(decx_chart, decy_chart+20)
   pie:size(width_chart, height_chart)
-  pie:label(legend_data[ h ])
+  pie:label(new_legend[ h ])
   pie:type( type_chart[type_graphics] )
   pie:box(1)
   pie:labelcolor(0)
@@ -1019,38 +1031,6 @@ function disp_histo(h)
   pwindow:show()
 end --end function
 
-function histo_fct()
- local i,h,width_button, width_twindow
-
- --[[
- width_twindow = twindow:w()
- width_button = math.floor(width_twindow/(#transftable_data+1))                                       
- h=0
- h=math.floor(Fl.event_x()/width_button)
---print("X mouse, Y mouse = " .. Fl.event_x() .. "," .. Fl.event_y())
---print("Bouton histo[" .. h .. "] a ete clique ")
-]]--
--- code to keep for syntax purpose
- h=0
- for i=1,#histo do
-       if Fl.event_inside(histo[i]) == 1 then
-          h=i
---print("selcol[" .. h .. "] = " .. selcol[h])
-          break
-       end
- end
- 
- if h ~= 0 then
-    if selcol[h] then
-       if selcol[h] == 2 then
---print("num histo = " .. h)
-          disp_histo(h)
-       end
-    end
- end
-end  --end function
-
-
  t00=0
  t00 = os.time() --top chrono
  osName="OS=" .. murgaLua.getHostOsName()
@@ -1073,19 +1053,6 @@ end  --end function
 print(st)
  --fltk:fl_alert(st)
  disp_sample2()
- 
- --previous stages/function calls
- --open_csv_file(filename) 
- --separator_csv()
- --build_base()
- --rapport_base()
- --disp_sample_csv()
- --disp_corr()
- --[[
- if #csv_buffer >0 then
-    save_new_csv_file()
- end
-]]--
 
  print("Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
 
