@@ -43,10 +43,14 @@ variance={} --variance des valeurs précédentes
 nb_lines=0
 nb_bytes=0
 total_bytes=0
+f_downsize=0 --flag to declare downsizing done / value=1
 
 --interface
+twindow=nil--window about original table
+--uwindow=nil --window about downsized table
 selbuttons={} --selbuttons[i]:color(2) means "selected field/column", :color(1) means "NOT selected field/column"
 selcol={}
+histo={} --histo buttons
 keyword=nil -- GUI input objects for catching query values
 clearbutton=nil
 selvalbutton={}
@@ -229,7 +233,7 @@ function rapport_base()
           min[i],max[i] = stats.series.getExtremes(transftable_data[i])
            --init table
 --print("#buffer = " .. #buffer .. "\n#cat_values[" .. i .. "] = "  .. #cat_values[i])
---print("Nb de valeurs possibles  = "  .. #cat_values[i])
+print("Nb de valeurs possibles  = "  .. #cat_values[i])
 
        elseif type(transftable_data[i][1] )== "string" then
 	       cat_values[i]={} -- pour les chaines de car, catalogue des valeurs possibles
@@ -452,6 +456,7 @@ end  --end function
 function downsize()
   local i
   
+  t00 = os.time() --top chrono
   --build new table selval_select
   for i=1,#selval do
        if selval[i] == "" then
@@ -483,6 +488,8 @@ function downsize()
   
   rapport_base()
   print("rapport_base() Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
+  
+  f_downsize=1
 end  --end function
 
 function select_field_fct()
@@ -540,25 +547,53 @@ function clear_val_fct()
        selval_select[i] = nil
   end
 end --end function
+ 
+function clear_t()
+ local i,j
+ --clearing widgets from previous display according to function disp_sample2()
+ --mass destruction of buttons, progress_bars, text boxes ...
+ t_quit=nil
+
+ t_downs=nil
+ 
+ progress_bar=nil
+ info_button1=nil
+ progress_bar2=nil
+ info_button2=nil
+ 
+  j = #selbuttons
+  for i=j,1,-1 do
+      selbuttons[i]=nil
+  end
+  keyword=nil
+  clearbutton=nil  
+  j = #selvalbutton
+  for i=j,1,-1 do
+       selvalbutton[i]=nil
+  end
+
+  collectgarbage()
+end --end function
 
 function disp_sample2()
  --GUI selecting fields to be analysed
   local i,j,cx,cy,post
   local st,st1,st2,st3
   local cell0=nil
-  local histo=nil
+  --local histo=nil
   local co=#table_data
   local li=#table_data[1]
   local table_stats={"NB VAL","MIN","MAX","MOY","MED","VAR","SIGMA"} --legendes abregees pour les stats
   local table_stats_ib={"Nb de valeurs distinctes","Valeur minimale","Valeur maximale","Moyenne","Médiane","Variance","Ecart-type"} --legendes completes (infobulle) pour les stats
   local table_stats_val={}
+  local stage2=nil
 
   if twindow then
      twindow:hide()
      twindow:clear()
   end
-
-  --fenetre graphique pour la restitution du tableau CSV
+  
+  --window for initial table
   width_twindow = 1024
   height_twindow = 450
   twindow = fltk:Fl_Window(width_twindow, height_twindow, "Tableau CSV")
@@ -569,11 +604,19 @@ function disp_sample2()
   nb_car = math.floor(width_button/11) --nb cars affichables dans la largeur du bouton
 
   t_quit = fltk:Fl_Button(10, height_twindow-30, width_button, 25, "Quit")
-  t_quit:tooltip("Fermer cette fenetre")
+  t_quit:tooltip("Quit")
   t_quit:callback(quit_t)
   t_downs = fltk:Fl_Button(10+width_button, height_twindow-30, width_button, 25, "Down")
   t_downs:tooltip("Downsize original data with selected items ans save it")
   t_downs:callback(downsize)
+  
+  --button for accessing stage 2
+  stage2= fltk:Fl_Button(10+(12*width_button), height_twindow-30, width_button, 25, "@->")
+  stage2:labelfont( fltk.FL_SCREEN )
+  stage2:tooltip( "Next stage" )
+  stage2:color(1)
+  stage2:callback(add_disp_s3)
+  
   
   -- progress bar N1 : build table
   progress_bar = fltk:Fl_Progress(10+(2*width_button), height_twindow-30, 5*width_button, 25, "0")
@@ -594,7 +637,7 @@ function disp_sample2()
   cx, cy=0,0
   cell0= fltk:Fl_Button(cx, cy, width_button, height_button, "LABELS" )
   cell0:labelfont( fltk.FL_SCREEN )
-  cell0:tooltip( "Labels des champs" )
+  cell0:tooltip( "Labels of fields" )
   for j=1,co do
       selval[j]={"","","","",""}
       cy = 0
@@ -648,7 +691,7 @@ function disp_sample2()
   cx, cy=0,0
   i=6
   for j=1,co do
-      selcol[i]=2
+      selcol[j]=2
 	  cy = (i+1)*height_button
       cx = j*width_button
 --selection buttons
@@ -658,20 +701,7 @@ function disp_sample2()
 	  selbuttons[#selbuttons]:tooltip( "Selected col" )
       selbuttons[#selbuttons]:callback(select_field_fct)
   end  
-  
---histogram buttons
-i=7
-cy = (i+1)*height_button
- for j=1,co do
-      cx = j*width_button
-      st = "Hist" .. j
-	  histo= fltk:Fl_Button(cx, cy, width_button, height_button, st )
-	  histo:labelfont( fltk.FL_SCREEN )
-      histo:color(12)
-	  histo:tooltip( "Histogram" )
-      histo:callback(histo_fct)
-  end
-  
+
 --area for catching query values
   keyword = fltk:Fl_Input(width_button, (cy+(2*height_button)), (2*width_button), height_button)
   keyword:value("")
@@ -692,6 +722,125 @@ cy = (i+1)*height_button
   Fl:check()
   twindow:show()
 end  --end function                  
+
+function add_disp_s3()
+ --GUI selecting fields to be analysed
+  local i,j,cx,cy,post
+  local st,st1,st2,st3
+  local cell1=nil
+  local u_quit=nil
+  local uwindow=nil
+  --local histo=nil
+  local co=#new_legend
+  local table_stats={"NB VAL","MIN","MAX","MOY","MED","VAR","SIGMA"} --legendes abregees pour les stats
+  local table_stats_ib={"Nb de valeurs distinctes","Valeur minimale","Valeur maximale","Moyenne","Médiane","Variance","Ecart-type"} --legendes completes (infobulle) pour les stats
+  local table_stats_val={}
+
+  if f_downsize ~= 1 then
+     return
+  end
+  clear_t()
+  quit_t()
+  twindow=nil
+  legend_data=nil
+  table_data=nil
+  collectgarbage()
+  
+  --fenetre graphique pour la restitution du tableau CSV
+  width_twindow = 1024
+  height_twindow = 450
+  width_button = math.floor(width_twindow/(co+1)) --ajout d'une colonne "legende" (stats)
+  height_button = 20
+  nb_car = math.floor(width_button/11) --nb cars affichables dans la largeur du bouton
+  
+  --window for dowsized table
+  width_twindow = 1024
+  height_twindow = 450
+  uwindow = fltk:Fl_Window(width_twindow, height_twindow, "Downsized CSV")   
+  width_button = math.floor(width_twindow/(co+1)) --ajout d'une colonne "legende" (stats)
+  u_quit = fltk:Fl_Button(10, height_twindow-30, width_button, 25, "Quit")
+  u_quit:tooltip("Fermer cette fenetre")
+  --u_quit:callback(quit_u)
+  u_quit:callback(function (quit_u)
+     uwindow:hide()
+     uwindow:clear()
+     uwindow = nil
+  end)
+--print("Fct add_disp_s3(), var f_downsize = " .. f_downsize .. "\ncolumns = " .. co .. " // lines #transftable_data = " .. #transftable_data)
+
+  --table legendes
+  cx, cy=0,0
+  cell1= fltk:Fl_Button(cx, cy, width_button, height_button, "LABELS" )
+  cell1:labelfont( fltk.FL_SCREEN )
+  cell1:tooltip( "Labels des champs" )
+  for j=1,co do
+      selval[j]={"","","","",""}
+      cy = 0
+      cx = j*width_button
+      st = new_legend[ j ]
+      if type(st) == "string" then
+         st = sub(st, 1, nb_car)
+      end
+      cell1= fltk:Fl_Button(cx, cy, width_button, height_button, st )
+      cell1:labelfont( fltk.FL_SCREEN )
+      cell1:tooltip( new_legend[ j ] )
+--print("new_legend[ " .. j .. " ] = " .. new_legend[ j ])
+  end
+  --ligne type des donnees
+  cx, cy=0,height_button
+  cell1= fltk:Fl_Button(cx, cy, width_button, height_button, "TYPE" )
+  cell1:labelfont( fltk.FL_SCREEN )
+  cell1:tooltip( "Type de donnees" )
+  for j=1,co do
+      cy = height_button
+      cx = j*width_button
+      --st1 = gsub(transftable_data[ j ][1],",",".")
+      st1 = gsub(transftable_data[ 1 ][ j ],",",".")
+      if type(st1) == "string" and type(tonumber(st1)) == "number" then
+         st = "number"
+         st2 = "nb"
+      else 
+         st="string"
+         st2 = "str"
+      end
+      cell1= fltk:Fl_Button(cx, cy, width_button, height_button, st2 )
+      cell1:labelfont( fltk.FL_SCREEN )
+      cell1:color(fltk.FL_RED)
+      cell1:tooltip( st )
+  end
+
+--table transftable_data : echantillon/sample
+  cx, cy=0,0
+  for i=1,5 do
+      for j=1,co do
+	  cy = (i+1)*height_button
+      cx = j*width_button
+	  --st = transftable_data[ j ][i]
+	  st = transftable_data[ i ][j]
+      st2 = sub((st .. ""), 1, nb_car)
+      cell1=fltk:Fl_Button(cx, cy, width_button, height_button, st2 )
+      cell1:labelfont( fltk.FL_SCREEN )
+      cell1:color(20)
+	  --cell1:tooltip( transftable_data[ j ][i] )
+	  cell1:tooltip( transftable_data[ i ][j] )
+      end 
+  end
+  
+--histogram buttons
+i=5
+cy = (i+1)*height_button
+ for j=1,co do
+      cx = j*width_button
+      st = "Hist" .. j
+      table.insert(histo, fltk:Fl_Button(cx, cy, width_button, height_button, st ) )
+	  histo[#histo]:labelfont( fltk.FL_SCREEN )
+      histo[#histo]:color(12)
+	  histo[#histo]:tooltip( "Histogram" )
+      histo[#histo]:callback(histo_fct)
+  end
+  Fl:check()
+  uwindow:show()
+end  --end function
 
 function preopen_csv_file(fn) 
   local f, i, j, st
@@ -873,23 +1022,28 @@ end --end function
 function histo_fct()
  local i,h,width_button, width_twindow
 
+ --[[
  width_twindow = twindow:w()
  width_button = math.floor(width_twindow/(#transftable_data+1))                                       
  h=0
  h=math.floor(Fl.event_x()/width_button)
 --print("X mouse, Y mouse = " .. Fl.event_x() .. "," .. Fl.event_y())
 --print("Bouton histo[" .. h .. "] a ete clique ")
---[[ code to keep for syntax purpose
+]]--
+-- code to keep for syntax purpose
+ h=0
  for i=1,#histo do
        if Fl.event_inside(histo[i]) == 1 then
           h=i
+--print("selcol[" .. h .. "] = " .. selcol[h])
           break
        end
  end
- ]]--
+ 
  if h ~= 0 then
     if selcol[h] then
        if selcol[h] == 2 then
+--print("num histo = " .. h)
           disp_histo(h)
        end
     end
@@ -898,8 +1052,6 @@ end  --end function
 
 
  t00=0
- t11=0
-
  t00 = os.time() --top chrono
  osName="OS=" .. murgaLua.getHostOsName()
   --version FLTK
@@ -921,7 +1073,7 @@ end  --end function
 print(st)
  --fltk:fl_alert(st)
  disp_sample2()
-
+ 
  --previous stages/function calls
  --open_csv_file(filename) 
  --separator_csv()
