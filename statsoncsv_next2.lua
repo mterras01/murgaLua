@@ -490,6 +490,8 @@ function downsize()
   print("rapport_base() Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
   
   f_downsize=1
+  
+  display_sample3()
 end  --end function
 
 function select_field_fct()
@@ -530,7 +532,7 @@ function select_val_fct()
        if selvalbutton[i]:label() == "" then
           selvalbutton[i]:label(st)
           selval[i]=st
-print( i .. ". selval[" .. i .. "]=" .. selval[i])
+--print( i .. ". selval[" .. i .. "]=" .. selval[i])
           break
        end
   end
@@ -611,11 +613,11 @@ function disp_sample2()
   t_downs:callback(downsize)
   
   --button for accessing stage 2
-  stage2= fltk:Fl_Button(10+(12*width_button), height_twindow-30, width_button, 25, "@->")
-  stage2:labelfont( fltk.FL_SCREEN )
-  stage2:tooltip( "Next stage" )
-  stage2:color(1)
-  stage2:callback(display_sample3)
+--   stage2= fltk:Fl_Button(10+(12*width_button), height_twindow-30, width_button, 25, "@->")
+--   stage2:labelfont( fltk.FL_SCREEN )
+--   stage2:tooltip( "Next stage" )
+--   stage2:color(1)
+--   stage2:callback(display_sample3)
   
   
   -- progress bar N1 : build table
@@ -794,8 +796,7 @@ function display_sample3()
   for j=1,co do
       cy = height_button
       cx = j*width_button
-      --st1 = gsub(transftable_data[ j ][1],",",".")
-      st1 = gsub(transftable_data[ 1 ][ j ],",",".")
+      st1 = gsub(transftable_data[ 2 ][ j ],",",".")
       if type(st1) == "string" and type(tonumber(st1)) == "number" then
          st = "number"
          st2 = "nb"
@@ -811,23 +812,21 @@ function display_sample3()
 
 --table transftable_data : echantillon/sample
   cx, cy=0,0
-  for i=1,5 do
+  for i=1,5 do -- line 1 = legend, data beginning at line 2
       for j=1,co do
 	  cy = (i+1)*height_button
       cx = j*width_button
-	  --st = transftable_data[ j ][i]
-	  st = transftable_data[ i ][j]
+	  st = transftable_data[ i+1 ][j]
       st2 = sub((st .. ""), 1, nb_car)
       cell1=fltk:Fl_Button(cx, cy, width_button, height_button, st2 )
       cell1:labelfont( fltk.FL_SCREEN )
       cell1:color(20)
-	  --cell1:tooltip( transftable_data[ j ][i] )
-	  cell1:tooltip( transftable_data[ i ][j] )
+	  cell1:tooltip( transftable_data[ i+1 ][j] )
       end 
   end
   
 --histogram buttons
-i=5
+i=6
 cy = (i+1)*height_button
  for j=1,co do
       cx = j*width_button
@@ -836,14 +835,13 @@ cy = (i+1)*height_button
 	  histo[#histo]:labelfont( fltk.FL_SCREEN )
       histo[#histo]:color(12)
 	  histo[#histo]:tooltip( "Histogram" )
-      --histo[#histo]:callback(histo_fct)
       histo[#histo]:callback(function (histo_fct)
         local h=0
         local i
         for i=1,#histo do
              if Fl.event_inside(histo[i]) == 1 then
                 h=i
-print("selcol[" .. h .. "] = " .. selcol[h])
+--print("selcol[" .. h .. "] = " .. selcol[h])
                 disp_histo(h)
                 break
              end
@@ -956,19 +954,6 @@ function quit_t()
         pwindow:clear()
         pwindow = nil
      end
-     if cwindow then
-        cwindow:hide()
-        cwindow:clear()
-        cwindow = nil
-     end
-  end
-end --end function
-
-function quit_c()
-  if cwindow then
-     cwindow:hide()
-     cwindow:clear()
-     cwindow = nil
   end
 end --end function
 
