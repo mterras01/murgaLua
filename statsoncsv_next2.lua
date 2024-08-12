@@ -31,8 +31,9 @@ size_eol = 0 -- varie selon Unix (MacOs) ou Windows
 
 legend_data={} --text legends from original CSV
 new_legend={} --new text legends from transformed-downsized-filtered CSV
-table_data={} --main data model table = colons
+table_data={} --main data model table = columns
 transftable_data={} --downsized table (built from previous)
+type_new_data={} --type of colums for new downsized table (transftable_data)
 cat_values={} --catalogue des valeurs
 occ_values={} --occurences des valeurs précédentes
 max={}
@@ -200,67 +201,139 @@ end
 end   --end function
 
 function rapport_base()
- local i,j,k,st,m,st2
- local buffer=""
- 
-  print("#transftable_data = " .. #transftable_data .. " x " .. #transftable_data[1])
-  for i=1,#transftable_data do
-       buffer=" "
+ local i,j,k,st,st1,st2
+ local buffer="" --buffer for possible values (one column at a time)
+ --local global_buffer="" --buffer with all lines for one unique column
+ local co=#new_legend --colums of table (transftable_data)
+ local li=#transftable_data
+
+--print("#transftable_data = " .. #transftable_data .. " x " .. #transftable_data[1])
+  
+  for i=1,co do
+--print(new_legend[i] .. " processing possible values in progress ....")
+       buffer=" " --column buffer / possible values
+       --global_buffer=" " --column buffer / all lines values for same column
 	   occ_values[i]={}
-       if type(transftable_data[i][1] )== "number" then
-	      cat_values[i]={} -- pour les nombres, pas de catalogue de valeurs
-          --sauf si ...
-          for j=1,transftable_data[i] do
-               st=" " .. transftable_data[i][j] .. " "
+       st1 = gsub(transftable_data[ 2 ][ i ],",",".")
+       if type(st1) == "string" and type(tonumber(st1)) == "number" then
+          st = "number"
+       else 
+          st="string"
+       end
+       --insert type of data in (type_new_data) table
+       table.insert(type_new_data, st)
+--print("type_new_data[" .. i .. "] = " .. type_new_data[i])
+	   --type_new_data
+       if type_new_data[i] == "number" then
+	      cat_values[i]={} -- For numbers no possible values catalog, EXCEPT IF nb of possible values < threshold 
+          for j=2,#transftable_data do -- j = lines
+               st=" " .. transftable_data[j][i] .. " "
+               st1 = transftable_data[j][i] -- .. "" -- !!NOT!! converting number => string
+               --global_buffer = global_buffer .. " " .. st
                if find(buffer, st,1,true)  then
-                  --rien
                   --trouver le Num occur
                    for k=1,#cat_values[i] do
-                        if transftable_data[i][j] == cat_values[i][k] then
-                           occ_values[i][k] = occ_values[i][k]+1
+                        if st1 == cat_values[i][k] then
+                           if occ_values[i][k] then
+                              occ_values[i][k] = occ_values[i][k]+1
+                           else
+                              occ_values[i][k] = 1
+                           end
                            break
                         end
                    end
+
 	           else
-				  buffer = buffer  .. transftable_data[i][j] .. " "
-				  table.insert(cat_values[i],transftable_data[i][j])
+				  --buffer = buffer  .. transftable_data[j][i] .. " "
+				  buffer = buffer  .. st
+				  --table.insert(cat_values[i],transftable_data[j][i])
+--print("Possible value for cat_values[" .. i .. "] = " .. st1)
+				  --table.insert(cat_values[i], st1) --inserting string version of values
+				  --cat_values[i][j-1] = st1 --inserting string version of values
+				  table.insert(cat_values[i], st1)
                   table.insert(occ_values[i],1)
+--print("#cat_values[" .. i .. "] = " .. cat_values[i][j-1])
+               end
+--debuging
+-- if j%4000 == 0 then
+-- print("Ligne " .. j .. " / " .. li)
+-- end
+--end debuging
+               if #cat_values[i] > 100 then
+                  --aborting : too many values to be displayed
+--print(new_legend[i] .. " too many possible numeric values => aborting catalog build")
+                  while 1 do 
+                      if #cat_values[i]>0 then
+                         table.remove(cat_values[i])
+                      else
+                         break
+                      end
+                  end
+                  break --new column
                end
           end
-          median[ i ] = stats.series.median(transftable_data[i])
-          moyenne[i] = stats.series.mean(transftable_data[i])
-          variance[i] = stats.series.variance(transftable_data[i])
-          min[i],max[i] = stats.series.getExtremes(transftable_data[i])
+          --NONSENSE at 120824 : transftable_data[i] is a line, NOT a column <= needs working on this
+          --median[ i ] = stats.series.median(transftable_data[i])
+          --moyenne[i] = stats.series.mean(transftable_data[i])
+          --variance[i] = stats.series.variance(transftable_data[i])
+          --min[i],max[i] = stats.series.getExtremes(transftable_data[i])
            --init table
 --print("#buffer = " .. #buffer .. "\n#cat_values[" .. i .. "] = "  .. #cat_values[i])
-print("Nb de valeurs possibles  = "  .. #cat_values[i])
+--print("Nb de valeurs possibles  = "  .. #cat_values[i])
 
-       elseif type(transftable_data[i][1] )== "string" then
+       elseif type_new_data[i] == "string" then
 	       cat_values[i]={} -- pour les chaines de car, catalogue des valeurs possibles
-           for j=1,#transftable_data[i] do
-               if find(buffer, transftable_data[i][j],1,true)  then
-                  --rien
+           for j=1,#transftable_data do
+               st1 = transftable_data[j][i]
+               if find(buffer, st1,1,true)  then
+                  --trouver le Num occur
+                   for k=1,#cat_values[i] do
+                        if st1 == cat_values[i][k] then
+                           if occ_values[i][k] then
+                              occ_values[i][k] = occ_values[i][k]+1
+                           else
+                              occ_values[i][k] = 1
+                           end
+                           break
+                        end
+                   end
                else
-                  buffer = buffer .. " " .. transftable_data[i][j]
-				  table.insert(cat_values[i],transftable_data[i][j])
+                  buffer = buffer .. " " .. st1
+				  table.insert(cat_values[i],st1)
+				  table.insert(occ_values[i],1)
+				  
+				  if #cat_values[i] > 100 then
+                     --aborting : too many values to be displayed
+print(new_legend[i] .. " too many possible string values => aborting catalog build")
+                     while 1 do 
+                         if #cat_values[i]>0 then
+                            table.remove(cat_values[i])
+                         else
+                            break
+                         end
+                     end
+                     break --new column
+                  end
                end
           end
-		  --init table
-		  --for j=1,#cat_values[i] do
-		      --occ_values[i]={}
-		  --end
-		  if #cat_values[i] > 1 then
-             table.sort(cat_values[i]) -- pour avoir les valeurs possibles triées par valeur/par ordre alpha
---		     print("Catalogue des valeurs = " .. table.concat(cat_values[i],"//") .. "\nNb de valeurs possibles = " .. #cat_values[i])
-             st=table.concat(transftable_data[i])
-			 for j=1,#cat_values[i] do
-                 _, occ_values[i][j] = st:gsub(cat_values[i][j],"")
-			 end
-		  end
+ print("Nb de valeurs possibles  = "  .. #cat_values[i])         
        else
            --rien
        end
-  end
+       --occurences computing
+--        if #cat_values > 0 then
+--           if #cat_values[i] > 1 then
+--              table.sort(cat_values[i]) -- pour avoir les valeurs possibles triées par valeur/par ordre alpha
+-- print("Catalogue des valeurs = " .. table.concat(cat_values[i],"//") .. "\nNb de valeurs possibles = " .. #cat_values[i])
+-- 		     for j=1,#cat_values[i] do
+--                    _, occ_values[i][j] = st:gsub(cat_values[i][j],"")
+--                     _, occ_values[i][j] = global_buffer:gsub(cat_values[i][j],"")
+-- 		     end
+--           end
+--        end
+  end -- end for i
+
+  print("#occ_values = " .. #occ_values .. "\n#cat_values = " .. #cat_values)
 end  --end function
 
 function transform(old_table_data)
@@ -491,7 +564,7 @@ function downsize()
   
   f_downsize=1
   
-  display_sample3()
+  disp_sample3()
 end  --end function
 
 function select_field_fct()
@@ -617,7 +690,7 @@ function disp_sample2()
 --   stage2:labelfont( fltk.FL_SCREEN )
 --   stage2:tooltip( "Next stage" )
 --   stage2:color(1)
---   stage2:callback(display_sample3)
+--   stage2:callback(disp_sample3)
   
   
   -- progress bar N1 : build table
@@ -725,7 +798,7 @@ function disp_sample2()
   twindow:show()
 end  --end function                  
 
-function display_sample3()
+function disp_sample3()
  --GUI selecting fields to be analysed
   local i,j,cx,cy,post
   local st,st1,st2,st3
@@ -768,7 +841,7 @@ function display_sample3()
      uwindow:clear()
      uwindow = nil
   end)
---print("Fct display_sample3(), var f_downsize = " .. f_downsize .. "\ncolumns = " .. co .. " // lines #transftable_data = " .. #transftable_data)
+--print("Fct disp_sample3(), var f_downsize = " .. f_downsize .. "\ncolumns = " .. co .. " // lines #transftable_data = " .. #transftable_data)
 
   --table legendes
   cx, cy=0,0
@@ -796,12 +869,10 @@ function display_sample3()
   for j=1,co do
       cy = height_button
       cx = j*width_button
-      st1 = gsub(transftable_data[ 2 ][ j ],",",".")
-      if type(st1) == "string" and type(tonumber(st1)) == "number" then
-         st = "number"
+      st = type_new_data[j]
+      if st == "number" then
          st2 = "nb"
       else 
-         st="string"
          st2 = "str"
       end
       cell1= fltk:Fl_Button(cx, cy, width_button, height_button, st2 )
@@ -838,6 +909,9 @@ cy = (i+1)*height_button
       histo[#histo]:callback(function (histo_fct)
         local h=0
         local i
+        if #cat_values == 0 then
+            return
+        end
         for i=1,#histo do
              if Fl.event_inside(histo[i]) == 1 then
                 h=i
@@ -977,6 +1051,9 @@ function disp_histo(h)
  local dec_button = 0
  local i,j,k
 
+  if #cat_values == 0 then
+     return
+  end
  --type_graphics=1
   type_graphics=4
   --fenetre graphique pour la representation graphique et dynamique
