@@ -47,8 +47,8 @@ total_bytes=0
 f_downsize=0 --flag to declare downsizing done / value=1
 
 --interface
-twindow=nil--window about original table
---uwindow=nil --window about downsized table
+twindow=nil--window for original table
+pwindow=nil --window for histogram chart
 selbuttons={} --selbuttons[i]:color(2) means "selected field/column", :color(1) means "NOT selected field/column"
 selcol={}
 histo={} --histo buttons
@@ -305,7 +305,7 @@ print(new_legend[i] .. " too many possible string values => aborting catalog bui
                   end
                end
           end
- print("Nb de valeurs possibles  = "  .. #cat_values[i])         
+ print("Possible values = "  .. #cat_values[i])
        else
            --rien
        end
@@ -888,15 +888,16 @@ cy = (i+1)*height_button
 	  histo[#histo]:labelfont( fltk.FL_SCREEN )
       histo[#histo]:color(12)
 	  histo[#histo]:tooltip( "Histogram" )
+	  if #cat_values[#histo] == 0 then
+	     histo[#histo]:deactivate()
+	  end
       histo[#histo]:callback(function (histo_fct)
         local h=0
         local i
         for i=1,#histo do
              if Fl.event_inside(histo[i]) == 1 then
                 h=i
-                if #cat_values[h] > 0 then
-                   disp_histo(h)
-                end
+                disp_histo(h)
                 break
              end
         end
@@ -1039,8 +1040,13 @@ function disp_histo(h)
  local maxv=0
  local minv=9999999
  local idxmax,idxmin
+ 
   type_graphics=4
-  --fenetre graphique pour la representation graphique et dynamique
+  --GUI for histogram chart
+  if pwindow then
+     pwindow:hide()
+     pwindow:clear()
+  end
   st = "Histo " .. new_legend[ h ]
   pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, st)
   
@@ -1057,7 +1063,7 @@ function disp_histo(h)
   pie:type( type_chart[type_graphics] )
   pie:box(1)
   pie:labelcolor(0)
-  --pie:autosize(1)
+  pie:autosize(1)
   
   for i=1,#cat_values[h] do
       if occ_values[h][i] > maxv then
