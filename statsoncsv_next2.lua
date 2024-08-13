@@ -547,15 +547,7 @@ function downsize()
   --new version with circular buffer => time processing optimization
   build_new_base_CB()
   print("build_new_base_CB() Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
---[[
-  print("#transftable_data = " .. #transftable_data)
-  print("transftable_data[1] = " .. table.concat(transftable_data[1],separator) )
-  print("transftable_data[2] = " .. table.concat(transftable_data[2],separator) )
-  print("transftable_data[3] = " .. table.concat(transftable_data[3],separator) )
-  print("...")
-  print("transftable_data[#transftable_data-2] = " .. table.concat(transftable_data[#transftable_data-2],separator) )  print("transftable_data[#transftable_data-1] = " .. table.concat(transftable_data[#transftable_data-1],separator) )
-  print("transftable_data[#transftable_data] = " .. table.concat(transftable_data[#transftable_data],separator) ) 
-]]--   
+
   build_new_csv()
   print("build_new_csv() Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
   
@@ -640,13 +632,14 @@ function clear_t()
   for i=j,1,-1 do
       selbuttons[i]=nil
   end
+  selbuttons=nil
   keyword=nil
   clearbutton=nil  
   j = #selvalbutton
   for i=j,1,-1 do
        selvalbutton[i]=nil
   end
-
+  selvalbutton=nil
   collectgarbage()
 end --end function
 
@@ -909,18 +902,22 @@ cy = (i+1)*height_button
       histo[#histo]:callback(function (histo_fct)
         local h=0
         local i
-        if #cat_values == 0 then
-            return
-        end
         for i=1,#histo do
              if Fl.event_inside(histo[i]) == 1 then
                 h=i
---print("selcol[" .. h .. "] = " .. selcol[h])
-                disp_histo(h)
+                if #cat_values[h] > 0 then
+                   disp_histo(h)
+                end
                 break
              end
         end
-  end) --end local function
+        end) --end local function
+      st = #cat_values[j] .. ""
+      st2 = #cat_values[j] .. " valeurs possibles"
+      cell1=fltk:Fl_Button(cx, cy+height_button, width_button, height_button, st )
+      cell1:labelfont( fltk.FL_SCREEN )
+      cell1:color(21)
+	  cell1:tooltip( st2 )
   end
   Fl:check()
   uwindow:show()
@@ -1051,10 +1048,6 @@ function disp_histo(h)
  local dec_button = 0
  local i,j,k
 
-  if #cat_values == 0 then
-     return
-  end
- --type_graphics=1
   type_graphics=4
   --fenetre graphique pour la representation graphique et dynamique
   st = "Histo " .. new_legend[ h ]
