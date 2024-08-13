@@ -782,12 +782,13 @@ end  --end function
 
 function disp_sample3()
  --GUI selecting fields to be analysed
-  local i,j,cx,cy,post
+  local i,j,k,cx,cy
   local st,st1,st2,st3
   local cell1=nil
   local u_quit=nil
   local uwindow=nil
   local histo={}
+  local valselect={}
   local co=#new_legend
   local table_stats={"NB VAL","MIN","MAX","MOY","MED","VAR","SIGMA"} --legendes abregees pour les stats
   local table_stats_ib={"Nb de valeurs distinctes","Valeur minimale","Valeur maximale","Moyenne","Médiane","Variance","Ecart-type"} --legendes completes (infobulle) pour les stats
@@ -906,8 +907,22 @@ cy = (i+1)*height_button
       st2 = #cat_values[j] .. " valeurs possibles"
       cell1=fltk:Fl_Button(cx, cy+height_button, width_button, height_button, st )
       cell1:labelfont( fltk.FL_SCREEN )
-      --cell1:color(21)
 	  cell1:tooltip( st2 )
+	  
+	  --now, (conditionnal) displaying a "menu button" handling possible values
+	  if #cat_values[j] > 0 then
+	     st = new_legend[j]
+	     table.insert(valselect, fltk:Fl_Choice(cx, cy+(2*height_button), width_button, height_button) )
+         valselect[#valselect]:labelfont( fltk.FL_SCREEN )
+	     --and now adding menu items
+	     valselect[#valselect]:add(" ") -- 1st line is "a space alone" => no selection
+	     for k=1,#cat_values[j] do
+	           if cat_values[j][k] then
+	              valselect[#valselect]:add( cat_values[j][k] )
+               end
+	     end
+      end
+	  
   end
   Fl:check()
   uwindow:show()
