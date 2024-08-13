@@ -203,7 +203,6 @@ end   --end function
 function rapport_base()
  local i,j,k,st,st1,st2
  local buffer="" --buffer for possible values (one column at a time)
- --local global_buffer="" --buffer with all lines for one unique column
  local co=#new_legend --colums of table (transftable_data)
  local li=#transftable_data
 
@@ -212,7 +211,6 @@ function rapport_base()
   for i=1,co do
 --print(new_legend[i] .. " processing possible values in progress ....")
        buffer=" " --column buffer / possible values
-       --global_buffer=" " --column buffer / all lines values for same column
 	   occ_values[i]={}
        st1 = gsub(transftable_data[ 2 ][ i ],",",".")
        if type(st1) == "string" and type(tonumber(st1)) == "number" then
@@ -228,8 +226,7 @@ function rapport_base()
 	      cat_values[i]={} -- For numbers no possible values catalog, EXCEPT IF nb of possible values < threshold 
           for j=2,#transftable_data do -- j = lines
                st=" " .. transftable_data[j][i] .. " "
-               st1 = transftable_data[j][i] -- .. "" -- !!NOT!! converting number => string
-               --global_buffer = global_buffer .. " " .. st
+               st1 = transftable_data[j][i]
                if find(buffer, st,1,true)  then
                   --trouver le Num occur
                    for k=1,#cat_values[i] do
@@ -246,19 +243,11 @@ function rapport_base()
 	           else
 				  --buffer = buffer  .. transftable_data[j][i] .. " "
 				  buffer = buffer  .. st
-				  --table.insert(cat_values[i],transftable_data[j][i])
 --print("Possible value for cat_values[" .. i .. "] = " .. st1)
-				  --table.insert(cat_values[i], st1) --inserting string version of values
-				  --cat_values[i][j-1] = st1 --inserting string version of values
 				  table.insert(cat_values[i], st1)
                   table.insert(occ_values[i],1)
 --print("#cat_values[" .. i .. "] = " .. cat_values[i][j-1])
                end
---debuging
--- if j%4000 == 0 then
--- print("Ligne " .. j .. " / " .. li)
--- end
---end debuging
                if #cat_values[i] > 100 then
                   --aborting : too many values to be displayed
 --print(new_legend[i] .. " too many possible numeric values => aborting catalog build")
@@ -320,7 +309,7 @@ print(new_legend[i] .. " too many possible string values => aborting catalog bui
        else
            --rien
        end
-       --occurences computing
+       --occurences computing : keep commented code "for history"
 --        if #cat_values > 0 then
 --           if #cat_values[i] > 1 then
 --              table.sort(cat_values[i]) -- pour avoir les valeurs possibles triées par valeur/par ordre alpha
@@ -333,7 +322,7 @@ print(new_legend[i] .. " too many possible string values => aborting catalog bui
 --        end
   end -- end for i
 
-  print("#occ_values = " .. #occ_values .. "\n#cat_values = " .. #cat_values)
+  --print("#occ_values = " .. #occ_values .. "\n#cat_values = " .. #cat_values)
 end  --end function
 
 function transform(old_table_data)
@@ -916,7 +905,7 @@ cy = (i+1)*height_button
       st2 = #cat_values[j] .. " valeurs possibles"
       cell1=fltk:Fl_Button(cx, cy+height_button, width_button, height_button, st )
       cell1:labelfont( fltk.FL_SCREEN )
-      cell1:color(21)
+      --cell1:color(21)
 	  cell1:tooltip( st2 )
   end
   Fl:check()
@@ -1047,7 +1036,9 @@ function disp_histo(h)
  local width_button = 160
  local dec_button = 0
  local i,j,k
-
+ local maxv=0
+ local minv=9999999
+ local idxmax,idxmin
   type_graphics=4
   --fenetre graphique pour la representation graphique et dynamique
   st = "Histo " .. new_legend[ h ]
@@ -1066,8 +1057,18 @@ function disp_histo(h)
   pie:type( type_chart[type_graphics] )
   pie:box(1)
   pie:labelcolor(0)
+  --pie:autosize(1)
+  
   for i=1,#cat_values[h] do
-      if #cat_values[h]>=15 then
+      if occ_values[h][i] > maxv then
+         maxv = occ_values[h][i]
+         idxmax=i
+      end
+      if occ_values[h][i] < minv then
+         minv = occ_values[h][i]
+         idxmin=i
+      end
+      if #cat_values[h]>=15 then --managing display according to nb of cars
          j = math.floor(#cat_values[h]/15)
          if (i % j) == 0 then
             st = cat_values[h][i]  .. "\n" .. occ_values[h][i]
@@ -1081,6 +1082,11 @@ function disp_histo(h)
       end
       pie:add(occ_values[h][i], st, color)
   end
+  st = cat_values[h][idxmin]  .. "-" .. occ_values[h][idxmin]
+  pie:replace(idxmin, occ_values[h][idxmin], st, 2)
+  st = cat_values[h][idxmax]  .. "-" .. occ_values[h][idxmax]
+  pie:replace(idxmax, occ_values[h][idxmax], st, 1)
+  
   --pie:show()
   Fl:check()
   pwindow:show()
