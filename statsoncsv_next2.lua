@@ -167,6 +167,12 @@ function catval_sorting()
  for i=1,#cat_values do
       new_sorted_catval = {}
       new_sorted_catval=cat_values[i]
+      for j=1,#new_sorted_catval do
+           m = tonumber(new_sorted_catval[j])
+           if m then
+              new_sorted_catval[j] = m
+           end
+      end
       if #cat_values[i] > 0 then
          table.sort(new_sorted_catval)
       end
@@ -187,9 +193,9 @@ function catval_sorting()
       cat_values[i] = new_sorted_catval
       occ_values[i] = new_sorted_occval
       --reporting
-      for j=1,#cat_values[i] do
+--      for j=1,#cat_values[i] do
 --print("cat_values[" .. i .. "][" .. j .. "]=" .. cat_values[i][j] .. " // occurences = " .. occ_values[i][j])
-      end
+--      end
  end
 end --end function
 
@@ -737,7 +743,7 @@ function disp_sample2()
       end
       cell0= fltk:Fl_Button(cx, cy, width_button, height_button, st2 )
       cell0:labelfont( fltk.FL_SCREEN )
-      cell0:color(fltk.FL_RED)
+      cell0:color(6) --pale blue
       cell0:tooltip( st )
   end
 
@@ -872,13 +878,13 @@ function disp_sample3()
       end
       cell1= fltk:Fl_Button(cx, cy, width_button, height_button, st2 )
       cell1:labelfont( fltk.FL_SCREEN )
-      cell1:color(fltk.FL_RED)
+      cell1:color(6) --pale blue
       cell1:tooltip( st )
   end
   
   --left-most button "values" (no callback, just displaying purpose)
   cx,cy=0, (2*height_button)
-  cell1= fltk:Fl_Button(cx, cy, width_button, (5*height_button), "VALUES" )
+  cell1= fltk:Fl_Button(cx, cy, width_button, (5*height_button), "VALUES\nof 5\nfirst lines" )
   cell1:labelfont( fltk.FL_SCREEN )
 --table transftable_data : echantillon/sample
   cx, cy=0,0
@@ -904,7 +910,7 @@ cy = (i+1)*height_button
       table.insert(histo, fltk:Fl_Button(cx, cy, width_button, height_button, st ) )
 	  histo[#histo]:labelfont( fltk.FL_SCREEN )
       histo[#histo]:color(12)
-	  histo[#histo]:tooltip( "Histogram" )
+	  histo[#histo]:tooltip( "click here to display Histogram of possible values for this column" )
 --print("disp_sample3(), putting histo button number " .. #histo)
 	  if #cat_values[#histo] == 0 then
 	     histo[#histo]:deactivate()
@@ -920,8 +926,16 @@ cy = (i+1)*height_button
              end
         end
         end) --end local function
+      --legend text for line "nb of possible values"
+      cx=0
+      st="Nb values"
+      st2="Nb of possible values for this column"
+      cell1=fltk:Fl_Button(cx, cy+height_button, width_button, height_button, st )
+      cell1:labelfont( fltk.FL_SCREEN )
+      cell1:tooltip( st2 )
+      cx = j*width_button
       st = #cat_values[j] .. ""
-      st2 = #cat_values[j] .. " valeurs possibles"
+      st2 = #cat_values[j] .. " possible values"
       cell1=fltk:Fl_Button(cx, cy+height_button, width_button, height_button, st )
       cell1:labelfont( fltk.FL_SCREEN )
 	  cell1:tooltip( st2 )
