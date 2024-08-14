@@ -27,3 +27,7 @@ RIP John de Murga</br></br>
 Binaries for murgaLua on web.archive.org</br>
 http://web.archive.org/web/20140702173559/http://murga-projects.com/murgaLua/murgaLua-0.6.6.tar.gz</br>
 And i found a special binary for MacOSX 10.4 "PowerPC" (made by John)  (on murgaLua page, zipped file is https://github.com/mterras01/murgaLua/blob/main/murgaLuaUB064.zip)
+And at least (?), igame3dbill has released a 0.7.5.0 version of murgaLua (last known version), available on github here :
+https://github.com/igame3dbill/MurgaLua_0.7.5
+The static Linux binary is operationnal for me (Linux Ubuntu LTS)
+Big thanks to igame3dbill !!!
