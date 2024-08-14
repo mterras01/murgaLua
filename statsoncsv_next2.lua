@@ -1,5 +1,7 @@
 #!/bin/murgaLua
 
+--this murgaLua script has been tested with version 0750 https://github.com/igame3dbill/MurgaLua_0.7.5
+--thanks igame3dbill !!!
 --210724 from version statsoncsv_next.lua => statsoncsv_next2.lua
 --allows via a GUI the fields filtering after pre-loading  of huge CSV (first xxx lines)
 --downsizing of original file (>450Mb for year 2023)
@@ -155,23 +157,40 @@ function separator_csv(first_two_lines)
   --fltk:fl_alert(st)
 end --end function
 
-function sorting()
- local i, st
- local s1_classed={}
- for i=1,#table_data[3] do
-       s1_classed[i] = { id1=i, num1=table_data[3][i]}
+function catval_sorting()
+ --problem: sort table "cat_values" and keep related occurence values in table occ_values
+ local i,j,k,l,m
+ local new_sorted_catval={}
+ local new_sorted_occval={}
+
+--print("Function catval_sorting() in progress, #cat_values = " .. #cat_values)
+ for i=1,#cat_values do
+      new_sorted_catval = {}
+      new_sorted_catval=cat_values[i]
+      if #cat_values[i] > 0 then
+         table.sort(new_sorted_catval)
+      end
+--print("table.concat(new_sorted_catval) = " .. table.concat(new_sorted_catval, "//"))
+      --reassort sorted possible values (cat_values) and nb of occurences (occ_values)
+      for k=1,#new_sorted_catval do
+          for j=1,#cat_values[i] do
+               if new_sorted_catval[k]  == cat_values[i][j] then
+                  new_sorted_occval[k] = occ_values[i][j]
+                  break
+               end
+          end
+      end
+ 
+--print("new_legend[" .. i .. "] = " .. new_legend[i] .. "#new_sorted_catval = " .. #new_sorted_catval)
+
+      --apply changes
+      cat_values[i] = new_sorted_catval
+      occ_values[i] = new_sorted_occval
+      --reporting
+      for j=1,#cat_values[i] do
+--print("cat_values[" .. i .. "][" .. j .. "]=" .. cat_values[i][j] .. " // occurences = " .. occ_values[i][j])
+      end
  end
- st=""
- for i=1,2000 do
-       st = st .. s1_classed[i].id1  .. "/" .. s1_classed[i].num1 .. "* " 
- end
- print(st)
- table.sort(s1_classed, function(a,b) return a.num1 < b.num1 end)
- st="Post sorting... \n"
- for i=1,2000 do
-       st = st .. s1_classed[i].id1  .. "/" .. s1_classed[i].num1 .. "* " 
- end
- print(st)
 end --end function
 
 function process2(line_data)
@@ -268,11 +287,11 @@ function rapport_base()
           --min[i],max[i] = stats.series.getExtremes(transftable_data[i])
            --init table
 --print("#buffer = " .. #buffer .. "\n#cat_values[" .. i .. "] = "  .. #cat_values[i])
---print("Nb de valeurs possibles  = "  .. #cat_values[i])
-
+print(new_legend[i] .. " : Possible values = "  .. #cat_values[i])
        elseif type_new_data[i] == "string" then
 	       cat_values[i]={} -- pour les chaines de car, catalogue des valeurs possibles
-           for j=1,#transftable_data do
+           --for j=1,#transftable_data do
+           for j=2,#transftable_data do
                st1 = transftable_data[j][i]
                if find(buffer, st1,1,true)  then
                   --trouver le Num occur
@@ -305,7 +324,7 @@ print(new_legend[i] .. " too many possible string values => aborting catalog bui
                   end
                end
           end
- print("Possible values = "  .. #cat_values[i])
+ print(new_legend[i] .. " : Possible values = "  .. #cat_values[i])
        else
            --rien
        end
@@ -544,6 +563,7 @@ function downsize()
   print("rapport_base() Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
   
   f_downsize=1
+  catval_sorting() --sorting 2 tables possible values and nb of occurences for each possible value
   
   disp_sample3()
 end  --end function
@@ -653,7 +673,7 @@ function disp_sample2()
   --window for initial table
   width_twindow = 1024
   height_twindow = 450
-  twindow = fltk:Fl_Window(width_twindow, height_twindow, "Tableau CSV")
+  twindow = fltk:Fl_Window(width_twindow, height_twindow, "CSV Table")
   --width_button = 120
   width_button = math.floor(width_twindow/(co+1)) --ajout d'une colonne "legende" (stats)
   height_button = 20
@@ -666,14 +686,6 @@ function disp_sample2()
   t_downs = fltk:Fl_Button(10+width_button, height_twindow-30, width_button, 25, "Down")
   t_downs:tooltip("Downsize original data with selected items ans save it")
   t_downs:callback(downsize)
-  
-  --button for accessing stage 2
---   stage2= fltk:Fl_Button(10+(12*width_button), height_twindow-30, width_button, 25, "@->")
---   stage2:labelfont( fltk.FL_SCREEN )
---   stage2:tooltip( "Next stage" )
---   stage2:color(1)
---   stage2:callback(disp_sample3)
-  
   
   -- progress bar N1 : build table
   progress_bar = fltk:Fl_Progress(10+(2*width_button), height_twindow-30, 5*width_button, 25, "0")
@@ -692,7 +704,7 @@ function disp_sample2()
   --affichage legendes + 2 premières lignes de table_data
   --table legendes
   cx, cy=0,0
-  cell0= fltk:Fl_Button(cx, cy, width_button, height_button, "LABELS" )
+  cell0= fltk:Fl_Button(cx, cy, width_button, height_button, "LAB" )
   cell0:labelfont( fltk.FL_SCREEN )
   cell0:tooltip( "Labels of fields" )
   for j=1,co do
@@ -709,9 +721,9 @@ function disp_sample2()
   end
   --ligne type des donnees
   cx, cy=0,height_button
-  cell0= fltk:Fl_Button(cx, cy, width_button, height_button, "TYPE" )
+  cell0= fltk:Fl_Button(cx, cy, width_button, height_button, "TYP" )
   cell0:labelfont( fltk.FL_SCREEN )
-  cell0:tooltip( "Type de donnees" )
+  cell0:tooltip( "Data type" )
   for j=1,co do
       cy = height_button
       cx = j*width_button
@@ -863,7 +875,11 @@ function disp_sample3()
       cell1:color(fltk.FL_RED)
       cell1:tooltip( st )
   end
-
+  
+  --left-most button "values" (no callback, just displaying purpose)
+  cx,cy=0, (2*height_button)
+  cell1= fltk:Fl_Button(cx, cy, width_button, (5*height_button), "VALUES" )
+  cell1:labelfont( fltk.FL_SCREEN )
 --table transftable_data : echantillon/sample
   cx, cy=0,0
   for i=1,5 do -- line 1 = legend, data beginning at line 2
@@ -889,6 +905,7 @@ cy = (i+1)*height_button
 	  histo[#histo]:labelfont( fltk.FL_SCREEN )
       histo[#histo]:color(12)
 	  histo[#histo]:tooltip( "Histogram" )
+--print("disp_sample3(), putting histo button number " .. #histo)
 	  if #cat_values[#histo] == 0 then
 	     histo[#histo]:deactivate()
 	  end
@@ -1022,14 +1039,10 @@ end --end function
 
 function quit_t()
   if twindow then
+     quit_callbackapp() --close & clear pwindow
      twindow:hide()
      twindow:clear()
      twindow = nil
-     if pwindow then
-        pwindow:hide()
-        pwindow:clear()
-        pwindow = nil
-     end
   end
 end --end function
 
