@@ -820,6 +820,7 @@ function disp_sample3()
   local table_stats={"NB VAL","MIN","MAX","MOY","MED","VAR","SIGMA"} --legendes abregees pour les stats
   local table_stats_ib={"Nb de valeurs distinctes","Valeur minimale","Valeur maximale","Moyenne","Médiane","Variance","Ecart-type"} --legendes completes (infobulle) pour les stats
   local table_stats_val={}
+  local axis1,axis2={},{}
 
   if f_downsize ~= 1 then
      return
@@ -893,7 +894,7 @@ function disp_sample3()
   
   --left-most button "values" (no callback, just displaying purpose)
   cx,cy=0, (2*height_button)
-  cell1= fltk:Fl_Button(cx, cy, width_button, (5*height_button), "VALUES\nof 5\nfirst lines" )
+  cell1= fltk:Fl_Button(cx, cy, width_button, (5*height_button), "5\nfirst lines\nValues" )
   cell1:labelfont( fltk.FL_SCREEN )
 --table transftable_data : echantillon/sample
   cx, cy=0,0
@@ -950,6 +951,15 @@ cy = (i+1)*height_button
 	  cell1:tooltip( st2 )
 	  
 	  --now, (conditionnal) displaying a "menu button" handling possible values
+      --legend text for these selection tools
+      cx=0
+      st="Sel values"
+      st2="Select a value or none for each column to get a specialized chart"
+      cell1=fltk:Fl_Button(cx, cy+(2*height_button), width_button, height_button, st )
+      cell1:labelfont( fltk.FL_SCREEN )
+      cell1:tooltip( st2 )
+      --
+      cx = j*width_button
 	  if #cat_values[j] > 0 then
 	     st = new_legend[j]
 	     table.insert(valselect, fltk:Fl_Choice(cx, cy+(2*height_button), width_button, height_button) )
@@ -961,9 +971,25 @@ cy = (i+1)*height_button
 	              valselect[#valselect]:add( cat_values[j][k] )
                end
 	     end
-      end
-	  
+      end	  
   end
+  --cross-table query
+  cy = cy+(4*height_button)
+  cx = 0
+  --set 1st dim of table
+  table.insert(axis1, fltk:Fl_Choice(cx, (cy+height_button), width_button, height_button) )
+  for k=1,#new_legend do
+       axis1[#axis1]:add( new_legend[k] )
+  end
+  --set 2nd dim of table
+  cx=width_button
+  table.insert(axis2, fltk:Fl_Choice(cx, cy, width_button, height_button) )
+  for k=1,#new_legend do
+       axis2[#axis2]:add( new_legend[k] )
+  end
+
+
+
   Fl:check()
   uwindow:show()
 end  --end function
@@ -1128,7 +1154,8 @@ function disp_histo(h)
          idxmin=i
       end
       if #cat_values[h]>=15 then --managing display according to nb of cars
-         j = math.floor(#cat_values[h]/15)
+         --j = math.floor(#cat_values[h]/15)
+         j = math.floor(#cat_values[h]/10)
          if (i % j) == 0 then
             st = cat_values[h][i]  .. "-" .. occ_values[h][i]
          else
