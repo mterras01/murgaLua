@@ -166,6 +166,7 @@ function catval_sorting()
 --print("Function catval_sorting() in progress, #cat_values = " .. #cat_values)
  for i=1,#cat_values do
       new_sorted_catval = {}
+      new_sorted_occval = {} --added 150824 : if not present, table "occurence values" and "possible values" are no more related
       new_sorted_catval=cat_values[i]
       for j=1,#new_sorted_catval do
            m = tonumber(new_sorted_catval[j])
@@ -192,11 +193,11 @@ function catval_sorting()
       --apply changes
       cat_values[i] = new_sorted_catval
       occ_values[i] = new_sorted_occval
-      --reporting
+--reporting (debugging purpose)
 --      for j=1,#cat_values[i] do
 --print("cat_values[" .. i .. "][" .. j .. "]=" .. cat_values[i][j] .. " // occurences = " .. occ_values[i][j])
 --      end
- end
+ end --for i
 end --end function
 
 function process2(line_data)
@@ -251,7 +252,7 @@ function rapport_base()
 	      cat_values[i]={} -- For numbers no possible values catalog, EXCEPT IF nb of possible values < threshold 
           for j=2,#transftable_data do -- j = lines
                st=" " .. transftable_data[j][i] .. " "
-               st1 = transftable_data[j][i]
+               st1 = tonumber(transftable_data[j][i])
                if find(buffer, st,1,true)  then
                   --trouver le Num occur
                    for k=1,#cat_values[i] do
@@ -348,6 +349,14 @@ print(new_legend[i] .. " too many possible string values => aborting catalog bui
   end -- end for i
 
   --print("#occ_values = " .. #occ_values .. "\n#cat_values = " .. #cat_values)
+--debugging block
+--   for i=1,co do
+-- print(new_legend[i])
+--        for j=1,#cat_values[i] do
+--             print("value=" .. cat_values[i][j] .. " // occurences = " .. occ_values[i][j])
+--        end
+--   end
+--end debugging block
 end  --end function
 
 function transform(old_table_data)
@@ -835,7 +844,7 @@ function disp_sample3()
   uwindow = fltk:Fl_Window(width_twindow, height_twindow, "Downsized CSV")   
   width_button = math.floor(width_twindow/(co+1)) --ajout d'une colonne "legende" (stats)
   u_quit = fltk:Fl_Button(10, height_twindow-30, width_button, 25, "Quit")
-  u_quit:tooltip("Fermer cette fenetre")
+  u_quit:tooltip("Quit this application")
   --u_quit:callback(quit_u)
   u_quit:callback(function (quit_u)
      uwindow:hide()
@@ -1102,8 +1111,10 @@ function disp_histo(h)
   pie:position(decx_chart, decy_chart+20)
   pie:size(width_chart, height_chart)
   pie:label(new_legend[ h ])
-  pie:type( type_chart[type_graphics] )
-  pie:box(1)
+  --pie:type( type_chart[type_graphics] )
+  pie:type( fltk.FL_HORBAR_CHART )
+  --pie:box(1)
+  pie:box(fltk.FL_SHADOW_BOX)
   pie:labelcolor(0)
   pie:autosize(1)
   
@@ -1119,13 +1130,13 @@ function disp_histo(h)
       if #cat_values[h]>=15 then --managing display according to nb of cars
          j = math.floor(#cat_values[h]/15)
          if (i % j) == 0 then
-            st = cat_values[h][i]  .. "\n" .. occ_values[h][i]
+            st = cat_values[h][i]  .. "-" .. occ_values[h][i]
          else
             st = ""
          end
          color=4
       else
-         st = cat_values[h][i]  .. "\n" .. occ_values[h][i]
+         st = cat_values[h][i]  .. "-" .. occ_values[h][i]
          color=4
       end
       pie:add(occ_values[h][i], st, color)
