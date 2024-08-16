@@ -920,7 +920,8 @@ cy = (i+1)*height_button
       table.insert(histo, fltk:Fl_Button(cx, cy, width_button, height_button, st ) )
 	  histo[#histo]:labelfont( fltk.FL_SCREEN )
       histo[#histo]:color(12)
-	  histo[#histo]:tooltip( "click here to display Histogram of possible values for this column" )
+      st="click here to display Histogram of possible values for column \"" .. new_legend[j] .. "\""
+	  histo[#histo]:tooltip( st )
 --print("disp_sample3(), putting histo button number " .. #histo)
 	  if #cat_values[#histo] == 0 then
 	     histo[#histo]:deactivate()
@@ -971,19 +972,33 @@ cy = (i+1)*height_button
 	              valselect[#valselect]:add( cat_values[j][k] )
                end
 	     end
+      else
+         table.insert(valselect, fltk:Fl_Choice(cx, cy+(2*height_button), width_button, height_button) )
+         valselect[#valselect]:labelfont( fltk.FL_SCREEN )
+	     valselect[#valselect]:deactivate()
       end	  
   end
-  --cross-table query
+  --cross-table visual query (chart)
+  --left-most button "values" (no callback, just displaying purpose)
+  cx=0
   cy = cy+(4*height_button)
-  cx = 0
+  cell1= fltk:Fl_Button(cx, cy, width_button, height_button, "New chart" )
+  cell1:labelfont( fltk.FL_SCREEN )
+  cell1= fltk:Fl_Button(cx+width_button, cy+height_button, width_button, height_button)
+  cell1:labelfont( fltk.FL_SCREEN )
+  cell1:box(fltk.FL_DOWN_BOX)
   --set 1st dim of table
   table.insert(axis1, fltk:Fl_Choice(cx, (cy+height_button), width_button, height_button) )
+  st = "Set a field for the Y-axis of chart"
+  axis1[#axis1]:tooltip( st )
   for k=1,#new_legend do
        axis1[#axis1]:add( new_legend[k] )
   end
   --set 2nd dim of table
   cx=width_button
   table.insert(axis2, fltk:Fl_Choice(cx, cy, width_button, height_button) )
+  st = "Set a field for the X-axis of chart"
+  axis2[#axis2]:tooltip( st )
   for k=1,#new_legend do
        axis2[#axis2]:add( new_legend[k] )
   end
