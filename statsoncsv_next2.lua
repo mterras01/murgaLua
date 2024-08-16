@@ -820,7 +820,7 @@ function disp_sample3()
   local table_stats={"NB VAL","MIN","MAX","MOY","MED","VAR","SIGMA"} --legendes abregees pour les stats
   local table_stats_ib={"Nb de valeurs distinctes","Valeur minimale","Valeur maximale","Moyenne","Médiane","Variance","Ecart-type"} --legendes completes (infobulle) pour les stats
   local table_stats_val={}
-  local axis1,axis2={},{}
+  local axis1,axis2,context1={},{},{}
 
   if f_downsize ~= 1 then
      return
@@ -984,6 +984,22 @@ cy = (i+1)*height_button
   cy = cy+(4*height_button)
   cell1= fltk:Fl_Button(cx, cy, width_button, height_button, "New chart" )
   cell1:labelfont( fltk.FL_SCREEN )
+  --context1 : (for each) XOR (for all)
+  cell1= fltk:Fl_Button(cx+(2*width_button), cy, width_button, height_button, "For each/all" )
+  cell1:labelfont( fltk.FL_SCREEN )
+  st = "For each = one histogram charts for each value of selected column // For all = one only aggregated histogram charts for all values (no selected column)"
+  cell1:tooltip( st )
+  table.insert(context1, fltk:Fl_Choice(cx+(2*width_button), (cy+height_button), width_button, height_button) )
+  st = "Histogram chart for each possible value of this column (agregated for all values if no selection)"
+  context1[#context1]:tooltip( st )
+  context1[#context1]:add( " " ) --adding empty string = "no selection option"
+  for k=1,#new_legend do
+       if #cat_values[k] ~= 0 then
+          context1[#context1]:add( new_legend[k] )
+       end
+  end
+
+
   cell1= fltk:Fl_Button(cx+width_button, cy+height_button, width_button, height_button)
   cell1:labelfont( fltk.FL_SCREEN )
   cell1:box(fltk.FL_DOWN_BOX)
@@ -992,7 +1008,9 @@ cy = (i+1)*height_button
   st = "Set a field for the Y-axis of chart"
   axis1[#axis1]:tooltip( st )
   for k=1,#new_legend do
-       axis1[#axis1]:add( new_legend[k] )
+       --if #cat_values[k] ~= 0 then
+          axis1[#axis1]:add( new_legend[k] )
+       --end
   end
   --set 2nd dim of table
   cx=width_button
@@ -1000,9 +1018,10 @@ cy = (i+1)*height_button
   st = "Set a field for the X-axis of chart"
   axis2[#axis2]:tooltip( st )
   for k=1,#new_legend do
-       axis2[#axis2]:add( new_legend[k] )
+       --if #cat_values[k] ~= 0 then
+          axis2[#axis2]:add( new_legend[k] )
+       --end
   end
-
 
 
   Fl:check()
@@ -1133,6 +1152,13 @@ function disp_histo(h)
  local minv=9999999
  local idxmax,idxmin
  
+ --how to save image contents of the chart window (needs to be tested) ?
+-- fl_begin_offscreen(offs)
+-- data = fl_read_image(uchar *p, int X, int Y, int W, int H, int alpha = 0)
+-- fl_end_offscreen()
+-- png_write(data, ...) => this function does not exist in all version
+
+
   type_graphics=4
   --GUI for histogram chart
   if pwindow then
