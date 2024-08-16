@@ -675,9 +675,9 @@ function disp_sample2()
   --local histo=nil
   local co=#table_data
   local li=#table_data[1]
-  local table_stats={"NB VAL","MIN","MAX","MOY","MED","VAR","SIGMA"} --legendes abregees pour les stats
-  local table_stats_ib={"Nb de valeurs distinctes","Valeur minimale","Valeur maximale","Moyenne","Médiane","Variance","Ecart-type"} --legendes completes (infobulle) pour les stats
-  local table_stats_val={}
+  --local table_stats={"NB VAL","MIN","MAX","MOY","MED","VAR","SIGMA"} --legendes abregees pour les stats
+  --local table_stats_ib={"Nb de valeurs distinctes","Valeur minimale","Valeur maximale","Moyenne","Médiane","Variance","Ecart-type"} --legendes completes (infobulle) pour les stats
+  --local table_stats_val={}
   local stage2=nil
 
   if twindow then
@@ -817,10 +817,11 @@ function disp_sample3()
   local histo={}
   local valselect={}
   local co=#new_legend
-  local table_stats={"NB VAL","MIN","MAX","MOY","MED","VAR","SIGMA"} --legendes abregees pour les stats
-  local table_stats_ib={"Nb de valeurs distinctes","Valeur minimale","Valeur maximale","Moyenne","Médiane","Variance","Ecart-type"} --legendes completes (infobulle) pour les stats
-  local table_stats_val={}
+  --local table_stats={"NB VAL","MIN","MAX","MOY","MED","VAR","SIGMA"} --legendes abregees pour les stats
+  --local table_stats_ib={"Nb de valeurs distinctes","Valeur minimale","Valeur maximale","Moyenne","Médiane","Variance","Ecart-type"} --legendes completes (infobulle) pour les stats
+  --local table_stats_val={}
   local axis1,axis2,context1={},{},{}
+  local spe_chart=nil
 
   if f_downsize ~= 1 then
      return
@@ -858,7 +859,7 @@ function disp_sample3()
   cx, cy=0,0
   cell1= fltk:Fl_Button(cx, cy, width_button, height_button, "LABELS" )
   cell1:labelfont( fltk.FL_SCREEN )
-  cell1:tooltip( "Labels des champs" )
+  cell1:tooltip( "Field's labels" )
   for j=1,co do
       selval[j]={"","","","",""}
       cy = 0
@@ -876,7 +877,7 @@ function disp_sample3()
   cx, cy=0,height_button
   cell1= fltk:Fl_Button(cx, cy, width_button, height_button, "TYPE" )
   cell1:labelfont( fltk.FL_SCREEN )
-  cell1:tooltip( "Type de donnees" )
+  cell1:tooltip( "Data type" )
   for j=1,co do
       cy = height_button
       cx = j*width_button
@@ -937,13 +938,17 @@ cy = (i+1)*height_button
              end
         end
         end) --end local function
-      --legend text for line "nb of possible values"
-      cx=0
-      st="Nb values"
-      st2="Nb of possible values for this column"
-      cell1=fltk:Fl_Button(cx, cy+height_button, width_button, height_button, st )
-      cell1:labelfont( fltk.FL_SCREEN )
-      cell1:tooltip( st2 )
+
+      --text legend for line "nb of possible values"
+      if j ==1 then
+         -- this text legend button should NOT be multi-defined in this loop
+         cx=0
+         st="Nb values"
+         st2="Nb of possible values for this column"
+         cell1=fltk:Fl_Button(cx, cy+height_button, width_button, height_button, st )
+         cell1:labelfont( fltk.FL_SCREEN )
+         cell1:tooltip( st2 )
+      end
       cx = j*width_button
       st = #cat_values[j] .. ""
       st2 = #cat_values[j] .. " possible values"
@@ -951,19 +956,24 @@ cy = (i+1)*height_button
       cell1:labelfont( fltk.FL_SCREEN )
 	  cell1:tooltip( st2 )
 	  
-	  --now, (conditionnal) displaying a "menu button" handling possible values
+      --WHERE GUI version 2
+      --now, (conditionnal) displaying a "menu button" handling possible values
       --legend text for these selection tools
-      cx=0
-      st="Sel values"
-      st2="Select a value or none for each column to get a specialized chart"
-      cell1=fltk:Fl_Button(cx, cy+(2*height_button), width_button, height_button, st )
-      cell1:labelfont( fltk.FL_SCREEN )
-      cell1:tooltip( st2 )
-      --
-      cx = j*width_button
+      if j ==1 then
+         st="Where"
+         st2="Set a possible value (or none) to each column as a restrictive condition to get one or several specialized chart"
+         cell1=fltk:Fl_Button((3*width_button), (11*height_button), width_button, height_button, st )
+         cell1:labelfont( fltk.FL_SCREEN )
+         cell1:tooltip( st2 )
+      end
+
 	  if #cat_values[j] > 0 then
-	     st = new_legend[j]
-	     table.insert(valselect, fltk:Fl_Choice(cx, cy+(2*height_button), width_button, height_button) )
+	     st = new_legend[j] .. " ="
+         cell1=fltk:Fl_Button((3*width_button), ((11+j)*height_button), width_button, height_button, st )
+         cell1:labelfont( fltk.FL_SCREEN )
+         cell1:tooltip( st2 )
+	     --st = new_legend[j]
+	     table.insert(valselect, fltk:Fl_Choice((4*width_button), ((11+j)*height_button), width_button, height_button) )
          valselect[#valselect]:labelfont( fltk.FL_SCREEN )
 	     --and now adding menu items
 	     valselect[#valselect]:add(" ") -- 1st line is "a space alone" => no selection
@@ -973,10 +983,15 @@ cy = (i+1)*height_button
                end
 	     end
       else
-         table.insert(valselect, fltk:Fl_Choice(cx, cy+(2*height_button), width_button, height_button) )
+         st = new_legend[j] .. " ="
+         cell1=fltk:Fl_Button((3*width_button), ((11+j)*height_button), width_button, height_button, st )
+         cell1:labelfont( fltk.FL_SCREEN )
+         cell1:tooltip( st2 )
+         table.insert(valselect, fltk:Fl_Choice((4*width_button), ((11+j)*height_button), width_button, height_button) )
          valselect[#valselect]:labelfont( fltk.FL_SCREEN )
 	     valselect[#valselect]:deactivate()
-      end	  
+      end	
+
   end
   --cross-table visual query (chart)
   --left-most button "values" (no callback, just displaying purpose)
@@ -990,7 +1005,7 @@ cy = (i+1)*height_button
   st = "For each = one histogram charts for each value of selected column // For all = one only aggregated histogram charts for all values (no selected column)"
   cell1:tooltip( st )
   table.insert(context1, fltk:Fl_Choice(cx+(2*width_button), (cy+height_button), width_button, height_button) )
-  st = "Histogram chart for each possible value of this column (agregated for all values if no selection)"
+  st = "Histogram chart for each possible value of this column (agregated for all values if no selection). Number of possible values = nb of charts"
   context1[#context1]:tooltip( st )
   context1[#context1]:add( " " ) --adding empty string = "no selection option"
   for k=1,#new_legend do
@@ -998,7 +1013,6 @@ cy = (i+1)*height_button
           context1[#context1]:add( new_legend[k] )
        end
   end
-
 
   cell1= fltk:Fl_Button(cx+width_button, cy+height_button, width_button, height_button)
   cell1:labelfont( fltk.FL_SCREEN )
@@ -1022,7 +1036,12 @@ cy = (i+1)*height_button
           axis2[#axis2]:add( new_legend[k] )
        --end
   end
-
+  --set main callback for specialized charts
+  cx=0
+  st = "Launch query and get chart(s)"
+  spe_chart= fltk:Fl_Button(cx, cy+(2*height_button), width_button, height_button, "Launch query" )
+  spe_chart:labelfont( fltk.FL_SCREEN )
+  spe_chart:tooltip( st )
 
   Fl:check()
   uwindow:show()
