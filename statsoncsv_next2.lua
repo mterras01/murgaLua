@@ -346,6 +346,14 @@ print(new_legend[i] .. " too many possible string values => aborting catalog bui
 -- 		     end
 --           end
 --        end
+
+k=i*100/co
+progress_bar3:value(k)
+progress_bar3:draw()
+st = string.format('%.1f', k).."%"
+progress_bar3:label(st)
+Fl:check()
+
   end -- end for i
 
   --print("#occ_values = " .. #occ_values .. "\n#cat_values = " .. #cat_values)
@@ -651,6 +659,8 @@ function clear_t()
  info_button1=nil
  progress_bar2=nil
  info_button2=nil
+ progress_bar3=nil
+ info_button3=nil
  
   j = #selbuttons
   for i=j,1,-1 do
@@ -715,6 +725,13 @@ function disp_sample2()
   progress_bar2:minimum(1)
   progress_bar2:selection_color(fltk.FL_GREEN)
   info_button2 = fltk:Fl_Button(10+(7*width_button), height_twindow-55, 5*width_button, 25, "Saving new downsized CSV")
+
+-- progress bar N3 : processing possible values for each fields
+  progress_bar3 = fltk:Fl_Progress(10+(12*width_button), height_twindow-30, 5*width_button, 25, "0")
+  progress_bar3:maximum(100)
+  progress_bar3:minimum(1)
+  progress_bar3:selection_color(fltk.FL_GREEN)
+  info_button3 = fltk:Fl_Button(10+(12*width_button), height_twindow-55, 5*width_button, 25, "Processing possible values")
   
   --affichage legendes + 2 premières lignes de table_data
   --table legendes
