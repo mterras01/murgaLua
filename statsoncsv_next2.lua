@@ -822,10 +822,13 @@ function disp_sample2()
   
   Fl:check()
   twindow:show()
-end  --end function                  
+end  --end function
+
+function query_fct()
+end  --end function
 
 function disp_sample3()
- --GUI selecting fields to be analysed
+ --GUI : selecting fields with criteria to be analysed
   local i,j,k,cx,cy
   local st,st1,st2,st3
   local cell1=nil
@@ -834,10 +837,7 @@ function disp_sample3()
   local histo={}
   local valselect={}
   local co=#new_legend
-  --local table_stats={"NB VAL","MIN","MAX","MOY","MED","VAR","SIGMA"} --legendes abregees pour les stats
-  --local table_stats_ib={"Nb de valeurs distinctes","Valeur minimale","Valeur maximale","Moyenne","Médiane","Variance","Ecart-type"} --legendes completes (infobulle) pour les stats
-  --local table_stats_val={}
-  local axis1,axis2,context1={},{},{}
+  local axis1,axis2,context1
   local spe_chart=nil
 
   if f_downsize ~= 1 then
@@ -1006,10 +1006,12 @@ cy = (i+1)*height_button
          cell1:tooltip( st2 )
          table.insert(valselect, fltk:Fl_Choice((4*width_button), ((11+j)*height_button), width_button, height_button) )
          valselect[#valselect]:labelfont( fltk.FL_SCREEN )
+         valselect[#valselect]:add(" ")
 	     valselect[#valselect]:deactivate()
       end	
 
-  end
+  end --end for j
+
   --cross-table visual query (chart)
   --left-most button "values" (no callback, just displaying purpose)
   cx=0
@@ -1021,37 +1023,37 @@ cy = (i+1)*height_button
   cell1:labelfont( fltk.FL_SCREEN )
   st = "For each = one histogram charts for each value of selected column // For all = one only aggregated histogram charts for all values (no selected column)"
   cell1:tooltip( st )
-  table.insert(context1, fltk:Fl_Choice(cx+(2*width_button), (cy+height_button), width_button, height_button) )
+  --table.insert(context1, fltk:Fl_Choice(cx+(2*width_button), (cy+height_button), width_button, height_button) )
+  context1 = fltk:Fl_Choice(cx+(2*width_button), (cy+height_button), width_button, height_button)
   st = "Histogram chart for each possible value of this column (agregated for all values if no selection). Number of possible values = nb of charts"
-  context1[#context1]:tooltip( st )
-  context1[#context1]:add( " " ) --adding empty string = "no selection option"
+  context1:tooltip( st )
+  context1:add( " " ) --adding empty string = "no selection option"
   for k=1,#new_legend do
        if #cat_values[k] ~= 0 then
-          context1[#context1]:add( new_legend[k] )
+          context1:add( new_legend[k] )
        end
   end
+
 
   cell1= fltk:Fl_Button(cx+width_button, cy+height_button, width_button, height_button)
   cell1:labelfont( fltk.FL_SCREEN )
   cell1:box(fltk.FL_DOWN_BOX)
   --set 1st dim of table
-  table.insert(axis1, fltk:Fl_Choice(cx, (cy+height_button), width_button, height_button) )
+  --table.insert(axis1, fltk:Fl_Choice(cx, (cy+height_button), width_button, height_button) )
+  axis1 = fltk:Fl_Choice(cx, (cy+height_button), width_button, height_button)
   st = "Set a field for the Y-axis of chart"
-  axis1[#axis1]:tooltip( st )
+  axis1:tooltip( st )
   for k=1,#new_legend do
-       --if #cat_values[k] ~= 0 then
-          axis1[#axis1]:add( new_legend[k] )
-       --end
+        axis1:add( new_legend[k] )
   end
   --set 2nd dim of table
   cx=width_button
-  table.insert(axis2, fltk:Fl_Choice(cx, cy, width_button, height_button) )
+  --table.insert(axis2, fltk:Fl_Choice(cx, cy, width_button, height_button) )
+  axis2 = fltk:Fl_Choice(cx, cy, width_button, height_button)
   st = "Set a field for the X-axis of chart"
-  axis2[#axis2]:tooltip( st )
+  axis2:tooltip( st )
   for k=1,#new_legend do
-       --if #cat_values[k] ~= 0 then
-          axis2[#axis2]:add( new_legend[k] )
-       --end
+        axis2:add( new_legend[k] )
   end
   --set main callback for specialized charts
   cx=0
@@ -1059,6 +1061,49 @@ cy = (i+1)*height_button
   spe_chart= fltk:Fl_Button(cx, cy+(2*height_button), width_button, height_button, "Launch query" )
   spe_chart:labelfont( fltk.FL_SCREEN )
   spe_chart:tooltip( st )
+  spe_chart:callback(function (query_launch)
+        local i, msg
+        local ax1, ax2, c1=axis1:text(), axis2:text(), context1:text()
+--debugging block
+        print("axis1:text() = " .. axis1:text() .. "\naxis2:text() = " .. axis2:text() )
+        if context1:text() then
+           print("context1:text()=" .. context1:text())
+        else
+           print("context1:text()= none")
+        end
+        for i=1,#new_legend do
+             if valselect[i]:text() then
+                 print("valselect[" .. i .. "]:text()=" .. valselect[i]:text())
+             end
+        end
+--end debugging block
+        --1_consistency_checking
+        --rule one
+        if ax1 ~= 0 and ax2 ~= 0 then
+           --ok
+        else
+            --problemo!
+            msg="Both Axis variables must be set to non-nil !!!"
+print(msg)
+fltk:fl_alert(msg)
+            return
+        end
+        --rule two
+        if ax1 ~= ax2 and ax2 ~= c1 and ax1 ~= c1 then
+           --ok           
+        else
+            --problemo!
+            msg="Axis and Context variables have to be distinct !!!"
+print(msg)
+fltk:fl_alert(msg)
+            return
+        end
+        --rule three
+        --consistency ax1, ax2, c1 and valselect[#valselect] ???
+
+        --2_GUI fonction
+        query_fct()
+        end) --end local function
 
   Fl:check()
   uwindow:show()
