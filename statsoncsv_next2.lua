@@ -824,7 +824,119 @@ function disp_sample2()
   twindow:show()
 end  --end function
 
-function query_fct()
+function query_fct(ax1, n_ax1, ax2, n_ax2, context1, valselect)
+  local i,j,k,lc
+  --local a1,a2,c1=ax1, ax2,context1
+  local spe_table={}
+  local keepcr=0 --keep this criteria-friendly cell
+  local keepco=0 --keep this context-friendly cell
+  local indexc=0
+  local indexa1,indexa2,nba1,nba2=0,0,0,0
+  local nb_criterias=0
+  local nb_contexts=0
+  local current_context
+  local str,str2,unit
+  
+  if context1 ~= " " then
+     --one chart per context=per possible value for a single column
+     --find context1 index in new_legend{} and then number of contexts
+     for i=1,#new_legend do
+          if context1 == new_legend[i] then
+              indexc=i
+              break
+          end
+     end
+     nb_contexts = #cat_values[indexc]
+  else
+     --ONE ONLY agregate chart
+     nb_contexts = 1
+  end
+  --find index of ax1 in new_legend
+  for i=1,#new_legend do
+       if ax1 == new_legend[i] then
+          indexa1=i
+          break
+      end
+  end
+  nb_a1 = #cat_values[indexa1]
+  --find index of ax2 in new_legend
+   for i=1,#new_legend do
+        if ax2 == new_legend[i] then
+           indexa2=i
+           break
+        end
+  end
+  nb_a2 = #cat_values[indexa2]
+
+  --find number of criteria in valselect
+  for k=1,#valselect do
+        if valselect[k]:text() and valselect[k]:text() ~= " " then
+           nb_criterias=nb_criterias+1
+        end
+  end
+  --GO!
+  --the final result is table described by an histogram with y-axis lines=nb_a1 = #cat_values[indexa1]
+  --and ONE column=some agregate cells of transftable_data
+  for i=1,nb_contexts do --nb of successive charts to draw
+       current_context = cat_values[indexc][i] .. "" --convert to char
+print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "\nCriterias number = " .. nb_criterias)
+
+--reinit table for re-using
+      spe_table=nil
+      spe_table={}
+      for j=1,nb_a1 do
+           table.insert(spe_table, 0)
+      end
+      
+       for j=1,#transftable_data do
+            --lines scan
+            --test context
+            keepco=0
+--print("transftable_data[" .. j .. "][" .. indexc .. "]=" .. transftable_data[j][indexc] .. "(" .. #transftable_data[j][indexc] .. ") // current_context=" .. current_context .. "(" .. #current_context .. ")")
+            if tostring(transftable_data[j][indexc]) == current_context then
+--print("(Context condition) transftable_data[" .. j .. "][" .. indexc .. "]=" .. transftable_data[j][indexc])
+               keepco=1
+            end
+            --test criterias
+            keepcr=0
+            for k=1,#new_legend do
+                 --apply valselect criterias to colums
+                 str=tostring(transftable_data[j][k])
+                 str2=valselect[k]:text()
+                 if str2 and str2 ~= " " then
+                    if str  == str2 then
+                        --keep cell
+                        keepcr=keepcr+1
+print("(Criterias condition) transftable_data[" .. j .. "][" .. k .. "]=" .. valselect[k]:text() .. "// UNIT=" .. transftable_data[j][indexa2] .. "// keepcr=" .. keepcr .. "// keepco=" .. keepco)
+                    end
+                 end
+            end
+            if keepcr == nb_criterias and keepco == nb_contexts then
+               --table.insert(spe_table, transftable_data[j][indexc]) --this does NOT agregate data
+               str=tostring(transftable_data[j][indexa1])
+               unit=tonumber(transftable_data[j][indexa2])
+print("Matching criterias for transftable_data[" .. j .. "][" .. indexa1 .. "] = " .. transftable_data[j][indexa1] .. " // boites=" .. unit)
+               for k=1,nb_a1 do
+                    str2=tostring(cat_values[indexa1][k])
+                    if str == str2 then
+                       spe_table[k] = spe_table[k]+unit
+                    end
+               end
+            end
+       end --end for j (lines)
+--debugging block
+print("Lines= new_legend[" .. indexa1 .. "] = " .. new_legend[indexa1] .. "// Columns= new_legend[" .. indexa2 .. "] = " .. new_legend[indexa2])
+   for j=1, nb_a1 do
+print(j .. ". spe_table[" .. j .. "] = " .. spe_table[j])
+   end
+fltk:fl_alert("Pause!") 
+--end debugging block
+
+--display special histo here
+
+  end --end for i (context)
+
+  
 end  --end function
 
 function disp_sample3()
@@ -1041,7 +1153,7 @@ cy = (i+1)*height_button
   --set 1st dim of table
   --table.insert(axis1, fltk:Fl_Choice(cx, (cy+height_button), width_button, height_button) )
   axis1 = fltk:Fl_Choice(cx, (cy+height_button), width_button, height_button)
-  st = "Set a field for the Y-axis of chart"
+  st = "Set a field for the Y-axis of table/chart"
   axis1:tooltip( st )
   for k=1,#new_legend do
         axis1:add( new_legend[k] )
@@ -1050,7 +1162,7 @@ cy = (i+1)*height_button
   cx=width_button
   --table.insert(axis2, fltk:Fl_Choice(cx, cy, width_button, height_button) )
   axis2 = fltk:Fl_Choice(cx, cy, width_button, height_button)
-  st = "Set a field for the X-axis of chart"
+  st = "Set a field for the X-axis of table/chart. PAY ATTENTION ! This field Has to be SUMABLE and will be handle as a Measure's Unit. If not, displayed values wouldn't make no sense !"
   axis2:tooltip( st )
   for k=1,#new_legend do
         axis2:add( new_legend[k] )
@@ -1102,7 +1214,7 @@ fltk:fl_alert(msg)
         --consistency ax1, ax2, c1 and valselect[#valselect] ???
 
         --2_GUI fonction
-        query_fct()
+        query_fct(ax1, axis1:value(), ax2, axis2:value(), context1:text(), valselect)
         end) --end local function
 
   Fl:check()
@@ -1295,7 +1407,14 @@ function disp_histo(h)
   st = cat_values[h][idxmax]  .. "-" .. occ_values[h][idxmax]
   pie:replace(idxmax, occ_values[h][idxmax], st, 1)
   
-  --pie:show()
+  --change chart type
+  --code to retrive/adjest from murgaLua docs & examples
+  --/home/terras/murgaLua/examples/widgets_demo/script/chart.lua
+
+  --save chart image to file
+  --code to retrieve from murgaLua docs & examples
+  --/home/terras/murgaLua/examples/new/readImageTest.lua
+
   Fl:check()
   pwindow:show()
 end --end function
