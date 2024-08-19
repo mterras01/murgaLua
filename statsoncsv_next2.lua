@@ -824,14 +824,13 @@ function disp_sample2()
   twindow:show()
 end  --end function
 
-function query_fct(ax1, n_ax1, ax2, n_ax2, context1, valselect)
-  local i,j,k,lc
-  --local a1,a2,c1=ax1, ax2,context1
+function query_fct(ax1, ax2, context1, valse)
+  local i,j,k
   local spe_table={}
   local keepcr=0 --keep this criteria-friendly cell
   local keepco=0 --keep this context-friendly cell
   local indexc=0
-  local indexa1,indexa2,nba1,nba2=0,0,0,0
+  local indexa1,indexa2=0,0
   local nb_criterias=0
   local nb_contexts=0
   local current_context
@@ -842,7 +841,7 @@ function query_fct(ax1, n_ax1, ax2, n_ax2, context1, valselect)
      --find context1 index in new_legend{} and then number of contexts
      for i=1,#new_legend do
           if context1 == new_legend[i] then
-              indexc=i
+              indexc=i --context1 is the label, indexc is the context's index in table "new_legend" = the number of the column to read in table "transftable_data"
               break
           end
      end
@@ -855,6 +854,7 @@ function query_fct(ax1, n_ax1, ax2, n_ax2, context1, valselect)
   for i=1,#new_legend do
        if ax1 == new_legend[i] then
           indexa1=i
+print("Criteria nb 1 = " .. ax1 .. "// index new_legend = " .. indexa1)
           break
       end
   end
@@ -863,23 +863,23 @@ function query_fct(ax1, n_ax1, ax2, n_ax2, context1, valselect)
    for i=1,#new_legend do
         if ax2 == new_legend[i] then
            indexa2=i
+print("Criteria nb 2 = " .. ax2 .. "// index new_legend = " .. indexa2)
            break
         end
   end
   nb_a2 = #cat_values[indexa2]
-
   --find number of criteria in valselect
-  for k=1,#valselect do
-        if valselect[k]:text() and valselect[k]:text() ~= " " then
-           nb_criterias=nb_criterias+1
-        end
-  end
-  --GO!
-  --the final result is table described by an histogram with y-axis lines=nb_a1 = #cat_values[indexa1]
+   for k=1,#valse do
+         if valse[k] ~= " " then
+            nb_criterias=nb_criterias+1
+         end
+   end
+   
+  --GO! the final result is table described by an histogram with y-axis lines=nb_a1 = #cat_values[indexa1]
   --and ONE column=some agregate cells of transftable_data
   for i=1,nb_contexts do --nb of successive charts to draw
-       current_context = cat_values[indexc][i] .. "" --convert to char
-print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "\nCriterias number = " .. nb_criterias)
+       current_context = tostring(cat_values[indexc][i]) --convert to char
+print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "// nb contexts=" .. nb_contexts .. "\nCriterias number = " .. nb_criterias)
 
 --reinit table for re-using
       spe_table=nil
@@ -892,38 +892,41 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
             --lines scan
             --test context
             keepco=0
---print("transftable_data[" .. j .. "][" .. indexc .. "]=" .. transftable_data[j][indexc] .. "(" .. #transftable_data[j][indexc] .. ") // current_context=" .. current_context .. "(" .. #current_context .. ")")
+          if nb_contexts>1 then
             if tostring(transftable_data[j][indexc]) == current_context then
---print("(Context condition) transftable_data[" .. j .. "][" .. indexc .. "]=" .. transftable_data[j][indexc])
                keepco=1
-            end
-            --test criterias
-            keepcr=0
-            for k=1,#new_legend do
-                 --apply valselect criterias to colums
-                 str=tostring(transftable_data[j][k])
-                 str2=valselect[k]:text()
-                 if str2 and str2 ~= " " then
-                    if str  == str2 then
-                        --keep cell
-                        keepcr=keepcr+1
-print("(Criterias condition) transftable_data[" .. j .. "][" .. k .. "]=" .. valselect[k]:text() .. "// UNIT=" .. transftable_data[j][indexa2] .. "// keepcr=" .. keepcr .. "// keepco=" .. keepco)
-                    end
-                 end
-            end
-            if keepcr == nb_criterias and keepco == nb_contexts then
-               --table.insert(spe_table, transftable_data[j][indexc]) --this does NOT agregate data
-               str=tostring(transftable_data[j][indexa1])
-               unit=tonumber(transftable_data[j][indexa2])
-print("Matching criterias for transftable_data[" .. j .. "][" .. indexa1 .. "] = " .. transftable_data[j][indexa1] .. " // boites=" .. unit)
-               for k=1,nb_a1 do
-                    str2=tostring(cat_values[indexa1][k])
+               --test criterias
+               keepcr=0
+               --for k=1,#new_legend do
+               for k=1,#valse do
+                    --apply valse criterias to colums
+                    str=tostring(transftable_data[j][k])
+                    str2=valse[k]
                     if str == str2 then
-                       spe_table[k] = spe_table[k]+unit
+                       --keep cell
+                       keepcr=keepcr+1
+--print("(Criterias condition) transftable_data[" .. j .. "][" .. k .. "]=" .. valse[k] .. "// UNIT=" .. transftable_data[j][indexa2] .. "// keepcr=" .. keepcr .. "// keepco=" .. keepco)
                     end
+               end --end for k
+               if keepcr == nb_criterias then
+                  str=tostring(transftable_data[j][indexa1])
+                  unit=tonumber(transftable_data[j][indexa2])
+--print("Matching criterias for transftable_data[" .. j .. "][" .. indexa1 .. "] = " .. transftable_data[j][indexa1] .. " // boites=" .. unit)
+                  for k=1,nb_a1 do
+                       str2=tostring(cat_values[indexa1][k])
+                       if str == str2 then
+                          spe_table[k] = spe_table[k]+unit
+                       end
+                  end
                end
-            end
+            end --end if keeopco==1
+         else
+            --ONE context=hyper-agregate & specialized histogram
+         end --end if nb_contexts>1
        end --end for j (lines)
+--validating function code results with CALC & SOMMEPROD()
+
+--display special histo here
 --debugging block
 print("Lines= new_legend[" .. indexa1 .. "] = " .. new_legend[indexa1] .. "// Columns= new_legend[" .. indexa2 .. "] = " .. new_legend[indexa2])
    for j=1, nb_a1 do
@@ -932,11 +935,7 @@ print(j .. ". spe_table[" .. j .. "] = " .. spe_table[j])
 fltk:fl_alert("Pause!") 
 --end debugging block
 
---display special histo here
-
   end --end for i (context)
-
-  
 end  --end function
 
 function disp_sample3()
@@ -951,6 +950,7 @@ function disp_sample3()
   local co=#new_legend
   local axis1,axis2,context1
   local spe_chart=nil
+  local valse={}
 
   if f_downsize ~= 1 then
      return
@@ -1151,7 +1151,6 @@ cy = (i+1)*height_button
   cell1:labelfont( fltk.FL_SCREEN )
   cell1:box(fltk.FL_DOWN_BOX)
   --set 1st dim of table
-  --table.insert(axis1, fltk:Fl_Choice(cx, (cy+height_button), width_button, height_button) )
   axis1 = fltk:Fl_Choice(cx, (cy+height_button), width_button, height_button)
   st = "Set a field for the Y-axis of table/chart"
   axis1:tooltip( st )
@@ -1160,7 +1159,6 @@ cy = (i+1)*height_button
   end
   --set 2nd dim of table
   cx=width_button
-  --table.insert(axis2, fltk:Fl_Choice(cx, cy, width_button, height_button) )
   axis2 = fltk:Fl_Choice(cx, cy, width_button, height_button)
   st = "Set a field for the X-axis of table/chart. PAY ATTENTION ! This field Has to be SUMABLE and will be handle as a Measure's Unit. If not, displayed values wouldn't make no sense !"
   axis2:tooltip( st )
@@ -1173,6 +1171,7 @@ cy = (i+1)*height_button
   spe_chart= fltk:Fl_Button(cx, cy+(2*height_button), width_button, height_button, "Launch query" )
   spe_chart:labelfont( fltk.FL_SCREEN )
   spe_chart:tooltip( st )
+  spe_chart:color(12)
   spe_chart:callback(function (query_launch)
         local i, msg
         local ax1, ax2, c1=axis1:text(), axis2:text(), context1:text()
@@ -1214,7 +1213,17 @@ fltk:fl_alert(msg)
         --consistency ax1, ax2, c1 and valselect[#valselect] ???
 
         --2_GUI fonction
-        query_fct(ax1, axis1:value(), ax2, axis2:value(), context1:text(), valselect)
+        --valse{} is related to table of Fl_Choice
+        --for i=1,#valselect do
+        for i=1,#new_legend do
+             if valselect[i]:text() then
+                table.insert(valse, valselect[i]:text() )
+             else
+                table.insert(valse, " ")
+             end   
+        end
+        --query_fct(ax1, axis1:value(), ax2, axis2:value(), context1:text(), valselect)
+        query_fct(ax1, ax2, c1, valse)
         end) --end local function
 
   Fl:check()
