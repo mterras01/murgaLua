@@ -849,6 +849,7 @@ function query_fct(ax1, ax2, context1, valse)
   else
      --ONE ONLY agregate chart
      nb_contexts = 1
+     indexc=1 --factice value
   end
   --find index of ax1 in new_legend
   for i=1,#new_legend do
@@ -879,7 +880,7 @@ print("Criteria nb 2 = " .. ax2 .. "// index new_legend = " .. indexa2)
   --and ONE column=some agregate cells of transftable_data
   for i=1,nb_contexts do --nb of successive charts to draw
        current_context = tostring(cat_values[indexc][i]) --convert to char
-print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "// nb contexts=" .. nb_contexts .. "\nCriterias number = " .. nb_criterias)
+--print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "// nb contexts=" .. nb_contexts .. "\nCriterias number = " .. nb_criterias)
 
 --reinit table for re-using
       spe_table=nil
@@ -903,7 +904,7 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
                     str=tostring(transftable_data[j][k])
                     str2=valse[k]
                     if str == str2 then
-                       --keep cell
+                       --keep line / this cell
                        keepcr=keepcr+1
 --print("(Criterias condition) transftable_data[" .. j .. "][" .. k .. "]=" .. valse[k] .. "// UNIT=" .. transftable_data[j][indexa2] .. "// keepcr=" .. keepcr .. "// keepco=" .. keepco)
                     end
@@ -920,8 +921,27 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
                   end
                end
             end --end if keeopco==1
-         else
-            --ONE context=hyper-agregate & specialized histogram
+         else  --ONE context=hyper-agregate & specialized histogram
+            keepcr=0
+            for k=1,#valse do
+                 --apply valse criterias to colums
+                 str=tostring(transftable_data[j][k])
+                 str2=valse[k]
+                 if str == str2 then
+                    --keep line / this cell
+                    keepcr=keepcr+1
+                 end
+            end --end for k
+            if keepcr == nb_criterias then
+               str=tostring(transftable_data[j][indexa1])
+               unit=tonumber(transftable_data[j][indexa2])
+               for k=1,nb_a1 do
+                    str2=tostring(cat_values[indexa1][k])
+                    if str == str2 then
+                       spe_table[k] = spe_table[k]+unit
+                    end
+               end
+            end
          end --end if nb_contexts>1
        end --end for j (lines)
 --validating function code results with CALC & SOMMEPROD()
@@ -1181,6 +1201,7 @@ cy = (i+1)*height_button
            print("context1:text()=" .. context1:text())
         else
            print("context1:text()= none")
+           c1=" "
         end
         for i=1,#new_legend do
              if valselect[i]:text() then
@@ -1214,7 +1235,6 @@ fltk:fl_alert(msg)
 
         --2_GUI fonction
         --valse{} is related to table of Fl_Choice
-        --for i=1,#valselect do
         for i=1,#new_legend do
              if valselect[i]:text() then
                 table.insert(valse, valselect[i]:text() )
@@ -1222,7 +1242,6 @@ fltk:fl_alert(msg)
                 table.insert(valse, " ")
              end   
         end
-        --query_fct(ax1, axis1:value(), ax2, axis2:value(), context1:text(), valselect)
         query_fct(ax1, ax2, c1, valse)
         end) --end local function
 
