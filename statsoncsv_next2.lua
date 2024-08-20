@@ -835,7 +835,7 @@ local st=""
  local width_button = 160
  local dec_button = 0
  local i,j,k
- local maxv=0
+ local maxv=-1
  local minv=9999999
  local idxmax,idxmin
  
@@ -1038,7 +1038,7 @@ print("Criteria nb 2 = " .. ax2 .. "// index new_legend = " .. indexa2)
 
 --display special histo here
 --debugging block
-print("Lines= new_legend[" .. indexa1 .. "] = " .. new_legend[indexa1] .. "// Columns= new_legend[" .. indexa2 .. "] = " .. new_legend[indexa2])
+--print("Lines= new_legend[" .. indexa1 .. "] = " .. new_legend[indexa1] .. "// Columns= new_legend[" .. indexa2 .. "] = " .. new_legend[indexa2])
 --   for j=1, nb_a1 do
 --print(j .. ". spe_table[" .. j .. "] = " .. spe_table[j])
 --   end
@@ -1287,18 +1287,18 @@ cy = (i+1)*height_button
         local i, msg
         local ax1, ax2, c1=axis1:text(), axis2:text(), context1:text()
 --debugging block
-        print("axis1:text() = " .. axis1:text() .. "\naxis2:text() = " .. axis2:text() )
-        if context1:text() then
-           print("context1:text()=" .. context1:text())
-        else
-           print("context1:text()= none")
-           c1=" "
-        end
-        for i=1,#new_legend do
-             if valselect[i]:text() then
-                 print("valselect[" .. i .. "]:text()=" .. valselect[i]:text())
-             end
-        end
+--         print("axis1:text() = " .. axis1:text() .. "\naxis2:text() = " .. axis2:text() )
+--         if context1:text() then
+--            print("context1:text()=" .. context1:text())
+--         else
+--            print("context1:text()= none")
+--            c1=" "
+--         end
+--         for i=1,#new_legend do
+--              if valselect[i]:text() then
+--                  print("valselect[" .. i .. "]:text()=" .. valselect[i]:text())
+--              end
+--         end
 --end debugging block
         --1_consistency_checking
         --rule one
