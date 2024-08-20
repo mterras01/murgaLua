@@ -822,7 +822,98 @@ function disp_sample2()
   
   Fl:check()
   twindow:show()
-end  --end function
+end --end function
+
+function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table)
+local st=""
+ local decx_chart   = 20
+ local decy_chart   = 0
+ local width_chart  = 450
+ local height_chart = 450
+ local width_pwindow = 500
+ local height_pwindow = 500
+ local width_button = 160
+ local dec_button = 0
+ local i,j,k
+ local maxv=0
+ local minv=9999999
+ local idxmax,idxmin
+ 
+ --how to save image contents of the chart window (needs to be tested) ?
+-- fl_begin_offscreen(offs)
+-- data = fl_read_image(uchar *p, int X, int Y, int W, int H, int alpha = 0)
+-- fl_end_offscreen()
+-- png_write(data, ...) => this function does not exist in all version
+
+  type_graphics=4
+  --GUI for histogram chart
+  if pwindow then
+     pwindow:hide()
+     pwindow:clear()
+  end
+  st = "Specialized Histogram " .. context1
+  if current_context then
+     st = st .. " =" .. current_context
+  end
+  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, st)
+  
+  --centrage du bouton en bas de la fenetre pwindow
+  width_button = 100
+  quit = fltk:Fl_Button(dec_button+10, height_pwindow-30, width_button, 25, "Quit")
+  quit:tooltip("Quit")
+  quit:callback(quit_callbackapp)
+  --chart
+  pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
+  pie:position(decx_chart, decy_chart+20)
+  pie:size(width_chart, height_chart)
+  st = ax1 .. " // " .. ax2 .. "(" .. context1 .. " =" .. current_context .. ")"
+  pie:label(st)
+  --pie:type( type_chart[type_graphics] )
+  pie:type( fltk.FL_HORBAR_CHART )
+  --pie:box(1)
+  pie:box(fltk.FL_SHADOW_BOX)
+  pie:labelcolor(0)
+  pie:autosize(1)
+  
+  for i=1,#spe_table do
+      if spe_table[i] > maxv then
+         maxv = spe_table[i]
+         idxmax=i
+      end
+      if spe_table[i] < minv then
+         minv = spe_table[i]
+         idxmin=i
+      end
+      if #spe_table>=15 then --managing display according to nb of cars
+         j = math.floor(#spe_table/10)
+         if (i % j) == 0 then
+            st = cat_values[indexa1][i]  .. "-" .. spe_table[i]
+         else
+            st = ""
+         end
+         color=4
+      else
+         st = cat_values[indexa1][i]  .. "-" .. spe_table[i]
+         color=4
+      end
+      pie:add(spe_table[i], st, color)
+  end
+     st = cat_values[indexa1][idxmin]  .. "-" .. spe_table[idxmin]
+     pie:replace(idxmin, spe_table[idxmin], st, 2)
+     st = cat_values[indexa1][idxmax]  .. "-" .. spe_table[idxmax]
+     pie:replace(idxmax, spe_table[idxmax], st, 1)
+  
+  --change chart type
+  --code to retrieve/adjest from murgaLua docs & examples
+  --/home/terras/murgaLua/examples/widgets_demo/script/chart.lua
+
+  --save chart image to file
+  --code to retrieve from murgaLua docs & examples
+  --/home/terras/murgaLua/examples/new/readImageTest.lua
+
+  Fl:check()
+  pwindow:show()
+end --end function
 
 function query_fct(ax1, ax2, context1, valse)
   local i,j,k
@@ -906,7 +997,6 @@ print("Criteria nb 2 = " .. ax2 .. "// index new_legend = " .. indexa2)
                     if str == str2 then
                        --keep line / this cell
                        keepcr=keepcr+1
---print("(Criterias condition) transftable_data[" .. j .. "][" .. k .. "]=" .. valse[k] .. "// UNIT=" .. transftable_data[j][indexa2] .. "// keepcr=" .. keepcr .. "// keepco=" .. keepco)
                     end
                end --end for k
                if keepcr == nb_criterias then
@@ -944,16 +1034,17 @@ print("Criteria nb 2 = " .. ax2 .. "// index new_legend = " .. indexa2)
             end
          end --end if nb_contexts>1
        end --end for j (lines)
---validating function code results with CALC & SOMMEPROD()
+--results of this function have been validated with with LibreOfficeCALC & some SOMMEPROD()
 
 --display special histo here
 --debugging block
 print("Lines= new_legend[" .. indexa1 .. "] = " .. new_legend[indexa1] .. "// Columns= new_legend[" .. indexa2 .. "] = " .. new_legend[indexa2])
-   for j=1, nb_a1 do
-print(j .. ". spe_table[" .. j .. "] = " .. spe_table[j])
-   end
-fltk:fl_alert("Pause!") 
+--   for j=1, nb_a1 do
+--print(j .. ". spe_table[" .. j .. "] = " .. spe_table[j])
+--   end
 --end debugging block
+  disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table)
+  fltk:fl_alert("Pause!") 
 
   end --end for i (context)
 end  --end function
@@ -1465,12 +1556,12 @@ end --end function
  print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo())
 
  preopen_csv_file(filename)
- st="Pre-Ouverture Ok !\nColonnes = " .. #table_data .. "\nLignes (echantillon)= " .. #table_data[3]
+ st="Pre-Opening Ok !\nColumns = " .. #table_data .. "\nLines (sample)= " .. #table_data[3]
 print(st)
  --fltk:fl_alert(st)
  disp_sample2()
 
- print("Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
+ print("Processing in " .. os.difftime(os.time(), t00) .. " seconds, ie  " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, ie " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " hours")
 
   --print("Free RAM by collectgarbage(\"count\") = " .. collectgarbage("count"))
   print("RAM used AFTER opData by  gcinfo() = " .. gcinfo())
@@ -1479,5 +1570,3 @@ print(st)
 
 Fl:check()
 Fl:run()
---console correlations stats after "quitting" GUI
---disp_corr_txt()
