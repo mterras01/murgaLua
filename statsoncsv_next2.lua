@@ -851,9 +851,17 @@ local st=""
      pwindow:hide()
      pwindow:clear()
   end
-  st = "Specialized Histogram " .. context1
-  if current_context then
-     st = st .. " =" .. current_context
+  if context1 then
+     if context1 ~= " " then
+        st = "Specialized Histogram " .. context1
+        if current_context then
+           st = st .. " =" .. current_context
+        end
+     else 
+        st = "Specialized Histogram (no context)"
+     end
+  else
+     st = "Specialized Histogram (no context)"
   end
   pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, st)
   
@@ -866,7 +874,11 @@ local st=""
   pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
   pie:position(decx_chart, decy_chart+20)
   pie:size(width_chart, height_chart)
-  st = ax1 .. " // " .. ax2 .. "(" .. context1 .. " =" .. current_context .. ")"
+  if context1 then
+     st = ax1 .. " // " .. ax2 .. "(" .. context1 .. " =" .. current_context .. ")"
+  else
+     st = ax1 .. " // " .. ax2 .. "(no context)"
+  end
   pie:label(st)
   --pie:type( type_chart[type_graphics] )
   pie:type( fltk.FL_HORBAR_CHART )
@@ -915,13 +927,13 @@ local st=""
   pwindow:show()
 end --end function
 
-function query_fct(ax1, ax2, context1, valse)
+function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
   local i,j,k
   local spe_table={}
   local keepcr=0 --keep this criteria-friendly cell
   local keepco=0 --keep this context-friendly cell
   local indexc=0
-  local indexa1,indexa2=0,0
+  --local indexa1,indexa2=0,0
   local nb_criterias=0
   local nb_contexts=0
   local current_context
@@ -929,36 +941,19 @@ function query_fct(ax1, ax2, context1, valse)
   
   if context1 ~= " " then
      --one chart per context=per possible value for a single column
-     --find context1 index in new_legend{} and then number of contexts
-     for i=1,#new_legend do
-          if context1 == new_legend[i] then
-              indexc=i --context1 is the label, indexc is the context's index in table "new_legend" = the number of the column to read in table "transftable_data"
-              break
-          end
-     end
-     nb_contexts = #cat_values[indexc]
+     indexc=indexc1
+     if indexc then
+        nb_contexts = #cat_values[indexc]
+     else
+        nb_contexts = 1
+        indexc=1 --factice value
+     end   
   else
      --ONE ONLY agregate chart
      nb_contexts = 1
      indexc=1 --factice value
   end
-  --find index of ax1 in new_legend
-  for i=1,#new_legend do
-       if ax1 == new_legend[i] then
-          indexa1=i
-print("Criteria nb 1 = " .. ax1 .. "// index new_legend = " .. indexa1)
-          break
-      end
-  end
   nb_a1 = #cat_values[indexa1]
-  --find index of ax2 in new_legend
-   for i=1,#new_legend do
-        if ax2 == new_legend[i] then
-           indexa2=i
-print("Criteria nb 2 = " .. ax2 .. "// index new_legend = " .. indexa2)
-           break
-        end
-  end
   nb_a2 = #cat_values[indexa2]
   --find number of criteria in valselect
    for k=1,#valse do
@@ -1285,7 +1280,8 @@ cy = (i+1)*height_button
   spe_chart:color(12)
   spe_chart:callback(function (query_launch)
         local i, msg
-        local ax1, ax2, c1=axis1:text(), axis2:text(), context1:text()
+        local ax1, ax2, c1=axis1:text(), axis2:text(), context1:text()  
+        local indexa1,indexa2,indexc1
 --debugging block
 --         print("axis1:text() = " .. axis1:text() .. "\naxis2:text() = " .. axis2:text() )
 --         if context1:text() then
@@ -1322,9 +1318,48 @@ fltk:fl_alert(msg)
             return
         end
         --rule three
-        --consistency ax1, ax2, c1 and valselect[#valselect] ???
-
-        --2_GUI fonction
+        --axis2 variable's type MUST BE "number" AND with a number of possible values displayable (<100)
+        --find index of ax2 in new_legend
+        for i=1,#new_legend do
+             if ax2 == new_legend[i] then
+                indexa2=i
+print("Criteria nb 2 = " .. ax2 .. "// index new_legend = " .. indexa2)
+                break
+             end
+        end
+        if type_new_data[indexa2] == "number" then
+           --ok
+print("Criteria nb 2 : type value= " .. type_new_data[indexa2] )
+        else
+--problemo!
+           msg="Axis2 variable is not a number (REQUIRED) !!!"
+print(msg)
+fltk:fl_alert(msg)
+           return
+        end
+        --2 compute index of other sent variables
+        --find index of ax1 in new_legend
+        for i=1,#new_legend do
+              if ax1 == new_legend[i] then
+                 indexa1=i
+print("Criteria nb 1 = " .. ax1 .. "// index new_legend = " .. indexa1)
+                 break
+              end
+        end       
+        --find context1 index in new_legend{} and then number of contexts
+        for i=1,#new_legend do
+             if context1 == new_legend[i] then
+                indexc1=i --context1 is the label, indexc is the context's index in table "new_legend" = the number of the column to read in table "transftable_data"
+                break
+             end
+        end
+        if indexc1 then
+print("Context1 = " .. c1 .. "// index new_legend = " .. indexc1)
+        else
+print("Context1 = none")
+        end
+        
+        --3_GUI fonction
         --valse{} is related to table of Fl_Choice
         for i=1,#new_legend do
              if valselect[i]:text() then
@@ -1333,7 +1368,7 @@ fltk:fl_alert(msg)
                 table.insert(valse, " ")
              end   
         end
-        query_fct(ax1, ax2, c1, valse)
+        query_fct(ax1, indexa1, ax2, indexa2, c1, indexc1, valse)
         end) --end local function
 
   Fl:check()
