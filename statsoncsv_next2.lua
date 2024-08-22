@@ -806,9 +806,13 @@ function disp_sample2()
 --area for catching query values
   keyword = fltk:Fl_Input(width_button, (cy+(2*height_button)), (2*width_button), height_button)
   keyword:value("")
+  st="type here keywords (one at a time, one per case, max keywords=5). Presence of -at least- a keyword ensures that line will be selected in downsized file"
+  keyword:tooltip(st)
   keyword:callback(select_val_fct)
 --clear button
   clearbutton = fltk:Fl_Button(width_button, (cy+(3*height_button)), (2*width_button), height_button, "CLEAR ALL" )
+  st="Remove all recorded keywords (in you made a mistake in one, that's the thing to do!)"
+  clearbutton:tooltip(st)
   clearbutton:callback(clear_val_fct)
    cx, cy=0,0
   i=6
