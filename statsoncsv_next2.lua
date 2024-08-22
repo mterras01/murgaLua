@@ -824,6 +824,21 @@ function disp_sample2()
   twindow:show()
 end --end function
 
+--[[
+function read_and_save_Image()
+ 	pwindow:make_current()
+ 	imageString = fltk.fl_read_image(0, 0, width_pwindow, height_pwindow)
+ 	image2 = fltk:Fl_RGB_Image(imageString, width_pwindow, height_pwindow, 3, 0) --
+ 	Fl:check()
+--  fileName = fltk.fl_file_chooser("Save as", "Image Files (*.{xpm,gif,bmp,gif,jpg,png,pnm,xbm})", "test.png", nil)
+ 	fileName = "test.png"
+ 	image2:saveAsPng(fileName)
+	--getting this error
+	--libpng error: Image width or height is zero in IHDR
+    --Abandon (core dumped)
+end
+]]--
+
 function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table)
 local st=""
  local decx_chart   = 20
@@ -838,13 +853,10 @@ local st=""
  local maxv=-1
  local minv=9999999
  local idxmax,idxmin
- 
- --how to save image contents of the chart window (needs to be tested) ?
--- fl_begin_offscreen(offs)
--- data = fl_read_image(uchar *p, int X, int Y, int W, int H, int alpha = 0)
--- fl_end_offscreen()
--- png_write(data, ...) => this function does not exist in all version
+ local nbcriteria=0
 
+  --fltk.fl_register_images() --needed for saving chart image with fct read_and_save_Image()
+  
   type_graphics=4
   --GUI for histogram chart
   if pwindow then
@@ -853,21 +865,18 @@ local st=""
   end
   if context1 then
      if context1 ~= " " then
-        st = "Specialized Histogram " .. context1
-        if current_context then
-           st = st .. " =" .. current_context
-        end
-     else 
-        st = "Specialized Histogram (no context)"
+        st = ax1 .. " // " .. ax2 .. "(" .. context1 .. " =" .. current_context .. ")"
+     else
+        st = ax1 .. " // " .. ax2 .. "(no context)"
      end
   else
-     st = "Specialized Histogram (no context)"
+     st = ax1 .. " // " .. ax2 .. "(no context)"
   end
   pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, st)
   
   --centrage du bouton en bas de la fenetre pwindow
   width_button = 100
-  quit = fltk:Fl_Button(dec_button+10, height_pwindow-30, width_button, 25, "Quit")
+  quit = fltk:Fl_Button(dec_button, height_pwindow-30, 50, 25, "Quit")
   quit:tooltip("Quit")
   quit:callback(quit_callbackapp)
   --chart
@@ -878,6 +887,20 @@ local st=""
      st = ax1 .. " // " .. ax2 .. "(" .. context1 .. " =" .. current_context .. ")"
   else
      st = ax1 .. " // " .. ax2 .. "(no context)"
+  end
+  --have to add in pie lable the optional criteria(s) (if defined)
+  st=""
+  for i=1,#new_legend do
+       if valse[i] ~= " " then
+          st = st .. new_legend[i] .. "=" .. valse[i] ..", "
+          nbcriteria=nbcriteria+1
+          if nbcriteria>3 then
+             st=st .. "\n"
+          end
+       end
+  end
+  if st == "" then
+     st = "No optional criteria"
   end
   pie:label(st)
   --pie:type( type_chart[type_graphics] )
@@ -919,12 +942,12 @@ local st=""
   --code to retrieve/adjest from murgaLua docs & examples
   --/home/terras/murgaLua/examples/widgets_demo/script/chart.lua
 
-  --save chart image to file
-  --code to retrieve from murgaLua docs & examples
-  --/home/terras/murgaLua/examples/new/readImageTest.lua
-
   Fl:check()
   pwindow:show()
+  
+  --save chart image to file
+  --code retrieved from murgaLua docs & examples /home/terras/murgaLua/examples/new/readImageTest.lua
+  --read_and_save_Image()
 end --end function
 
 function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
@@ -938,6 +961,10 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
   local nb_contexts=0
   local current_context
   local str,str2,unit
+  
+  --debug block
+--print("query_fct() => context1 = " .. context1 .. "(#=" .. #context1 .. "// indexc1=" .. indexc1)
+  --end debug block
   
   if context1 ~= " " then
      --one chart per context=per possible value for a single column
@@ -966,7 +993,7 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
   --and ONE column=some agregate cells of transftable_data
   for i=1,nb_contexts do --nb of successive charts to draw
        current_context = tostring(cat_values[indexc][i]) --convert to char
---print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "// nb contexts=" .. nb_contexts .. "\nCriterias number = " .. nb_criterias)
+print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "// nb contexts=" .. nb_contexts .. "\nCriterias number = " .. nb_criterias)
 
 --reinit table for re-using
       spe_table=nil
@@ -1006,7 +1033,7 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
                   end
                end
             end --end if keeopco==1
-         else  --ONE context=hyper-agregate & specialized histogram
+         else  --nb_contexts<=1   ====== ONE context=hyper-agregate & specialized histogram
             keepcr=0
             for k=1,#valse do
                  --apply valse criterias to colums
@@ -1236,12 +1263,10 @@ cy = (i+1)*height_button
   cy = cy+(4*height_button)
   cell1= fltk:Fl_Button(cx, cy, width_button, height_button, "New chart" )
   cell1:labelfont( fltk.FL_SCREEN )
-  --context1 : (for each) XOR (for all)
   cell1= fltk:Fl_Button(cx+(2*width_button), cy, width_button, height_button, "For each/all" )
   cell1:labelfont( fltk.FL_SCREEN )
   st = "For each = one histogram charts for each value of selected column // For all = one only aggregated histogram charts for all values (no selected column)"
   cell1:tooltip( st )
-  --table.insert(context1, fltk:Fl_Choice(cx+(2*width_button), (cy+height_button), width_button, height_button) )
   context1 = fltk:Fl_Choice(cx+(2*width_button), (cy+height_button), width_button, height_button)
   st = "Histogram chart for each possible value of this column (agregated for all values if no selection). Number of possible values = nb of charts"
   context1:tooltip( st )
@@ -1273,6 +1298,20 @@ cy = (i+1)*height_button
   end
   --set main callback for specialized charts
   cx=0
+  st = "Reset ALL query's criterias"
+  cell1= fltk:Fl_Button(cx+width_button, cy+(2*height_button), width_button, height_button, "Reset" )
+  cell1:labelfont( fltk.FL_SCREEN )
+  cell1:tooltip( st )
+  cell1:color(14)
+  cell1:callback(function (reset)
+          local i
+          axis1:value(1)
+          axis2:value(1)
+          context1:value(1)
+          for i=1,#valselect do
+                valselect[i]:value(1)
+          end
+          end) --end local function
   st = "Launch query and get chart(s)"
   spe_chart= fltk:Fl_Button(cx, cy+(2*height_button), width_button, height_button, "Launch query" )
   spe_chart:labelfont( fltk.FL_SCREEN )
@@ -1348,7 +1387,7 @@ print("Criteria nb 1 = " .. ax1 .. "// index new_legend = " .. indexa1)
         end       
         --find context1 index in new_legend{} and then number of contexts
         for i=1,#new_legend do
-             if context1 == new_legend[i] then
+             if c1 == new_legend[i] then
                 indexc1=i --context1 is the label, indexc is the context's index in table "new_legend" = the number of the column to read in table "transftable_data"
                 break
              end
@@ -1368,6 +1407,9 @@ print("Context1 = none")
                 table.insert(valse, " ")
              end   
         end
+--debug block
+--print("fct disp_sample3() => c1=" .. c1 .. "(#=" .. #c1 .. ") // indexc1=" .. indexc1)
+--end debug block
         query_fct(ax1, indexa1, ax2, indexa2, c1, indexc1, valse)
         end) --end local function
 
@@ -1573,6 +1615,7 @@ function disp_histo(h)
   pwindow:show()
 end --end function
 
+ Fl:visual(FL_DOUBLE) --enabling offscreen image reading (and some others things)
  t00=0
  t00 = os.time() --top chrono
  osName="OS=" .. murgaLua.getHostOsName()
