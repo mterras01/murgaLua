@@ -1305,11 +1305,14 @@ cy = (i+1)*height_button
   cell1:color(14)
   cell1:callback(function (reset)
           local i
-          axis1:value(1)
-          axis2:value(1)
-          context1:value(1)
+          axis1:value(0)
+          axis2:value(0)
+          context1:value(0)
           for i=1,#valselect do
-                valselect[i]:value(1)
+                valselect[i]:value(0)
+          end
+          for i=1,#valse do
+                table.remove(valse)
           end
           end) --end local function
   st = "Launch query and get chart(s)"
