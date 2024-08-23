@@ -877,10 +877,9 @@ local st, title="",""
   
   --centrage du bouton en bas de la fenetre pwindow
   width_button = 100
-  quit = fltk:Fl_Button(dec_button, height_pwindow-30, 50, 25, "Next")
-  quit:tooltip("Next chart (if any)")
-  --quit:callback(quit_callbackapp)
-  quit:callback(hide_pwindow)
+  quit = fltk:Fl_Button(dec_button, height_pwindow-30, 50, 25, "Quit")
+  quit:tooltip("Quit or Next chart (if any)")
+  quit:callback(quit_callbackapp)
   --save = fltk:Fl_Button(dec_button+50, height_pwindow-30, 50, 25, "Save")
   --save:tooltip("Save as PNG")
   --save chart image to file, code retrieved from murgaLua docs /murgaLua/examples/new/readImageTest.lua
@@ -909,7 +908,9 @@ local st, title="",""
   if st == "" then
      st = "No optional criteria"
   end
+  st=title .. "\n" .. st
   pie:label(st)
+  pie:labelsize(8)
   --pie:type( type_chart[type_graphics] )
   pie:type( fltk.FL_HORBAR_CHART )
   --pie:box(1)
@@ -953,13 +954,8 @@ local st, title="",""
   timer = murgaLua.createFltkTimer()
   timer:callback(read_and_save_Image)
   pwindow:show()
-  --pwindow:set_modal()
-  timer:doWait(1)
+  timer:doWait(0.3)
   timer=nil
-  while Fl.event_inside(quit) ~= 1 do
-    --nothing, wait
-  end
-  
 end --end function
 
 function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
@@ -1073,7 +1069,7 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
 
   disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table)
   --
-  --fltk:fl_alert("Pause!") -- make a pause in charts displaying
+  fltk:fl_alert("Pause!") -- make a pause in charts displaying
   end --end for i (context)
 end  --end function
 
@@ -1524,13 +1520,6 @@ function quit_t()
      twindow:hide()
      twindow:clear()
      twindow = nil
-  end
-end --end function
-
-function hide_pwindow()
-  if pwindow then
-     pwindow:hide()
-     pwindow:clear()
   end
 end --end function
 
