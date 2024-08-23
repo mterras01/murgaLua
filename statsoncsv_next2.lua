@@ -48,7 +48,9 @@ nb_bytes=0
 total_bytes=0
 f_downsize=0 --flag to declare downsizing done / value=1
 
---interface
+--interface 
+width_pwindow = 500
+height_pwindow = 500
 twindow=nil--window for original table
 pwindow=nil --window for histogram chart
 selbuttons={} --selbuttons[i]:color(2) means "selected field/column", :color(1) means "NOT selected field/column"
@@ -68,8 +70,13 @@ separator = ";"
 type_chart = { fltk.FL_BAR_CHART, fltk.FL_LINE_CHART, fltk.FL_FILLED_CHART, fltk.FL_SPIKE_CHART, fltk.FL_PIE_CHART, fltk.FL_SPECIALPIE_CHART, fltk.FL_HORBAR_CHART}
 label_chart = { "FL_HORBAR_CHART", "FL_LINE_CHART", "FL_FILLED_CHART", "FL_SPIKE_CHART", "FL_PIE_CHART", "FL_SPECIALPIE_CHART", "FL_BAR_CHART" }
 type_graphics = 4
-
+--
 filename=""
+
+--charts images saving
+fltk.fl_register_images() --needed for saving chart image with fct read_and_save_Image()
+image2=nil
+imageString=nil
 
 osName="OS=" .. murgaLua.getHostOsName()
 print(osName)
@@ -828,29 +835,12 @@ function disp_sample2()
   twindow:show()
 end --end function
 
---[[
-function read_and_save_Image()
- 	pwindow:make_current()
- 	imageString = fltk.fl_read_image(0, 0, width_pwindow, height_pwindow)
- 	image2 = fltk:Fl_RGB_Image(imageString, width_pwindow, height_pwindow, 3, 0) --
- 	Fl:check()
---  fileName = fltk.fl_file_chooser("Save as", "Image Files (*.{xpm,gif,bmp,gif,jpg,png,pnm,xbm})", "test.png", nil)
- 	fileName = "test.png"
- 	image2:saveAsPng(fileName)
-	--getting this error
-	--libpng error: Image width or height is zero in IHDR
-    --Abandon (core dumped)
-end
-]]--
-
 function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table)
-local st=""
+local st, title="",""
  local decx_chart   = 20
  local decy_chart   = 0
  local width_chart  = 450
  local height_chart = 450
- local width_pwindow = 500
- local height_pwindow = 500
  local width_button = 160
  local dec_button = 0
  local i,j,k
@@ -858,8 +848,15 @@ local st=""
  local minv=9999999
  local idxmax,idxmin
  local nbcriteria=0
-
-  --fltk.fl_register_images() --needed for saving chart image with fct read_and_save_Image()
+  local function read_and_save_Image()
+   pwindow:make_current()
+   imageString = fltk.fl_read_image(0, 0, width_pwindow, height_pwindow)
+   image2 = fltk:Fl_RGB_Image(imageString, width_pwindow, height_pwindow, 3, 0) --
+   Fl:check()
+   fileName = title .. ".png"
+   image2:saveAsPng(fileName)
+   print(fileName .. " saved as chart's image.")
+   end
   
   type_graphics=4
   --GUI for histogram chart
@@ -869,20 +866,26 @@ local st=""
   end
   if context1 then
      if context1 ~= " " then
-        st = ax1 .. " // " .. ax2 .. "(" .. context1 .. " =" .. current_context .. ")"
+        title = ax2 .. "_per_" .. ax1 .. "_" .. context1 .. "_" .. current_context
      else
-        st = ax1 .. " // " .. ax2 .. "(no context)"
+        title = ax2 .. "_per_" .. ax1 .. "_no_context"
      end
   else
-     st = ax1 .. " // " .. ax2 .. "(no context)"
+     title = ax2 .. "_per_" .. ax1 .. "_no_context"
   end
-  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, st)
+  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, title)
   
   --centrage du bouton en bas de la fenetre pwindow
   width_button = 100
-  quit = fltk:Fl_Button(dec_button, height_pwindow-30, 50, 25, "Quit")
-  quit:tooltip("Quit")
-  quit:callback(quit_callbackapp)
+  quit = fltk:Fl_Button(dec_button, height_pwindow-30, 50, 25, "Next")
+  quit:tooltip("Next chart (if any)")
+  --quit:callback(quit_callbackapp)
+  quit:callback(hide_pwindow)
+  --save = fltk:Fl_Button(dec_button+50, height_pwindow-30, 50, 25, "Save")
+  --save:tooltip("Save as PNG")
+  --save chart image to file, code retrieved from murgaLua docs /murgaLua/examples/new/readImageTest.lua
+  --save:callback(read_and_save_Image)
+
   --chart
   pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
   pie:position(decx_chart, decy_chart+20)
@@ -947,11 +950,16 @@ local st=""
   --/home/terras/murgaLua/examples/widgets_demo/script/chart.lua
 
   Fl:check()
+  timer = murgaLua.createFltkTimer()
+  timer:callback(read_and_save_Image)
   pwindow:show()
+  --pwindow:set_modal()
+  timer:doWait(1)
+  timer=nil
+  while Fl.event_inside(quit) ~= 1 do
+    --nothing, wait
+  end
   
-  --save chart image to file
-  --code retrieved from murgaLua docs & examples /home/terras/murgaLua/examples/new/readImageTest.lua
-  --read_and_save_Image()
 end --end function
 
 function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
@@ -965,6 +973,7 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
   local nb_contexts=0
   local current_context
   local str,str2,unit
+  local title
   
   --debug block
 --print("query_fct() => context1 = " .. context1 .. "(#=" .. #context1 .. "// indexc1=" .. indexc1)
@@ -1062,16 +1071,9 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
        end --end for j (lines)
 --results of this function have been validated with with LibreOfficeCALC & some SOMMEPROD()
 
---display special histo here
---debugging block
---print("Lines= new_legend[" .. indexa1 .. "] = " .. new_legend[indexa1] .. "// Columns= new_legend[" .. indexa2 .. "] = " .. new_legend[indexa2])
---   for j=1, nb_a1 do
---print(j .. ". spe_table[" .. j .. "] = " .. spe_table[j])
---   end
---end debugging block
   disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table)
-  fltk:fl_alert("Pause!") 
-
+  --
+  --fltk:fl_alert("Pause!") -- make a pause in charts displaying
   end --end for i (context)
 end  --end function
 
@@ -1525,6 +1527,13 @@ function quit_t()
   end
 end --end function
 
+function hide_pwindow()
+  if pwindow then
+     pwindow:hide()
+     pwindow:clear()
+  end
+end --end function
+
 function quit_callbackapp()
   if pwindow then
      pwindow:hide()
@@ -1539,8 +1548,6 @@ function disp_histo(h)
  local decy_chart   = 0
  local width_chart  = 450
  local height_chart = 450
- local width_pwindow = 500
- local height_pwindow = 500
  local width_button = 160
  local dec_button = 0
  local i,j,k
