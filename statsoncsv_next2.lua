@@ -884,10 +884,6 @@ local st, title="",""
   quit = fltk:Fl_Button(dec_button, height_pwindow-30, 50, 25, "Quit")
   quit:tooltip("Quit or Next chart (if any)")
   quit:callback(quit_callbackapp)
-  --save = fltk:Fl_Button(dec_button+50, height_pwindow-30, 50, 25, "Save")
-  --save:tooltip("Save as PNG")
-  --save chart image to file, code retrieved from murgaLua docs /murgaLua/examples/new/readImageTest.lua
-  --save:callback(read_and_save_Image)
 
   --chart
   pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
@@ -1560,14 +1556,18 @@ function disp_histo(h)
  local maxv=0
  local minv=9999999
  local idxmax,idxmin
- 
- --how to save image contents of the chart window (needs to be tested) ?
--- fl_begin_offscreen(offs)
--- data = fl_read_image(uchar *p, int X, int Y, int W, int H, int alpha = 0)
--- fl_end_offscreen()
--- png_write(data, ...) => this function does not exist in all version
-
-
+ local timer
+ local sum=0
+ local title=""
+  local function read_and_save_Image()
+   pwindow:make_current()
+   imageString = fltk.fl_read_image(0, 0, width_pwindow, height_pwindow)
+   image2 = fltk:Fl_RGB_Image(imageString, width_pwindow, height_pwindow, 3, 0) --
+   Fl:check()
+   fileName = title .. ".png"
+   image2:saveAsPng(fileName)
+   print(fileName .. " saved as histo-chart's image.")  
+   end 
   type_graphics=4
   --GUI for histogram chart
   if pwindow then
@@ -1617,22 +1617,24 @@ function disp_histo(h)
          color=4
       end
       pie:add(occ_values[h][i], st, color)
+      sum=sum+occ_values[h][i]
   end
   st = cat_values[h][idxmin]  .. "-" .. occ_values[h][idxmin]
   pie:replace(idxmin, occ_values[h][idxmin], st, 2)
   st = cat_values[h][idxmax]  .. "-" .. occ_values[h][idxmax]
   pie:replace(idxmax, occ_values[h][idxmax], st, 1)
   
-  --change chart type
-  --code to retrive/adjest from murgaLua docs & examples
-  --/home/terras/murgaLua/examples/widgets_demo/script/chart.lua
-
-  --save chart image to file
-  --code to retrieve from murgaLua docs & examples
-  --/home/terras/murgaLua/examples/new/readImageTest.lua
-
+  st = "Histo " .. new_legend[ h ] .. "(total occurs=" .. sum .. ")"
+  pie:label(st)
+  pie:labelsize(8)
+  title = "Histo_" .. new_legend[ h ]
+  
   Fl:check()
+  timer = murgaLua.createFltkTimer()
+  timer:callback(read_and_save_Image)
   pwindow:show()
+  
+  timer:doWait(1) --have to wait : chart to be drawn and complete's window content to be shown
 end --end function
 
  t00=0
