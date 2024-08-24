@@ -10,13 +10,6 @@
 --OPEN_MEDIC_2023.CSV  (from SNDS)
 --url = https://open-data-assurance-maladie.ameli.fr/medicaments/download_file2.php?file=Open_MEDIC_Base_Complete/OPEN_MEDIC_2023.zip
 
------including sort of "pre-selection query" on fields with GUI buttons : 
---[[ use 
-       if Fl.event_inside(abutton[i]) == 1 then
-          activate_fct = i
-          break
-       end
-]]--
 
 i=0
 
@@ -724,28 +717,32 @@ function disp_sample2()
   progress_bar:maximum(100)
   progress_bar:minimum(1)
   progress_bar:selection_color(fltk.FL_GREEN)
-  info_button1 = fltk:Fl_Button(10+(2*width_button), height_twindow-55, 5*width_button, 25, "Building new downsized table")
+  info_button1 = fltk:Fl_Box(10+(2*width_button), height_twindow-55, 5*width_button, 25, "Building new downsized table")
+  info_button1:box(fltk.FL_BORDER_BOX)
   
 -- progress bar N2 : build and save csv
   progress_bar2 = fltk:Fl_Progress(10+(7*width_button), height_twindow-30, 5*width_button, 25, "0")
   progress_bar2:maximum(100)
   progress_bar2:minimum(1)
   progress_bar2:selection_color(fltk.FL_GREEN)
-  info_button2 = fltk:Fl_Button(10+(7*width_button), height_twindow-55, 5*width_button, 25, "Saving new downsized CSV")
-
+  info_button2 = fltk:Fl_Box(10+(7*width_button), height_twindow-55, 5*width_button, 25, "Saving new downsized CSV")
+  info_button2:box(fltk.FL_BORDER_BOX)
+  
 -- progress bar N3 : processing possible values for each fields
   progress_bar3 = fltk:Fl_Progress(10+(12*width_button), height_twindow-30, 5*width_button, 25, "0")
   progress_bar3:maximum(100)
   progress_bar3:minimum(1)
   progress_bar3:selection_color(fltk.FL_GREEN)
-  info_button3 = fltk:Fl_Button(10+(12*width_button), height_twindow-55, 5*width_button, 25, "Processing possible values")
+  info_button3 = fltk:Fl_Box(10+(12*width_button), height_twindow-55, 5*width_button, 25, "Processing possible values")
+  info_button3:box(fltk.FL_BORDER_BOX)
   
   --affichage legendes + 2 premières lignes de table_data
   --table legendes
   cx, cy=0,0
-  cell0= fltk:Fl_Button(cx, cy, width_button, height_button, "LAB" )
+  cell0= fltk:Fl_Box(cx, cy, width_button, height_button, "LAB" )
   cell0:labelfont( fltk.FL_SCREEN )
   cell0:tooltip( "Labels of fields" )
+  cell0:box(fltk.FL_BORDER_BOX)
   for j=1,co do
       selval[j]={"","","","",""}
       cy = 0
@@ -754,15 +751,17 @@ function disp_sample2()
       if type(st) == "string" then
          st = sub(st, 1, nb_car)
       end
-      cell0= fltk:Fl_Button(cx, cy, width_button, height_button, st )
+      cell0= fltk:Fl_Box(cx, cy, width_button, height_button, st )
       cell0:labelfont( fltk.FL_SCREEN )
       cell0:tooltip( legend_data[ j ] )
+      cell0:box(fltk.FL_BORDER_BOX)
   end
   --ligne type des donnees
   cx, cy=0,height_button
-  cell0= fltk:Fl_Button(cx, cy, width_button, height_button, "TYP" )
+  cell0= fltk:Fl_Box(cx, cy, width_button, height_button, "TYP" )
   cell0:labelfont( fltk.FL_SCREEN )
   cell0:tooltip( "Data type" )
+  cell0:box(fltk.FL_BORDER_BOX)
   for j=1,co do
       cy = height_button
       cx = j*width_button
@@ -774,10 +773,11 @@ function disp_sample2()
          st="string"
          st2 = "str"
       end
-      cell0= fltk:Fl_Button(cx, cy, width_button, height_button, st2 )
+      cell0= fltk:Fl_Box(cx, cy, width_button, height_button, st2 )
       cell0:labelfont( fltk.FL_SCREEN )
       cell0:color(6) --pale blue
       cell0:tooltip( st )
+      cell0:box(fltk.FL_BORDER_BOX)
   end
 
 --table table_data : echantillon/sample
@@ -788,10 +788,11 @@ function disp_sample2()
       cx = j*width_button
 	  st = table_data[ j ][i]
       st2 = sub((st .. ""), 1, nb_car)
-      cell0=fltk:Fl_Button(cx, cy, width_button, height_button, st2 )
+      cell0=fltk:Fl_Box(cx, cy, width_button, height_button, st2 )
       cell0:labelfont( fltk.FL_SCREEN )
       cell0:color(20)
 	  cell0:tooltip( table_data[ j ][i] )
+	  cell0:box(fltk.FL_BORDER_BOX)
       end 
   end
                                                  
@@ -826,8 +827,9 @@ function disp_sample2()
   for i=1,5 do
   	  cy = (8+i)*height_button
       cx = 5*width_button
-       table.insert(selvalbutton, fltk:Fl_Button(cx, cy, width_button, height_button) )
+       table.insert(selvalbutton, fltk:Fl_Box(cx, cy, width_button, height_button) )
        selvalbutton[#selvalbutton]:label("")
+       selvalbutton[#selvalbutton]:box(fltk.FL_BORDER_BOX)
        selval[i]=""
   end
   
@@ -844,10 +846,12 @@ local st, title="",""
  local width_button = 160
  local dec_button = 0
  local i,j,k
+ local sum=0
  local maxv=-1
  local minv=9999999
  local idxmax,idxmin
  local nbcriteria=0
+ local timer
   local function read_and_save_Image()
    pwindow:make_current()
    imageString = fltk.fl_read_image(0, 0, width_pwindow, height_pwindow)
@@ -855,7 +859,7 @@ local st, title="",""
    Fl:check()
    fileName = title .. ".png"
    image2:saveAsPng(fileName)
-   print(fileName .. " saved as chart's image.")
+   print(fileName .. " saved as chart's image.")  
    end
   
   type_graphics=4
@@ -894,30 +898,14 @@ local st, title="",""
   else
      st = ax1 .. " // " .. ax2 .. "(no context)"
   end
-  --have to add in pie lable the optional criteria(s) (if defined)
-  st=""
-  for i=1,#new_legend do
-       if valse[i] ~= " " then
-          st = st .. new_legend[i] .. "=" .. valse[i] ..", "
-          nbcriteria=nbcriteria+1
-          if nbcriteria>3 then
-             st=st .. "\n"
-          end
-       end
-  end
-  if st == "" then
-     st = "No optional criteria"
-  end
-  st=title .. "\n" .. st
-  pie:label(st)
-  pie:labelsize(8)
+  
   --pie:type( type_chart[type_graphics] )
   pie:type( fltk.FL_HORBAR_CHART )
   --pie:box(1)
   pie:box(fltk.FL_SHADOW_BOX)
   pie:labelcolor(0)
   pie:autosize(1)
-  
+  sum=0
   for i=1,#spe_table do
       if spe_table[i] > maxv then
          maxv = spe_table[i]
@@ -940,22 +928,40 @@ local st, title="",""
          color=4
       end
       pie:add(spe_table[i], st, color)
+      sum=sum+spe_table[i]
   end
-     st = cat_values[indexa1][idxmin]  .. "-" .. spe_table[idxmin]
-     pie:replace(idxmin, spe_table[idxmin], st, 2)
-     st = cat_values[indexa1][idxmax]  .. "-" .. spe_table[idxmax]
-     pie:replace(idxmax, spe_table[idxmax], st, 1)
+  st = cat_values[indexa1][idxmin]  .. "-" .. spe_table[idxmin]
+  pie:replace(idxmin, spe_table[idxmin], st, 2)
+  st = cat_values[indexa1][idxmax]  .. "-" .. spe_table[idxmax]
+  pie:replace(idxmax, spe_table[idxmax], st, 1)
+  
+  --have to add in pie lable the optional criteria(s) (if defined)
+  st=""
+  for i=1,#new_legend do
+       if valse[i] ~= " " then
+          st = st .. new_legend[i] .. "=" .. valse[i] ..", "
+          nbcriteria=nbcriteria+1
+          if nbcriteria>3 then
+             st=st .. "\n"
+          end
+       end
+  end
+  if st == "" then
+     st = "No optional criteria"
+  end
+  st=title .. " (total lines=" .. sum .. ")\n" .. st
+  pie:label(st)
+  pie:labelsize(8)
   
   --change chart type
   --code to retrieve/adjest from murgaLua docs & examples
   --/home/terras/murgaLua/examples/widgets_demo/script/chart.lua
-
   Fl:check()
   timer = murgaLua.createFltkTimer()
   timer:callback(read_and_save_Image)
   pwindow:show()
-  timer:doWait(0.3)
-  timer=nil
+  
+  timer:doWait(1) --have to wait : chart to be drawn and complete's window content to be shown
 end --end function
 
 function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
@@ -969,7 +975,6 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
   local nb_contexts=0
   local current_context
   local str,str2,unit
-  local title
   
   --debug block
 --print("query_fct() => context1 = " .. context1 .. "(#=" .. #context1 .. "// indexc1=" .. indexc1)
@@ -1068,7 +1073,6 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
 --results of this function have been validated with with LibreOfficeCALC & some SOMMEPROD()
 
   disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table)
-  --
   fltk:fl_alert("Pause!") -- make a pause in charts displaying
   end --end for i (context)
 end  --end function
@@ -1121,9 +1125,10 @@ function disp_sample3()
 
   --table legendes
   cx, cy=0,0
-  cell1= fltk:Fl_Button(cx, cy, width_button, height_button, "LABELS" )
+  cell1= fltk:Fl_Box(cx, cy, width_button, height_button, "LABELS" )
   cell1:labelfont( fltk.FL_SCREEN )
   cell1:tooltip( "Field's labels" )
+  cell1:box(fltk.FL_BORDER_BOX)
   for j=1,co do
       selval[j]={"","","","",""}
       cy = 0
@@ -1132,16 +1137,18 @@ function disp_sample3()
       if type(st) == "string" then
          st = sub(st, 1, nb_car)
       end
-      cell1= fltk:Fl_Button(cx, cy, width_button, height_button, st )
+      cell1= fltk:Fl_Box(cx, cy, width_button, height_button, st )
       cell1:labelfont( fltk.FL_SCREEN )
       cell1:tooltip( new_legend[ j ] )
+      cell1:box(fltk.FL_BORDER_BOX)
 --print("new_legend[ " .. j .. " ] = " .. new_legend[ j ])
   end
   --ligne type des donnees
   cx, cy=0,height_button
-  cell1= fltk:Fl_Button(cx, cy, width_button, height_button, "TYPE" )
+  cell1= fltk:Fl_Box(cx, cy, width_button, height_button, "TYPE" )
   cell1:labelfont( fltk.FL_SCREEN )
   cell1:tooltip( "Data type" )
+  cell1:box(fltk.FL_BORDER_BOX)
   for j=1,co do
       cy = height_button
       cx = j*width_button
@@ -1151,16 +1158,18 @@ function disp_sample3()
       else 
          st2 = "str"
       end
-      cell1= fltk:Fl_Button(cx, cy, width_button, height_button, st2 )
+      cell1= fltk:Fl_Box(cx, cy, width_button, height_button, st2 )
       cell1:labelfont( fltk.FL_SCREEN )
       cell1:color(6) --pale blue
       cell1:tooltip( st )
+      cell1:box(fltk.FL_BORDER_BOX)
   end
   
   --left-most button "values" (no callback, just displaying purpose)
   cx,cy=0, (2*height_button)
-  cell1= fltk:Fl_Button(cx, cy, width_button, (5*height_button), "5\nfirst lines\nValues" )
+  cell1= fltk:Fl_Box(cx, cy, width_button, (5*height_button), "5\nfirst lines\nValues" )
   cell1:labelfont( fltk.FL_SCREEN )
+  cell1:box(fltk.FL_BORDER_BOX)
 --table transftable_data : echantillon/sample
   cx, cy=0,0
   for i=1,5 do -- line 1 = legend, data beginning at line 2
@@ -1169,10 +1178,11 @@ function disp_sample3()
       cx = j*width_button
 	  st = transftable_data[ i+1 ][j]
       st2 = sub((st .. ""), 1, nb_car)
-      cell1=fltk:Fl_Button(cx, cy, width_button, height_button, st2 )
+      cell1=fltk:Fl_Box(cx, cy, width_button, height_button, st2 )
       cell1:labelfont( fltk.FL_SCREEN )
       cell1:color(20)
 	  cell1:tooltip( transftable_data[ i+1 ][j] )
+	  cell1:box(fltk.FL_BORDER_BOX)
       end 
   end
   
@@ -1209,9 +1219,10 @@ cy = (i+1)*height_button
          cx=0
          st="Nb values"
          st2="Nb of possible values for this column"
-         cell1=fltk:Fl_Button(cx, cy+height_button, width_button, height_button, st )
+         cell1=fltk:Fl_Box(cx, cy+height_button, width_button, height_button, st )
          cell1:labelfont( fltk.FL_SCREEN )
          cell1:tooltip( st2 )
+         cell1:box(fltk.FL_BORDER_BOX)
       end
       cx = j*width_button
       st = #cat_values[j] .. ""
@@ -1219,6 +1230,7 @@ cy = (i+1)*height_button
       cell1=fltk:Fl_Button(cx, cy+height_button, width_button, height_button, st )
       cell1:labelfont( fltk.FL_SCREEN )
 	  cell1:tooltip( st2 )
+	  cell1:box(fltk.FL_BORDER_BOX)
 	  
       --WHERE GUI version 2
       --now, (conditionnal) displaying a "menu button" handling possible values
@@ -1226,16 +1238,18 @@ cy = (i+1)*height_button
       if j ==1 then
          st="Where"
          st2="Set a possible value (or none) to each column as a restrictive condition to get one or several specialized chart"
-         cell1=fltk:Fl_Button((3*width_button), (11*height_button), width_button, height_button, st )
+         cell1=fltk:Fl_Box((3*width_button), (11*height_button), width_button, height_button, st )
          cell1:labelfont( fltk.FL_SCREEN )
          cell1:tooltip( st2 )
+         cell1:box(fltk.FL_BORDER_BOX)
       end
 
 	  if #cat_values[j] > 0 then
 	     st = new_legend[j] .. " ="
-         cell1=fltk:Fl_Button((3*width_button), ((11+j)*height_button), width_button, height_button, st )
+         cell1=fltk:Fl_Box((3*width_button), ((11+j)*height_button), width_button, height_button, st )
          cell1:labelfont( fltk.FL_SCREEN )
          cell1:tooltip( st2 )
+         cell1:box(fltk.FL_BORDER_BOX)
 	     --st = new_legend[j]
 	     table.insert(valselect, fltk:Fl_Choice((4*width_button), ((11+j)*height_button), width_button, height_button) )
          valselect[#valselect]:labelfont( fltk.FL_SCREEN )
@@ -1248,9 +1262,10 @@ cy = (i+1)*height_button
 	     end
       else
          st = new_legend[j] .. " ="
-         cell1=fltk:Fl_Button((3*width_button), ((11+j)*height_button), width_button, height_button, st )
+         cell1=fltk:Fl_Box((3*width_button), ((11+j)*height_button), width_button, height_button, st )
          cell1:labelfont( fltk.FL_SCREEN )
          cell1:tooltip( st2 )
+         cell1:box(fltk.FL_BORDER_BOX)
          table.insert(valselect, fltk:Fl_Choice((4*width_button), ((11+j)*height_button), width_button, height_button) )
          valselect[#valselect]:labelfont( fltk.FL_SCREEN )
          valselect[#valselect]:add(" ")
@@ -1263,10 +1278,12 @@ cy = (i+1)*height_button
   --left-most button "values" (no callback, just displaying purpose)
   cx=0
   cy = cy+(4*height_button)
-  cell1= fltk:Fl_Button(cx, cy, width_button, height_button, "New chart" )
+  cell1= fltk:Fl_Box(cx, cy, width_button, height_button, "New chart" )
+  cell1:labelfont(fltk.FL_SCREEN )
+  cell1:box(fltk.FL_BORDER_BOX)
+  cell1= fltk:Fl_Box(cx+(2*width_button), cy, width_button, height_button, "For each/all" )
   cell1:labelfont( fltk.FL_SCREEN )
-  cell1= fltk:Fl_Button(cx+(2*width_button), cy, width_button, height_button, "For each/all" )
-  cell1:labelfont( fltk.FL_SCREEN )
+  cell1:box(fltk.FL_BORDER_BOX)
   st = "For each = one histogram charts for each value of selected column // For all = one only aggregated histogram charts for all values (no selected column)"
   cell1:tooltip( st )
   context1 = fltk:Fl_Choice(cx+(2*width_button), (cy+height_button), width_button, height_button)
@@ -1618,7 +1635,6 @@ function disp_histo(h)
   pwindow:show()
 end --end function
 
- Fl:visual(FL_DOUBLE) --enabling offscreen image reading (and some others things)
  t00=0
  t00 = os.time() --top chrono
  osName="OS=" .. murgaLua.getHostOsName()
