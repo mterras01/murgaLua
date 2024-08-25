@@ -370,11 +370,37 @@ end  --end function
 function transform(old_table_data)
   --2 apply filters on selected fields  and on selected values in fields
   local transformed_table_data={}
-  local i
+  local i,st,st1,st2
 
   for i=1,#old_table_data do
        if selcol[i] == 2 then
-          table.insert(transformed_table_data, old_table_data[i])
+          if find(old_table_data[i],".",1,true) and find(old_table_data[i],",",1,true) then
+              --1st stage replace thousand's separator "." with nothing ""
+             st = gsub(old_table_data[i],"[.]","")
+             --2nd stage replace decimal's separator "," with "."
+             st1 = gsub(st,"[,]",".")
+             --third stage convert to number (if number)
+             if tonumber(st1) then
+                st2 = tonumber(st1)
+             else
+                st2 = st1
+             end
+--print(". and , in same field : " .. old_table_data[i] .. ", 1st transform=" .. st .. ", 2nd transform=" .. st1 .. ", sent by transform() = " .. st2)
+             --table.insert(transformed_table_data, old_table_data[i])
+             table.insert(transformed_table_data, st2)
+          elseif find(old_table_data[i],",",1,true) then
+             --1st stage replace comma "," with point "."
+             st = gsub(old_table_data[i],"[,]",".")
+             if tonumber(st) then
+                st2 = tonumber(st)
+             else
+                st2 = st
+             end
+             table.insert(transformed_table_data, st2)
+          else
+             --no conversion needed
+             table.insert(transformed_table_data, old_table_data[i])
+          end
        end
   end
   return( transformed_table_data )
@@ -957,7 +983,7 @@ local st, title="",""
   timer:callback(read_and_save_Image)
   pwindow:show()
   
-  timer:doWait(1) --have to wait : chart to be drawn and complete's window content to be shown
+  timer:doWait(0.2) --have to wait : chart to be drawn and complete's window content to be shown
 end --end function
 
 function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
@@ -1116,6 +1142,7 @@ function disp_sample3()
      uwindow:hide()
      uwindow:clear()
      uwindow = nil
+     os.exit()
   end)
 --print("Fct disp_sample3(), var f_downsize = " .. f_downsize .. "\ncolumns = " .. co .. " // lines #transftable_data = " .. #transftable_data)
 
@@ -1529,7 +1556,6 @@ end --end function
 
 function quit_t()
   if twindow then
-     quit_callbackapp() --close & clear pwindow
      twindow:hide()
      twindow:clear()
      twindow = nil
@@ -1634,7 +1660,7 @@ function disp_histo(h)
   timer:callback(read_and_save_Image)
   pwindow:show()
   
-  timer:doWait(1) --have to wait : chart to be drawn and complete's window content to be shown
+  timer:doWait(0.2) --have to wait : chart to be drawn and complete's window content to be shown
 end --end function
 
  t00=0
