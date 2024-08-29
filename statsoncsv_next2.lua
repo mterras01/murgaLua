@@ -45,7 +45,7 @@ f_downsize=0 --flag to declare downsizing done / value=1
 width_pwindow = 500
 height_pwindow = 500
 twindow=nil--window for original table
-pwindow=nil --window for histogram chart
+pwindow=object --window for histogram chart
 selbuttons={} --selbuttons[i]:color(2) means "selected field/column", :color(1) means "NOT selected field/column"
 selcol={}
 histo={} --histo buttons
@@ -54,6 +54,8 @@ clearbutton=nil
 selvalbutton={}
 selval={"","","","",""} --values related to cols of table_data, used to query on original table and make a downsizing
 selval_select={}
+title="" --title of pwindow, special histogram-chart
+pie=nil --charts
 
 --tampons d'écriture pour les fichiers texte et csv de sauvegarde
 --csv_buffer = "" -- local
@@ -67,7 +69,7 @@ type_graphics = 4
 filename=""
 
 --charts images saving
-fltk.fl_register_images() --needed for saving chart image with fct read_and_save_Image()
+fltk.fl_register_images() --needed for saving chart image with fct read_Image()
 image2=nil
 imageString=nil
 
@@ -735,7 +737,7 @@ function disp_sample2()
   t_quit:tooltip("Quit")
   t_quit:callback(quit_t)
   t_downs = fltk:Fl_Button(10+width_button, height_twindow-30, width_button, 25, "Down")
-  t_downs:tooltip("Downsize original data with selected items ans save it")
+  t_downs:tooltip("Downsize original data with selected items and save it")
   t_downs:callback(downsize)
   
   -- progress bar N1 : build table
@@ -801,7 +803,7 @@ function disp_sample2()
       end
       cell0= fltk:Fl_Box(cx, cy, width_button, height_button, st2 )
       cell0:labelfont( fltk.FL_SCREEN )
-      cell0:color(6) --pale blue
+      cell0:color(43) --some grey
       cell0:tooltip( st )
       cell0:box(fltk.FL_BORDER_BOX)
   end
@@ -863,8 +865,22 @@ function disp_sample2()
   twindow:show()
 end --end function
 
+function read_Image()
+   pwindow:make_current()
+   Fl:check()
+   Fl:flush()
+   imageString = fltk.fl_read_image(0, 0, width_pwindow, height_pwindow)
+   Fl:check()
+   Fl:flush()
+   image2 = fltk:Fl_RGB_Image(imageString, width_pwindow, height_pwindow, 3, 0)
+   Fl:check()
+   Fl:flush()
+   fileName = title .. ".png"
+   image2:saveAsPng(fileName)
+end --end function
+
 function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table)
-local st, title="",""
+ local st
  local decx_chart   = 20
  local decy_chart   = 0
  local width_chart  = 450
@@ -877,23 +893,15 @@ local st, title="",""
  local minv=9999999
  local idxmax,idxmin
  local nbcriteria=0
- local timer
-  local function read_and_save_Image()
-   pwindow:make_current()
-   imageString = fltk.fl_read_image(0, 0, width_pwindow, height_pwindow)
-   image2 = fltk:Fl_RGB_Image(imageString, width_pwindow, height_pwindow, 3, 0) --
-   Fl:check()
-   fileName = title .. ".png"
-   image2:saveAsPng(fileName)
-   print(fileName .. " saved as chart's image.")  
-   end
-  
+
+  file_save=0 --flag for saved file with charts'image
   type_graphics=4
   --GUI for histogram chart
   if pwindow then
      pwindow:hide()
      pwindow:clear()
   end
+
   if context1 then
      if context1 ~= " " then
         title = ax2 .. "_per_" .. ax1 .. "_" .. context1 .. "_" .. current_context
@@ -904,13 +912,13 @@ local st, title="",""
      title = ax2 .. "_per_" .. ax1 .. "_no_context"
   end
   pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, title)
-  
+  pwindow:label(title)
   --centrage du bouton en bas de la fenetre pwindow
-  width_button = 100
-  quit = fltk:Fl_Button(dec_button, height_pwindow-30, 50, 25, "Quit")
+  width_button = 45
+  quit = fltk:Fl_Button(dec_button, height_pwindow-30, 45, 25, "Quit")
   quit:tooltip("Quit or Next chart (if any)")
   quit:callback(quit_callbackapp)
-
+  
   --chart
   pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
   pie:position(decx_chart, decy_chart+20)
@@ -921,9 +929,8 @@ local st, title="",""
      st = ax1 .. " // " .. ax2 .. "(no context)"
   end
   
-  --pie:type( type_chart[type_graphics] )
+  -- --pie:type( type_chart[type_graphics] )
   pie:type( fltk.FL_HORBAR_CHART )
-  --pie:box(1)
   pie:box(fltk.FL_SHADOW_BOX)
   pie:labelcolor(0)
   pie:autosize(1)
@@ -974,16 +981,15 @@ local st, title="",""
   st=title .. " (total lines=" .. sum .. ")\n" .. st
   pie:label(st)
   pie:labelsize(8)
-  
-  --change chart type
-  --code to retrieve/adjest from murgaLua docs & examples
-  --/home/terras/murgaLua/examples/widgets_demo/script/chart.lua
+
   Fl:check()
-  timer = murgaLua.createFltkTimer()
-  timer:callback(read_and_save_Image)
   pwindow:show()
-  
-  timer:doWait(0.2) --have to wait : chart to be drawn and complete's window content to be shown
+  pwindow:redraw()
+  Fl:flush()
+  pwindow:set_modal()
+  if fltk:fl_choice("Save Charts or not ?", "No", "Yes", nil) == 1 then
+     read_Image()
+  end
 end --end function
 
 function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
@@ -992,7 +998,6 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
   local keepcr=0 --keep this criteria-friendly cell
   local keepco=0 --keep this context-friendly cell
   local indexc=0
-  --local indexa1,indexa2=0,0
   local nb_criterias=0
   local nb_contexts=0
   local current_context
@@ -1027,7 +1032,8 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
    
   --GO! the final result is table described by an histogram with y-axis lines=nb_a1 = #cat_values[indexa1]
   --and ONE column=some agregate cells of transftable_data
-  for i=1,nb_contexts do --nb of successive charts to draw
+  for i=1,nb_contexts do --nb of successive charts to draw  
+       file_save=0 --flag for saved file with charts'image
        current_context = tostring(cat_values[indexc][i]) --convert to char
 print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "// nb contexts=" .. nb_contexts .. "\nCriterias number = " .. nb_criterias)
 
@@ -1093,10 +1099,23 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
          end --end if nb_contexts>1
        end --end for j (lines)
 --results of this function have been validated with with LibreOfficeCALC & some SOMMEPROD()
+     imageString, image2 = nil, nil
+     disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table) --mod 270824
+     
+     fileName = title .. ".png"
+     
+     --fltk:fl_message("Pause!") -- make a pause in charts displaying
 
-  disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table)
-  fltk:fl_alert("Pause!") -- make a pause in charts displaying
-  end --end for i (context)
+     --test if file exists
+     f = io.open(fileName,"rb")
+     if f then
+        print("File " .. fileName .. " exists in default path.") 
+        io.close(f)
+     else
+        print("File " .. fileName .. " DOES NOT exist in default path.") 
+     end
+
+    end --end for i (context)
 end  --end function
 
 function disp_sample3()
@@ -1112,7 +1131,7 @@ function disp_sample3()
   local axis1,axis2,context1
   local spe_chart=nil
   local valse={}
-
+  
   if f_downsize ~= 1 then
      return
   end
@@ -1183,7 +1202,7 @@ function disp_sample3()
       end
       cell1= fltk:Fl_Box(cx, cy, width_button, height_button, st2 )
       cell1:labelfont( fltk.FL_SCREEN )
-      cell1:color(6) --pale blue
+      cell1:color(43) --some grey
       cell1:tooltip( st )
       cell1:box(fltk.FL_BORDER_BOX)
   end
@@ -1457,7 +1476,7 @@ print("Context1 = none")
 --end debug block
         query_fct(ax1, indexa1, ax2, indexa2, c1, indexc1, valse)
         end) --end local function
-
+        
   Fl:check()
   uwindow:show()
 end  --end function
@@ -1585,7 +1604,7 @@ function disp_histo(h)
  local timer
  local sum=0
  local title=""
-  local function read_and_save_Image()
+  local function read_Image2()
    pwindow:make_current()
    imageString = fltk.fl_read_image(0, 0, width_pwindow, height_pwindow)
    image2 = fltk:Fl_RGB_Image(imageString, width_pwindow, height_pwindow, 3, 0) --
@@ -1657,7 +1676,7 @@ function disp_histo(h)
   
   Fl:check()
   timer = murgaLua.createFltkTimer()
-  timer:callback(read_and_save_Image)
+  timer:callback(read_Image2)
   pwindow:show()
   
   timer:doWait(0.2) --have to wait : chart to be drawn and complete's window content to be shown
@@ -1680,6 +1699,10 @@ end --end function
  end
  print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo())
 
+-- timer = murgaLua.createFltkTimer() --best declared as global
+-- timer:callback(read_Image)
+ 
+ 
  preopen_csv_file(filename)
  st="Pre-Opening Ok !\nColumns = " .. #table_data .. "\nLines (sample)= " .. #table_data[3]
 print(st)
