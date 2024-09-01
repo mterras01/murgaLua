@@ -1118,6 +1118,87 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
     end --end for i (context)
 end  --end function
 
+function consistency_checking(ax1, ax2, c1)
+  local i, indexa2
+  --rule one
+  if ax1 ~= 0 and ax2 ~= 0 then
+     --ok
+  else
+     --problemo!
+     msg="Both Axis variables must be set to non-nil !!!"
+     print(msg)
+     fltk:fl_alert(msg)
+     return (nil)
+  end
+  --rule two
+  if ax1 ~= ax2 and ax2 ~= c1 and ax1 ~= c1 then
+     --ok           
+  else
+     --problemo!
+     msg="Axis and Context variables have to be distinct !!!"
+     print(msg)
+     fltk:fl_alert(msg)
+     return(nil)
+  end
+  --rule three
+  --axis2 variable's type MUST BE "number" AND with a number of possible values displayable (<100)
+  --find index of ax2 in new_legend
+  for i=1,#new_legend do
+        if ax2 == new_legend[i] then
+           indexa2=i
+print("Criteria nb 2 = " .. ax2 .. "// index new_legend = " .. indexa2)
+           break
+        end
+  end
+  if type_new_data[indexa2] == "number" then
+     --ok
+     print("Criteria nb 2 : type value= " .. type_new_data[indexa2] )
+  else
+     --problemo!
+     msg="Axis2 variable is not a number (REQUIRED) !!!"
+     print(msg)
+     fltk:fl_alert(msg)
+     return(nil)
+  end
+  return(indexa2)
+end  --end function
+
+function compute_index(ax1, c1, valselect)
+  --compute index of other sent variables
+  --find index of ax1 in new_legend
+  local i, indexa1, indexc1,valse0=0,nil,nil,{}
+  
+  for i=1,#new_legend do
+       if ax1 == new_legend[i] then
+          indexa1=i
+          print("Criteria nb 1 = " .. ax1 .. "// index new_legend = " .. indexa1)
+          break
+       end
+ end       
+ --find context1 index in new_legend{} and then number of contexts
+ for i=1,#new_legend do
+      if c1 == new_legend[i] then
+         indexc1=i --context1 is the label, indexc is the context's index in table "new_legend" = the number of the column to read in table "transftable_data"
+         break
+      end
+  end
+  if indexc1 then
+print("Context1 = " .. c1 .. "// index new_legend = " .. indexc1)
+  else
+print("Context1 = none")
+  end
+  --valse0{} is related to table of Fl_Choice
+  for i=1,#new_legend do
+       if valselect[i]:text() then
+          table.insert(valse0, valselect[i]:text() )
+       else
+          table.insert(valse0, " ")
+       end   
+  end
+  
+  return indexa1, indexc1, valse0
+end  --end function
+
 function disp_sample3()
  --GUI : selecting fields with criteria to be analysed
   local i,j,k,cx,cy
@@ -1149,7 +1230,7 @@ function disp_sample3()
   height_button = 20
   nb_car = math.floor(width_button/11) --nb cars affichables dans la largeur du bouton
   
-  --window for dowsized table
+  --window for dowbsized table
   width_twindow = 1024
   height_twindow = 450
   uwindow = fltk:Fl_Window(width_twindow, height_twindow, "Downsized CSV")   
@@ -1245,11 +1326,17 @@ cy = (i+1)*height_button
 	  end
       histo[#histo]:callback(function (histo_fct)
         local h=0
-        local i
+        local i,j
         for i=1,#histo do
              if Fl.event_inside(histo[i]) == 1 then
                 h=i
-                disp_histo(h)
+                --disp_histo(h)
+                --break
+                for j=1,#histo do --if one histo button pressed, all available histo are displayed and saved
+                     if histo[j]:active() == 1 then
+                        disp_histo(j)
+                     end
+                end
                 break
              end
         end
@@ -1381,102 +1468,20 @@ cy = (i+1)*height_button
   spe_chart:labelfont( fltk.FL_SCREEN )
   spe_chart:tooltip( st )
   spe_chart:color(12)
+  --new code for function
   spe_chart:callback(function (query_launch)
         local i, msg
         local ax1, ax2, c1=axis1:text(), axis2:text(), context1:text()  
         local indexa1,indexa2,indexc1
---debugging block
---         print("axis1:text() = " .. axis1:text() .. "\naxis2:text() = " .. axis2:text() )
---         if context1:text() then
---            print("context1:text()=" .. context1:text())
---         else
---            print("context1:text()= none")
---            c1=" "
---         end
---         for i=1,#new_legend do
---              if valselect[i]:text() then
---                  print("valselect[" .. i .. "]:text()=" .. valselect[i]:text())
---              end
---         end
---end debugging block
         --1_consistency_checking
-        --rule one
-        if ax1 ~= 0 and ax2 ~= 0 then
-           --ok
-        else
-            --problemo!
-            msg="Both Axis variables must be set to non-nil !!!"
-print(msg)
-fltk:fl_alert(msg)
-            return
+        indexa2 = consistency_checking(ax1, ax2, c1)
+        if indexa2 then
+           --continue
+           indexa1, indexc1, valse =  compute_index(ax1, c1, valselect)
+           --3_GUI fonction
+           query_fct(ax1, indexa1, ax2, indexa2, c1, indexc1, valse)
         end
-        --rule two
-        if ax1 ~= ax2 and ax2 ~= c1 and ax1 ~= c1 then
-           --ok           
-        else
-            --problemo!
-            msg="Axis and Context variables have to be distinct !!!"
-print(msg)
-fltk:fl_alert(msg)
-            return
-        end
-        --rule three
-        --axis2 variable's type MUST BE "number" AND with a number of possible values displayable (<100)
-        --find index of ax2 in new_legend
-        for i=1,#new_legend do
-             if ax2 == new_legend[i] then
-                indexa2=i
-print("Criteria nb 2 = " .. ax2 .. "// index new_legend = " .. indexa2)
-                break
-             end
-        end
-        if type_new_data[indexa2] == "number" then
-           --ok
-print("Criteria nb 2 : type value= " .. type_new_data[indexa2] )
-        else
---problemo!
-           msg="Axis2 variable is not a number (REQUIRED) !!!"
-print(msg)
-fltk:fl_alert(msg)
-           return
-        end
-        --2 compute index of other sent variables
-        --find index of ax1 in new_legend
-        for i=1,#new_legend do
-              if ax1 == new_legend[i] then
-                 indexa1=i
-print("Criteria nb 1 = " .. ax1 .. "// index new_legend = " .. indexa1)
-                 break
-              end
-        end       
-        --find context1 index in new_legend{} and then number of contexts
-        for i=1,#new_legend do
-             if c1 == new_legend[i] then
-                indexc1=i --context1 is the label, indexc is the context's index in table "new_legend" = the number of the column to read in table "transftable_data"
-                break
-             end
-        end
-        if indexc1 then
-print("Context1 = " .. c1 .. "// index new_legend = " .. indexc1)
-        else
-print("Context1 = none")
-        end
-        
-        --3_GUI fonction
-        --valse{} is related to table of Fl_Choice
-        for i=1,#new_legend do
-             if valselect[i]:text() then
-                table.insert(valse, valselect[i]:text() )
-             else
-                table.insert(valse, " ")
-             end   
-        end
---debug block
---print("fct disp_sample3() => c1=" .. c1 .. "(#=" .. #c1 .. ") // indexc1=" .. indexc1)
---end debug block
-        query_fct(ax1, indexa1, ax2, indexa2, c1, indexc1, valse)
         end) --end local function
-        
   Fl:check()
   uwindow:show()
 end  --end function
@@ -1601,18 +1606,9 @@ function disp_histo(h)
  local maxv=0
  local minv=9999999
  local idxmax,idxmin
- local timer
  local sum=0
- local title=""
-  local function read_Image2()
-   pwindow:make_current()
-   imageString = fltk.fl_read_image(0, 0, width_pwindow, height_pwindow)
-   image2 = fltk:Fl_RGB_Image(imageString, width_pwindow, height_pwindow, 3, 0) --
-   Fl:check()
-   fileName = title .. ".png"
-   image2:saveAsPng(fileName)
-   print(fileName .. " saved as histo-chart's image.")  
-   end 
+ local fileName
+
   type_graphics=4
   --GUI for histogram chart
   if pwindow then
@@ -1672,14 +1668,17 @@ function disp_histo(h)
   st = "Histo " .. new_legend[ h ] .. "(total occurs=" .. sum .. ")"
   pie:label(st)
   pie:labelsize(8)
-  title = "Histo_" .. new_legend[ h ]
+  title = "Histo_" .. new_legend[ h ] --memo : var "title" is global = no need to pass it to read_Image()
   
   Fl:check()
-  timer = murgaLua.createFltkTimer()
-  timer:callback(read_Image2)
   pwindow:show()
-  
-  timer:doWait(0.2) --have to wait : chart to be drawn and complete's window content to be shown
+  pwindow:redraw()
+  Fl:flush()
+  pwindow:set_modal()
+  if fltk:fl_choice("Save Charts or not ?", "No", "Yes", nil) == 1 then
+     read_Image()
+  end
+  pwindow:set_non_modal()
 end --end function
 
  t00=0
