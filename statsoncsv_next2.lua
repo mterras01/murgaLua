@@ -57,6 +57,139 @@ selval_select={}
 title="" --title of pwindow, special histogram-chart
 pie=nil --charts
 
+--specialist dictionnary
+lib_spe_ps ={'MEDECINE GENERALE LIBERALE',
+'ANESTHESIOLOGIE - REANIMATION LIBERALE',
+'PATHOLOGIE CARDIO-VASCULAIRE LIBERALE',
+'CHIRURGIE LIBERALE',
+'DERMATOLOGIE ET VENEROLOGIE LIBERALE',
+'RADIOLOGIE LIBERALE',
+'GYNECOLOGIE OBSTETRIQUE LIBERALE',
+'GASTRO-ENTEROLOGIE ET HEPATOLOGIE LIBERALE',
+'MEDECINE INTERNE LIBERALE',
+'OTO RHINO-LARYNGOLOGIE LIBERALE',
+'PEDIATRIE LIBERALE',
+'PNEUMOLOGIE LIBERALE',
+'RHUMATOLOGIE LIBERALE',
+'OPHTALMOLOGIE LIBERALE',
+'PSYCHIATRIE LIBERALE',
+'STOMATOLOGIE LIBERALE',
+'CHIRURGIE DENTAIRE',
+'MEDECINE PHYSIQUE ET DE READAPTATION LIBERALE',
+'NEUROLOGIE LIBERALE',
+'NEPHROLOGIE LIBERALE',
+'CHIRURGIE DENTAIRE (SPECIALISTE O.D.F.)',
+'ANATOMIE-CYTOLOGIE-PATHOLOGIQUE LIBERALE',
+'DIRECTEUR LABORATOIRE MEDECIN LIBERAL',
+'ENDOCRINOLOGIE ET METABOLISMES LIBERAL',
+'PRESCRIPTEURS SALARIES',
+'PRESCRIPTEURS DE VILLE AUTRES QUE MEDECINS (Dentistes, Auxiliaires médicaux, Laboratoires, Sages-Femmes)',
+'VALEUR INCONNUE'}
+lib_small_SPE={'MGLIB',
+'ANESTLIB',
+'CARDIOLIB',
+'CHIRLIB',
+'DERMLIB',
+'RADIOLIB',
+'GYNOBLIB',
+'GASTRLIB',
+'MEDINTLIB',
+'ORLLIB',
+'PEDLIBE',
+'PNEUMLIB',
+'RHUMLIB',
+'OPHLIB',
+'PSYLIB',
+'STOLIB',
+'CHIRDENT',
+'MPRLIB',
+'NEURLIB',
+'NEPHRLIB',
+'CDENTAIREODF',
+'ANAPLIB',
+'DIRLABLIB',
+'ENDOCLIB',
+'PSALARIES',
+'PVILLAUTRES',
+'INCONNU'}
+indx_spe = {1,2,3,4,5,6,7,8,9,11,12,13,14,15,17,18,19,31,32,35,36,37,38,42,90,98,99}
+indx_spe2={}
+for k,v in pairs(indx_spe) do
+   indx_spe2[v]=k
+end
+
+--region dictionnary
+lib_region ={'Inconnu',
+                'Régions et Départements d\'outre-mer',
+                'Ile-de-France',
+                'Centre-Val de Loire',
+                'Bourgogne-Franche-Comté',
+                'Normandie',
+                'Nord-Pas-de-Calais-Picardie',
+                'Alsace-Champagne-Ardenne-Lorraine',
+                'Pays de la Loire',
+                'Bretagne',
+                'Aquitaine-Limousin-Poitou-Charentes',
+                'Languedoc-Roussillon-Midi-Pyrénées',
+                'Auvergne-Rhône-Alpes',
+                'Provence-Alpes-Côte d\'Azur et Corse',
+                'Inconnu'}
+lib_small_region ={'Inconnu',
+                'DOM/TOM',
+                'IDF',
+                'CVLOIRE',
+                'BRGFRCT',
+                'NRMND',
+                'NORPDC',
+                'ALSLRC',
+                'PLOIRE',
+                'BRET',
+                'NVLAQ',
+                'OCCIT',
+                'ARA',
+                'PACAC',
+                'Inconnu'}
+indx_region ={0,5,11,24,27,28,32,44,52,53,75,76,84,93,99}
+indx_region2={}
+for k,v in pairs(indx_region) do
+   indx_region2[v]=k
+end
+
+--sex dictionnary
+lib_sex ={'MASCULIN','FEMININ','VALEUR INCONNUE'}
+indx_sex = {1,2,9}
+indx_sex2={}
+for k,v in pairs(indx_sex) do
+   indx_sex2[v]=k
+end
+
+--age dictionnary
+lib_age ={'0-19','20-59','+60','INCONNU'}
+indx_age = {0,20,60,99}
+indx_age2={}
+for k,v in pairs(indx_age) do
+   indx_age2[v]=k
+end
+
+--create & init summing tables
+--summing tables
+boites_REG={}
+for i=1,#indx_region do
+     table.insert(boites_REG,0)
+end
+boites_SEXE={}
+for i=1,#indx_sex do
+     table.insert(boites_SEXE,0)
+end
+boites_AGE={}
+for i=1,#indx_age do
+     table.insert(boites_AGE,0)
+end
+boites_SPE={}
+for i=1,#indx_spe do
+     table.insert(boites_SPE,0)
+end
+
 --tampons d'écriture pour les fichiers texte et csv de sauvegarde
 --csv_buffer = "" -- local
 separator = ";"
@@ -411,6 +544,7 @@ end  --end function
 function build_new_base_CB() 
  --CB stands for Circular Buffer
   local i,j,k,l
+  local i1,i2,i3,i4
   local buffer_size=400000
   local st,st2,sel,sel2
   local pos=1
@@ -502,6 +636,20 @@ print("File " .. filename .. " opened !")
                       table_data_local = process2( line_data)
                       new_table_data = transform(table_data_local)
                       if new_table_data then
+                         --computing here : tables for boites/BEN_REG, boites/SEX, boites/AGE, boites/SPE
+                         i1 = indx_age2[ new_table_data[15] ] --AGE
+                         i2 = indx_sex2[ new_table_data[16] ] --SEXE
+                         i3 = indx_region2[ new_table_data[17] ] --REGION
+                         i4 = indx_spe2[ new_table_data[18] ] --SPE
+                         k1 = new_table_data[19] --BOITES
+                         if k1 == nil then
+                            k1=0
+                         else
+                            boites_AGE[i1] = boites_AGE[i1]+k1
+                            boites_SEXE[i2] = boites_SEXE[i2]+k1
+                            boites_REG[i3] = boites_REG[i3]+k1
+                            boites_SPE[i4] = boites_SPE[i4]+k1
+                         end
                          table.insert(transftable_data, new_table_data ) --OPTIMIZATION
                          --csv_buffer = csv_buffer .. table.concat(new_table_data,separator) .. "\n" -- -------------------------->optimization 040824
                       end
@@ -509,7 +657,7 @@ print("File " .. filename .. " opened !")
                       pos = j+1
                       --nb_bytes=nb_bytes+#read_buffer_a --> bad place
                 else
-st = "line_data est nulle !"
+st = "line_data is NULL !"
 print(st)
 --fltk:fl_alert(st)
 	                break
@@ -663,6 +811,45 @@ function select_val_fct()
   end
   --erase text
   keyword:value("")
+end --end function
+
+function preselection()
+ local i,j
+ local button2deselect={1,2,3,4,5,6,7,8,10,11,13,14,20,21}
+ local button2select={1,2,3,4,5,6,7,8,10,11,13,14,20,21}
+ 
+-- select the two keywords N05 & N06
+  --First clear previous values (if any)
+  clear_val_fct()
+  st="N05"
+  selvalbutton[1]:label(st)
+  selval[1]=st
+  st="N06"
+  selvalbutton[2]:label(st)
+  selval[2]=st
+--deselect fields : list of buttons to deselect
+  for i=1,#button2deselect do
+       j = button2deselect[i]
+       selbuttons[j]:color(1)
+       selcol[j] = 1
+       --1 means red means de-selected
+       selbuttons[j]:label( "DSEL" )
+       selbuttons[j]:tooltip( "De-selected field" )
+       selbuttons[j]:show()
+  end
+--select expected fields
+  for i=1,#button2select do
+       j = button2select[i]
+       selbuttons[j]:color(2) 
+       selcol[j] = 2
+       --2 means green means selected
+       selbuttons[j]:label( "SEL" )
+       selbuttons[j]:tooltip( "Selected field" )
+       selbuttons[j]:show()
+       selbuttons[j]:color(1)
+       selcol[j] = 1
+       selbuttons[j]:show()
+  end
 end --end function
 
 function clear_val_fct()
@@ -860,7 +1047,11 @@ function disp_sample2()
        selvalbutton[#selvalbutton]:box(fltk.FL_BORDER_BOX)
        selval[i]=""
   end
-  
+--preselect button
+  preselbutton = fltk:Fl_Button(width_button, (cy+(4*height_button)), (2*width_button), height_button, "PRESELECT" )
+  st="Preselection button : select lines with 'N05' or 'N06' and fields 'ATC5', 'l_cip13', 'age', 'sexe', 'BEN_REG', 'PSP_SPE','BOITES'"
+  preselbutton:tooltip(st)
+  preselbutton:callback(preselection)
   Fl:check()
   twindow:show()
 end --end function
@@ -1671,16 +1862,26 @@ function disp_histo(h)
   title = "Histo_" .. new_legend[ h ] --memo : var "title" is global = no need to pass it to read_Image()
   
   Fl:check()
-  pwindow:show()
+  pie:redraw()
   pwindow:redraw()
+  pwindow:show()
   Fl:flush()
   pwindow:set_modal()
   if fltk:fl_choice("Save Charts or not ?", "No", "Yes", nil) == 1 then
      read_Image()
-  end
+     --Fl:wait(2)
+  end  
+  --murgaLua.sleep(450) --milliseconds
+  --read_Image()
+  --murgaLua.sleep(100) --milliseconds
   pwindow:set_non_modal()
+  
 end --end function
 
+
+-- timer = murgaLua.createFltkTimer()
+-- timer:callback(read_Image)
+ 
  t00=0
  t00 = os.time() --top chrono
  osName="OS=" .. murgaLua.getHostOsName()
@@ -1701,6 +1902,18 @@ end --end function
 -- timer = murgaLua.createFltkTimer() --best declared as global
 -- timer:callback(read_Image)
  
+ 
+--  core = coroutine.create(function ()
+--    pwindow:make_current()
+--    Fl:flush()
+--    imageString = fltk.fl_read_image(0, 0, width_pwindow, height_pwindow)
+--    Fl:flush()
+--    image2 = fltk:Fl_RGB_Image(imageString, width_pwindow, height_pwindow, 3, 0)
+--    Fl:flush()
+--    fileName = title .. ".png"
+--    image2:saveAsPng(fileName)
+--    coroutine.yield()
+--    end)
  
  preopen_csv_file(filename)
  st="Pre-Opening Ok !\nColumns = " .. #table_data .. "\nLines (sample)= " .. #table_data[3]
