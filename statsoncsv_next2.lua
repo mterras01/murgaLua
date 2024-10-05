@@ -13,12 +13,14 @@
 
 i=0
 
-stats = require "statistics"
+--stats = require "statistics"
 
 find = string.find
 --gfind = string.gfind
 sub = string.sub
 gsub=string.gsub
+
+osName="OS=" .. murgaLua.getHostOsName()
 
 read_data = "" --tampon de lecture
 write_data = "" --tampon ecriture CSV département
@@ -45,7 +47,12 @@ f_downsize=0 --flag to declare downsizing done / value=1
 width_pwindow = 500
 height_pwindow = 500
 twindow=nil--window for original table
-pwindow=object --window for histogram chart
+if find(osName, "linux",1,true) then
+   pwindow=object --window for histogram chart, global var if system is linux, local var if system is windows
+   pie=object --charts : rather global object if pwindow is global
+   --timer = murgaLua.createFltkTimer()
+   --timer:callback(read_Image)
+end
 selbuttons={} --selbuttons[i]:color(2) means "selected field/column", :color(1) means "NOT selected field/column"
 selcol={}
 histo={} --histo buttons
@@ -55,7 +62,8 @@ selvalbutton={}
 selval={"","","","",""} --values related to cols of table_data, used to query on original table and make a downsizing
 selval_select={}
 title="" --title of pwindow, special histogram-chart
-pie=nil --charts
+x,y,w,h=0,0,0,0
+
 
 --specialist dictionnary
 lib_spe_ps ={'MEDECINE GENERALE LIBERALE',
@@ -850,6 +858,37 @@ function preselection()
        selcol[j] = 1
        selbuttons[j]:show()
   end
+  downsize()
+end --end function
+
+function countdown()
+--create/open a modal window for "seconds" (can be either a function-local-var, or a global var, countdown being a widget's callback)
+local cmwindow = fltk:Fl_Window(width_pwindow,0, 128, 128, "Countdown Window")
+local cmbox = fltk:Fl_Box(0, 0, 128, 128, "3")
+local t000,t001
+local oldst,st="-1",""
+local start_countdown=1
+ cmbox:labelsize(64)
+ cmwindow:show()
+ cmwindow:set_modal()
+ Fl:check()
+ t000=os.time()
+ while 1 do
+     t001=start_countdown-os.difftime(os.time(), t000)
+     st=string.format('%1d', t001)
+     if st ~= oldst then
+        cmbox:label(st)
+        cmbox:redraw()
+        cmwindow:show()
+        Fl:check()
+        oldst = st
+     end
+     if t001<0 then
+        break
+     end
+ end
+ cmwindow:set_non_modal()
+ cmwindow:hide()
 end --end function
 
 function clear_val_fct()
@@ -1048,27 +1087,45 @@ function disp_sample2()
        selval[i]=""
   end
 --preselect button
-  preselbutton = fltk:Fl_Button(width_button, (cy+(4*height_button)), (2*width_button), height_button, "PRESELECT" )
-  st="Preselection button : select lines with 'N05' or 'N06' and fields 'ATC5', 'l_cip13', 'age', 'sexe', 'BEN_REG', 'PSP_SPE','BOITES'"
+  preselbutton = fltk:Fl_Button(width_button, (cy+(4*height_button)), (2*width_button), height_button, "PRESEL_MT" )
+  st="All-ready M.TERRAS-Preselection-button : select lines with 'N05' or 'N06' and fields 'ATC5', 'l_cip13', 'age', 'sexe', 'BEN_REG', 'PSP_SPE','BOITES'"
   preselbutton:tooltip(st)
   preselbutton:callback(preselection)
+--countdown modal window : testing purpose only
+  cmwinbutton = fltk:Fl_Button(3*width_button, (cy+(4*height_button)), (2*width_button), height_button, "CD" )
+  st="This button calls a Countdown Modal Window"
+  cmwinbutton:tooltip(st)
+  cmwinbutton:callback(countdown)
   Fl:check()
   twindow:show()
 end --end function
 
+if find(osName, "linux",1,true) then
 function read_Image()
    pwindow:make_current()
-   Fl:check()
+   --Fl:check()
+   --Fl:flush()
+   --imageString = fltk.fl_read_image(pie:x(), pie:y(), pie:w(), (pie:h()+25))
+   -- x,y,w,h are global var and define (local) pie chart dimensions
+   imageString = fltk.fl_read_image(x,y,w,h)
+   --Fl:check()
+   --Fl:flush()
+   print(" #imageString = " .. #imageString)
+   image2 = fltk:Fl_RGB_Image(imageString, pie:w(), (pie:h()+25), 3)
+   --Fl:check()
+   --Fl:flush()
+   --copybox:image(image2)
+   pwindow:redraw()
    Fl:flush()
-   imageString = fltk.fl_read_image(0, 0, width_pwindow, height_pwindow)
    Fl:check()
-   Fl:flush()
-   image2 = fltk:Fl_RGB_Image(imageString, width_pwindow, height_pwindow, 3, 0)
-   Fl:check()
-   Fl:flush()
+   print("image2.w() = " .. image2:w() .. " // image2.h() = " .. image2:h() .. " // image2.d() = " .. image2:d() )
    fileName = title .. ".png"
    image2:saveAsPng(fileName)
+   Fl:flush()
+   Fl:check()
+   --murgaLua.sleep(100)
 end --end function
+end
 
 function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table)
  local st
@@ -1084,14 +1141,21 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
  local minv=9999999
  local idxmax,idxmin
  local nbcriteria=0
-
+ 
+ if not find(osName, "linux",1,true) then
+    local pwindow=object
+    --local pie=object --charts : rather local object if pwindow is local
+ end
+ 
   file_save=0 --flag for saved file with charts'image
   type_graphics=4
   --GUI for histogram chart
-  if pwindow then
-     pwindow:hide()
-     pwindow:clear()
-  end
+  if find(osName, "linux",1,true) then
+     if pwindow then
+        pwindow:hide()
+        pwindow:clear()
+     end
+end
 
   if context1 then
      if context1 ~= " " then
@@ -1102,13 +1166,14 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   else
      title = ax2 .. "_per_" .. ax1 .. "_no_context"
   end
-  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, title)
+  pwindow = fltk:Fl_Window(0,0,width_pwindow, height_pwindow, title)
   pwindow:label(title)
   --centrage du bouton en bas de la fenetre pwindow
   width_button = 45
-  quit = fltk:Fl_Button(dec_button, height_pwindow-30, 45, 25, "Quit")
+  quit = fltk:Fl_Button(decx_chart, height_pwindow-30, 45, 25, "Quit")
   quit:tooltip("Quit or Next chart (if any)")
   quit:callback(quit_callbackapp)
+  --copybox = fltk:Fl_Button(width_pwindow, 0, width_pwindow, height_pwindow, nil)
   
   --chart
   pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
@@ -1172,14 +1237,61 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   st=title .. " (total lines=" .. sum .. ")\n" .. st
   pie:label(st)
   pie:labelsize(8)
+  pie:color(fltk.FL_WHITE)
+  
 
+  
   Fl:check()
   pwindow:show()
   pwindow:redraw()
   Fl:flush()
-  pwindow:set_modal()
-  if fltk:fl_choice("Save Charts or not ?", "No", "Yes", nil) == 1 then
-     read_Image()
+  Fl:check()
+  if find(osName, "linux",1,true) then
+     print("linux detected !")
+--[[
+     x,y,w,h=pie:x(), pie:y(), pie:w(), (pie:h()+25)
+     pwindow:make_current()
+     pwindow:show()
+     pwindow:set_modal()
+     pwindow:redraw()
+     Fl:flush()
+     Fl:check()
+     murgaLua.sleep(1)
+     timer:doWait(2)
+     murgaLua.sleep(1)
+     pwindow:set_non_modal()
+     pwindow:hide()
+]]--
+    -- timer:callback(read_Image)
+     -- if fltk:fl_choice("Save Charts or not ?", "No", "Yes", nil) == 1 then
+     
+          --timer:doWait(1)
+          countdown()
+          x,y,w,h=pie:x(), pie:y(), pie:w(), (pie:h()+25)
+          read_Image()
+          countdown()
+          --murgaLua.sleep(1)
+     --end
+  else 
+     --Windows
+	 print("fct disp_spe_histo lancement read_image")
+	 t01 = os.time()
+     pwindow:redraw()
+     pwindow:show()
+     Fl:check()
+     imageString = fltk.fl_read_image(pie:x(), pie:y(), pie:w(), (pie:h()+25))
+     print(" #imageString = " .. #imageString .. "(computing time = ".. os.difftime(os.time(), t01) .. " seconds .. ")
+     image2 = fltk:Fl_RGB_Image(imageString, pie:w(), (pie:h()+25), 3)
+	 print("Fin conversion RGB (computing time = ".. os.difftime(os.time(), t01) .. " seconds .. ")
+     fileName = title .. ".png"
+     image2:saveAsPng(fileName)
+     print("Fin conversion ecriture fichier image PNG (computing time = ".. os.difftime(os.time(), t01) .. " seconds\nimage2:w() = " .. image2:w() .. "//image2:h() = " .. image2:h())
+     io.flush()
+     pwindow:hide()
+     Fl:check()
+	 io.flush()
+	 print("fin de fct disp_spe_histo")
+     return
   end
 end --end function
 
@@ -1292,7 +1404,7 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
 --results of this function have been validated with with LibreOfficeCALC & some SOMMEPROD()
      imageString, image2 = nil, nil
      disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table) --mod 270824
-     
+     print("retour en fct query_fct")
      fileName = title .. ".png"
      
      --fltk:fl_message("Pause!") -- make a pause in charts displaying
@@ -1305,7 +1417,7 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
      else
         print("File " .. fileName .. " DOES NOT exist in default path.") 
      end
-
+     --murgaLua.sleep(0) --commented 021024 PM
     end --end for i (context)
 end  --end function
 
@@ -1807,7 +1919,7 @@ function disp_histo(h)
      pwindow:clear()
   end
   st = "Histo " .. new_legend[ h ]
-  pwindow = fltk:Fl_Window(width_pwindow, height_pwindow, st)
+  pwindow = fltk:Fl_Window(0,0,width_pwindow, height_pwindow, st)
   
   --centrage du bouton en bas de la fenetre pwindow
   width_button = 100
@@ -1825,6 +1937,7 @@ function disp_histo(h)
   pie:box(fltk.FL_SHADOW_BOX)
   pie:labelcolor(0)
   pie:autosize(1)
+  pie:color(fltk.FL_WHITE)
   
   for i=1,#cat_values[h] do
       if occ_values[h][i] > maxv then
@@ -1878,10 +1991,6 @@ function disp_histo(h)
   
 end --end function
 
-
--- timer = murgaLua.createFltkTimer()
--- timer:callback(read_Image)
- 
  t00=0
  t00 = os.time() --top chrono
  osName="OS=" .. murgaLua.getHostOsName()
@@ -1898,22 +2007,6 @@ end --end function
 	filename="P:\\dsl-not\\murgalua\\bin\\windows\\OPEN_MEDIC_2023.CSV"
  end
  print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo())
-
--- timer = murgaLua.createFltkTimer() --best declared as global
--- timer:callback(read_Image)
- 
- 
---  core = coroutine.create(function ()
---    pwindow:make_current()
---    Fl:flush()
---    imageString = fltk.fl_read_image(0, 0, width_pwindow, height_pwindow)
---    Fl:flush()
---    image2 = fltk:Fl_RGB_Image(imageString, width_pwindow, height_pwindow, 3, 0)
---    Fl:flush()
---    fileName = title .. ".png"
---    image2:saveAsPng(fileName)
---    coroutine.yield()
---    end)
  
  preopen_csv_file(filename)
  st="Pre-Opening Ok !\nColumns = " .. #table_data .. "\nLines (sample)= " .. #table_data[3]
