@@ -26,6 +26,7 @@ read_data = "" --tampon de lecture
 write_data = "" --tampon ecriture CSV département
 size_eol = 0 -- varie selon Unix (MacOs) ou Windows
 
+annee=0 --year of open_medic data
 legend_data={} --text legends from original CSV
 new_legend={} --new text legends from transformed-downsized-filtered CSV
 table_data={} --main data model table = columns
@@ -47,12 +48,10 @@ f_downsize=0 --flag to declare downsizing done / value=1
 width_pwindow = 500
 height_pwindow = 500
 twindow=nil--window for original table
-if find(osName, "linux",1,true) then
-   pwindow=object --window for histogram chart, global var if system is linux, local var if system is windows
-   pie=object --charts : rather global object if pwindow is global
-   --timer = murgaLua.createFltkTimer()
-   --timer:callback(read_Image)
-end
+
+pwindow=object --window for histogram chart, global var if system is linux, local var if system is windows
+pie=object --charts : rather global object if pwindow is global
+
 selbuttons={} --selbuttons[i]:color(2) means "selected field/column", :color(1) means "NOT selected field/column"
 selcol={}
 histo={} --histo buttons
@@ -94,40 +93,43 @@ lib_spe_ps ={'MEDECINE GENERALE LIBERALE',
 'PRESCRIPTEURS DE VILLE AUTRES QUE MEDECINS (Dentistes, Auxiliaires médicaux, Laboratoires, Sages-Femmes)',
 'VALEUR INCONNUE'}
 lib_small_SPE={'MGLIB',
-'ANESTLIB',
-'CARDIOLIB',
-'CHIRLIB',
-'DERMLIB',
-'RADIOLIB',
-'GYNOBLIB',
-'GASTRLIB',
-'MEDINTLIB',
-'ORLLIB',
-'PEDLIBE',
-'PNEUMLIB',
-'RHUMLIB',
-'OPHLIB',
-'PSYLIB',
-'STOLIB',
-'CHIRDENT',
-'MPRLIB',
-'NEURLIB',
-'NEPHRLIB',
-'CDENTAIREODF',
-'ANAPLIB',
-'DIRLABLIB',
-'ENDOCLIB',
+'ANEST',
+'CARDIO',
+'CHIR',
+'DERM',
+'RADIOL',
+'GYNOB',
+'GASTR',
+'MEDINT',
+'ORL',
+'PED',
+'PNEUM',
+'RHUM',
+'OPH',
+'PSY',
+'STO',
+'CDENT',
+'MPR',
+'NEUR',
+'NEPHR',
+'CDENTO',
+'ANAP',
+'DIRLAB',
+'ENDOC',
 'PSALARIES',
-'PVILLAUTRES',
-'INCONNU'}
+'PVILAU',
+'INC?'}
 indx_spe = {1,2,3,4,5,6,7,8,9,11,12,13,14,15,17,18,19,31,32,35,36,37,38,42,90,98,99}
 indx_spe2={}
 for k,v in pairs(indx_spe) do
    indx_spe2[v]=k
 end
+for i=1,#indx_spe do
+     print(indx_spe[i] .. " = " .. lib_small_SPE[i])
+end
 
 --region dictionnary
-lib_region ={'Inconnu',
+lib_region ={--'Inconnu1',
                 'Régions et Départements d\'outre-mer',
                 'Ile-de-France',
                 'Centre-Val de Loire',
@@ -142,11 +144,11 @@ lib_region ={'Inconnu',
                 'Auvergne-Rhône-Alpes',
                 'Provence-Alpes-Côte d\'Azur et Corse',
                 'Inconnu'}
-lib_small_region ={'Inconnu',
-                'DOM/TOM',
+lib_small_region ={--'INC1?',
+                'DOMTOM',
                 'IDF',
-                'CVLOIRE',
-                'BRGFRCT',
+                'CVLOIR',
+                'BRGNFC',
                 'NRMND',
                 'NORPDC',
                 'ALSLRC',
@@ -156,12 +158,16 @@ lib_small_region ={'Inconnu',
                 'OCCIT',
                 'ARA',
                 'PACAC',
-                'Inconnu'}
-indx_region ={0,5,11,24,27,28,32,44,52,53,75,76,84,93,99}
+                'INC'}
+--indx_region ={0,5,11,24,27,28,32,44,52,53,75,76,84,93,99}
+indx_region ={5,11,24,27,28,32,44,52,53,75,76,84,93,99}
 indx_region2={}
 for k,v in pairs(indx_region) do
    indx_region2[v]=k
 end
+--for i=1,#indx_region do
+--     print(indx_region[i] .. " = " .. lib_small_region[i])
+--end
 
 --sex dictionnary
 lib_sex ={'MASCULIN','FEMININ','VALEUR INCONNUE'}
@@ -266,6 +272,7 @@ function separator_csv(first_two_lines)
                _,d1 = gsub(line_data, ";", "")
 --print("Occurrences ' = " .. c1 .. "\nOccurrences ; = " .. d1)
             else
+
                break
             end
          elseif nbl2 == 1 then
@@ -832,9 +839,10 @@ function preselection()
   st="N05"
   selvalbutton[1]:label(st)
   selval[1]=st
-  st="N06"
-  selvalbutton[2]:label(st)
-  selval[2]=st
+  --st="N06"
+  --selvalbutton[2]:label(st)
+  --selval[2]=st
+  
 --deselect fields : list of buttons to deselect
   for i=1,#button2deselect do
        j = button2deselect[i]
@@ -1088,7 +1096,7 @@ function disp_sample2()
   end
 --preselect button
   preselbutton = fltk:Fl_Button(width_button, (cy+(4*height_button)), (2*width_button), height_button, "PRESEL_MT" )
-  st="All-ready M.TERRAS-Preselection-button : select lines with 'N05' or 'N06' and fields 'ATC5', 'l_cip13', 'age', 'sexe', 'BEN_REG', 'PSP_SPE','BOITES'"
+  st="All-ready M.TERRAS-Preselection-button : select lines with 'N05' and fields 'ATC5', 'l_cip13', 'age', 'sexe', 'BEN_REG', 'PSP_SPE','BOITES'"
   preselbutton:tooltip(st)
   preselbutton:callback(preselection)
 --countdown modal window : testing purpose only
@@ -1100,37 +1108,31 @@ function disp_sample2()
   twindow:show()
 end --end function
 
-if find(osName, "linux",1,true) then
 function read_Image()
    pwindow:make_current()
-   --Fl:check()
-   --Fl:flush()
-   --imageString = fltk.fl_read_image(pie:x(), pie:y(), pie:w(), (pie:h()+25))
    -- x,y,w,h are global var and define (local) pie chart dimensions
    imageString = fltk.fl_read_image(x,y,w,h)
-   --Fl:check()
-   --Fl:flush()
-   print(" #imageString = " .. #imageString)
+   Fl:check()
+   Fl:flush()
+   --print(" #imageString = " .. #imageString)
    image2 = fltk:Fl_RGB_Image(imageString, pie:w(), (pie:h()+25), 3)
-   --Fl:check()
-   --Fl:flush()
-   --copybox:image(image2)
+   Fl:check()
+   Fl:flush()
    pwindow:redraw()
    Fl:flush()
    Fl:check()
-   print("image2.w() = " .. image2:w() .. " // image2.h() = " .. image2:h() .. " // image2.d() = " .. image2:d() )
+   --print("image2.w() = " .. image2:w() .. " // image2.h() = " .. image2:h() .. " // image2.d() = " .. image2:d() )
    fileName = title .. ".png"
    image2:saveAsPng(fileName)
    Fl:flush()
    Fl:check()
    --murgaLua.sleep(100)
 end --end function
-end
 
 function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table)
- local st
+ local st,st1
  local decx_chart   = 20
- local decy_chart   = 0
+ local decy_chart   = 20
  local width_chart  = 450
  local height_chart = 450
  local width_button = 160
@@ -1141,23 +1143,22 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
  local minv=9999999
  local idxmax,idxmin
  local nbcriteria=0
+ local height_bar, width_bar, x_text, y_text, pixbar
+ local barvalue=object
  
  if not find(osName, "linux",1,true) then
     local pwindow=object
-    --local pie=object --charts : rather local object if pwindow is local
  end
  
   file_save=0 --flag for saved file with charts'image
   type_graphics=4
   --GUI for histogram chart
-  if find(osName, "linux",1,true) then
-     if pwindow then
-        pwindow:hide()
-        pwindow:clear()
-     end
-end
-
-  if context1 then
+  if pwindow then
+     pwindow:hide()
+     pwindow:clear()
+  end
+  
+  if context1 then     
      if context1 ~= " " then
         title = ax2 .. "_per_" .. ax1 .. "_" .. context1 .. "_" .. current_context
      else
@@ -1170,16 +1171,11 @@ end
   pwindow:label(title)
   --centrage du bouton en bas de la fenetre pwindow
   width_button = 45
-  quit = fltk:Fl_Button(decx_chart, height_pwindow-30, 45, 25, "Quit")
-  quit:tooltip("Quit or Next chart (if any)")
-  quit:callback(quit_callbackapp)
-  --copybox = fltk:Fl_Button(width_pwindow, 0, width_pwindow, height_pwindow, nil)
-  
   --chart
   pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
-  pie:position(decx_chart, decy_chart+20)
-  pie:size(width_chart, height_chart)
-  if context1 then
+  pie:position(decx_chart, decy_chart)
+  pie:size(width_chart, height_chart)     
+  if context1 then  
      st = ax1 .. " // " .. ax2 .. "(" .. context1 .. " =" .. current_context .. ")"
   else
      st = ax1 .. " // " .. ax2 .. "(no context)"
@@ -1190,7 +1186,12 @@ end
   pie:box(fltk.FL_SHADOW_BOX)
   pie:labelcolor(0)
   pie:autosize(1)
+  --pie:labelfont( fltk.FL_SCREEN )
+  pie:labelfont( fltk.FL_HELVETICA )
+  pie:labelsize( 8 )
+  height_bar=height_chart/#spe_table --height of bar chart in pixel, needing for drawing value at y position (computed)
   sum=0
+  --for sizing chart's bars and setting labels positions, extrema are needed before processing
   for i=1,#spe_table do
       if spe_table[i] > maxv then
          maxv = spe_table[i]
@@ -1200,27 +1201,58 @@ end
          minv = spe_table[i]
          idxmin=i
       end
+  end
+  pixbar = width_chart/spe_table[idxmax]
+  for i=1,#spe_table do
       if #spe_table>=15 then --managing display according to nb of cars
          j = math.floor(#spe_table/10)
          if (i % j) == 0 then
-            st = cat_values[indexa1][i]  .. "-" .. spe_table[i]
+            --st = cat_values[indexa1][i]  .. "-" .. spe_table[i]
+            st = cat_values[indexa1][i]
+            --small lib
+		    if ax1 == "BEN_REG" then
+		       st = lib_small_region[ i ]
+		    end
          else
             st = ""
          end
-         color=4
+         color=12 --default color for chart bars, 4=blue
       else
-         st = cat_values[indexa1][i]  .. "-" .. spe_table[i]
-         color=4
+         --st = cat_values[indexa1][i]  .. "-" .. spe_table[i]
+         st = cat_values[indexa1][i] --value ONLY
+		 --small lib
+		 if ax1 == "BEN_REG" then
+		    st = lib_small_region[ i ]
+		 end
+		 if spe_table[i] == maxv then
+		    color=9 --max value, kind of red
+		 elseif spe_table[i] == minv then
+		    color=10 --min value, kind of green
+		 else
+		    color=12 --default color for chart bars, 4=blue
+         end
       end
-      pie:add(spe_table[i], st, color)
+      pie:add(spe_table[ i ], "", color)
+      width_bar=pixbar*spe_table[i]
       sum=sum+spe_table[i]
+      --compute text position giving value IN chart bar
+      st1 = spe_table[i] .. ""
+      if ax1 == "BEN_REG" then
+         st1 = lib_small_region[ i ] .. "-" .. st1
+      end
+      x_text = width_bar
+      y_text = (i-1)*height_bar
+      if width_bar<(0.25*width_chart) then
+         barvalue = fltk:Fl_Box(10, decx_chart+y_text, 12+width_bar, height_bar, st1 ) --defines a text box : text will be displayed aligned within box
+         barvalue:align(fltk.FL_ALIGN_RIGHT)
+      else
+         barvalue = fltk:Fl_Box(0, decx_chart+y_text, width_bar, height_bar, st1 ) --defines a text box : text will be displayed aligned within box
+         barvalue:align(fltk.FL_ALIGN_INSIDE)
+      end
+      barvalue:labelsize(8)
+      --barvalue:box(fltk.FL_BORDER_BOX) --debuggin' purpose
   end
-  st = cat_values[indexa1][idxmin]  .. "-" .. spe_table[idxmin]
-  pie:replace(idxmin, spe_table[idxmin], st, 2)
-  st = cat_values[indexa1][idxmax]  .. "-" .. spe_table[idxmax]
-  pie:replace(idxmax, spe_table[idxmax], st, 1)
-  
-  --have to add in pie lable the optional criteria(s) (if defined)
+  --have to add in pie label the optional criteria(s) (if defined)
   st=""
   for i=1,#new_legend do
        if valse[i] ~= " " then
@@ -1234,65 +1266,26 @@ end
   if st == "" then
      st = "No optional criteria"
   end
-  st=title .. " (total lines=" .. sum .. ")\n" .. st
-  pie:label(st)
+    if annee then 
+     st1=title .. " (total lines=" .. sum .. ", " .. annee .. "-data)\n" .. st
+  else
+     st1=title .. " (total lines=" .. sum .. ")\n" .. st
+  end
+  pie:label(st1)
   pie:labelsize(8)
   pie:color(fltk.FL_WHITE)
-  
-
   
   Fl:check()
   pwindow:show()
   pwindow:redraw()
   Fl:flush()
   Fl:check()
-  if find(osName, "linux",1,true) then
-     print("linux detected !")
---[[
-     x,y,w,h=pie:x(), pie:y(), pie:w(), (pie:h()+25)
-     pwindow:make_current()
-     pwindow:show()
-     pwindow:set_modal()
-     pwindow:redraw()
-     Fl:flush()
-     Fl:check()
-     murgaLua.sleep(1)
-     timer:doWait(2)
-     murgaLua.sleep(1)
-     pwindow:set_non_modal()
-     pwindow:hide()
-]]--
-    -- timer:callback(read_Image)
-     -- if fltk:fl_choice("Save Charts or not ?", "No", "Yes", nil) == 1 then
-     
-          --timer:doWait(1)
-          countdown()
-          x,y,w,h=pie:x(), pie:y(), pie:w(), (pie:h()+25)
-          read_Image()
-          countdown()
-          --murgaLua.sleep(1)
-     --end
-  else 
-     --Windows
-	 print("fct disp_spe_histo lancement read_image")
-	 t01 = os.time()
-     pwindow:redraw()
-     pwindow:show()
-     Fl:check()
-     imageString = fltk.fl_read_image(pie:x(), pie:y(), pie:w(), (pie:h()+25))
-     print(" #imageString = " .. #imageString .. "(computing time = ".. os.difftime(os.time(), t01) .. " seconds .. ")
-     image2 = fltk:Fl_RGB_Image(imageString, pie:w(), (pie:h()+25), 3)
-	 print("Fin conversion RGB (computing time = ".. os.difftime(os.time(), t01) .. " seconds .. ")
-     fileName = title .. ".png"
-     image2:saveAsPng(fileName)
-     print("Fin conversion ecriture fichier image PNG (computing time = ".. os.difftime(os.time(), t01) .. " seconds\nimage2:w() = " .. image2:w() .. "//image2:h() = " .. image2:h())
-     io.flush()
-     pwindow:hide()
-     Fl:check()
-	 io.flush()
-	 print("fin de fct disp_spe_histo")
-     return
-  end
+  
+  countdown()
+  x,y,w,h=pie:x(), pie:y(), pie:w(), (pie:h()+25)
+  read_Image()
+  countdown()
+
 end --end function
 
 function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
@@ -1404,7 +1397,10 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
 --results of this function have been validated with with LibreOfficeCALC & some SOMMEPROD()
      imageString, image2 = nil, nil
      disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table) --mod 270824
-     print("retour en fct query_fct")
+     --print("retour en fct query_fct")
+     if pwindow then
+        pwindow:hide() --close last charts' window
+     end
      fileName = title .. ".png"
      
      --fltk:fl_message("Pause!") -- make a pause in charts displaying
@@ -2005,6 +2001,10 @@ end --end function
  else
     --windows, i suppose
 	filename="P:\\dsl-not\\murgalua\\bin\\windows\\OPEN_MEDIC_2023.CSV"
+ end
+ if filename then
+    annee = tonumber( sub(filename,-8,-5) )
+    print("Year of open_medic data (according to name of file) = " .. annee)
  end
  print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo())
  
