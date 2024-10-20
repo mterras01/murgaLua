@@ -29,6 +29,7 @@ size_eol = 0 -- varie selon Unix (MacOs) ou Windows
 annee=0 --year of open_medic data
 legend_data={} --text legends from original CSV
 new_legend={} --new text legends from transformed-downsized-filtered CSV
+clib_new_legend={} --complete text from previous table without acronyms
 table_data={} --main data model table = columns
 transftable_data={} --downsized table (built from previous)
 type_new_data={} --type of colums for new downsized table (transftable_data)
@@ -62,7 +63,6 @@ selval={"","","","",""} --values related to cols of table_data, used to query on
 selval_select={}
 title="" --title of pwindow, special histogram-chart
 x,y,w,h=0,0,0,0
-
 
 --specialist dictionnary
 lib_spe_ps ={'MEDECINE GENERALE LIBERALE',
@@ -124,9 +124,9 @@ indx_spe2={}
 for k,v in pairs(indx_spe) do
    indx_spe2[v]=k
 end
-for i=1,#indx_spe do
-     print(indx_spe[i] .. " = " .. lib_small_SPE[i])
-end
+--for i=1,#indx_spe do
+--     print(indx_spe[i] .. " = " .. lib_small_SPE[i])
+--end
 
 --region dictionnary
 lib_region ={--'Inconnu1',
@@ -775,7 +775,26 @@ function downsize()
   
   rapport_base()
   print("rapport_base() Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
-  
+  --defining complete libelle of legend instead of (too) small libelles
+  for i=1,#new_legend do
+       if new_legend[i] == "ATC5" then
+          table.insert(clib_new_legend, "Code ATC5 medicament")
+       elseif new_legend[i] == "l_cip13" then
+          table.insert(clib_new_legend, "Libelle medicament")
+       elseif new_legend[i] == "age" then
+          table.insert(clib_new_legend, "tranche age patient")
+       elseif new_legend[i] == "sexe" then
+          table.insert(clib_new_legend, "sexe patient")
+       elseif new_legend[i] == "BEN_REG" then
+          table.insert(clib_new_legend, "Region du Beneficiaire")
+       elseif new_legend[i] == "PSP_SPE" then
+          table.insert(clib_new_legend, "Specialite prescripteur")
+       elseif new_legend[i] == "BOITES" then
+          table.insert(clib_new_legend, "Unite=boites")
+       end
+       print(i .. ". small legend=" .. new_legend[i] .. " // " .. clib_new_legend[i])
+  end
+
   f_downsize=1
   catval_sorting() --sorting 2 tables possible values and nb of occurences for each possible value
   
@@ -1115,7 +1134,7 @@ function read_Image()
    Fl:check()
    Fl:flush()
    --print(" #imageString = " .. #imageString)
-   image2 = fltk:Fl_RGB_Image(imageString, pie:w(), (pie:h()+25), 3)
+   image2 = fltk:Fl_RGB_Image(imageString, w, h, 3)
    Fl:check()
    Fl:flush()
    pwindow:redraw()
@@ -1129,8 +1148,8 @@ function read_Image()
    --murgaLua.sleep(100)
 end --end function
 
-function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table)
- local st,st1
+function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table, label_legend)
+ local st,st1,st2
  local decx_chart   = 20
  local decy_chart   = 20
  local width_chart  = 450
@@ -1146,9 +1165,9 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
  local height_bar, width_bar, x_text, y_text, pixbar
  local barvalue=object
  
- if not find(osName, "linux",1,true) then
-    local pwindow=object
- end
+ --if not find(osName, "linux",1,true) then
+ --   local pwindow=object -- must check if this code is REALLY needed for MS Windows: Answer 161024: NOT AT ALL!
+ --end
  
   file_save=0 --flag for saved file with charts'image
   type_graphics=4
@@ -1189,7 +1208,8 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   --pie:labelfont( fltk.FL_SCREEN )
   pie:labelfont( fltk.FL_HELVETICA )
   pie:labelsize( 8 )
-  height_bar=height_chart/#spe_table --height of bar chart in pixel, needing for drawing value at y position (computed)
+  --height_bar=height_chart/#spe_table
+  height_bar=math.floor(height_chart/#spe_table) --height of bar chart in pixel, needing for drawing value at y position (computed)
   sum=0
   --for sizing chart's bars and setting labels positions, extrema are needed before processing
   for i=1,#spe_table do
@@ -1204,33 +1224,12 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   end
   pixbar = width_chart/spe_table[idxmax]
   for i=1,#spe_table do
-      if #spe_table>=15 then --managing display according to nb of cars
-         j = math.floor(#spe_table/10)
-         if (i % j) == 0 then
-            --st = cat_values[indexa1][i]  .. "-" .. spe_table[i]
-            st = cat_values[indexa1][i]
-            --small lib
-		    if ax1 == "BEN_REG" then
-		       st = lib_small_region[ i ]
-		    end
-         else
-            st = ""
-         end
-         color=12 --default color for chart bars, 4=blue
-      else
-         --st = cat_values[indexa1][i]  .. "-" .. spe_table[i]
-         st = cat_values[indexa1][i] --value ONLY
-		 --small lib
-		 if ax1 == "BEN_REG" then
-		    st = lib_small_region[ i ]
-		 end
-		 if spe_table[i] == maxv then
-		    color=9 --max value, kind of red
-		 elseif spe_table[i] == minv then
-		    color=10 --min value, kind of green
-		 else
-		    color=12 --default color for chart bars, 4=blue
-         end
+      if spe_table[i] == maxv then
+	     color=9 --max value, kind of red
+	  elseif spe_table[i] == minv then
+	     color=10 --min value, kind of green
+	  else
+	     color=12 --default color for chart bars, kind of blue
       end
       pie:add(spe_table[ i ], "", color)
       width_bar=pixbar*spe_table[i]
@@ -1239,9 +1238,14 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
       st1 = spe_table[i] .. ""
       if ax1 == "BEN_REG" then
          st1 = lib_small_region[ i ] .. "-" .. st1
+      elseif ax1 == "PSP_SPE" then
+         st1 = lib_small_SPE[ i ] .. "-" .. st1
+      else --no "small libelles", so display code "as is"
+         st1 = cat_values[indexa1][i] .. "-" .. st1
       end
       x_text = width_bar
-      y_text = (i-1)*height_bar
+      --y_text = (i-1)*height_bar
+      y_text = ((i-1)*height_bar)+1
       if width_bar<(0.25*width_chart) then
          barvalue = fltk:Fl_Box(10, decx_chart+y_text, 12+width_bar, height_bar, st1 ) --defines a text box : text will be displayed aligned within box
          barvalue:align(fltk.FL_ALIGN_RIGHT)
@@ -1266,13 +1270,23 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   if st == "" then
      st = "No optional criteria"
   end
-    if annee then 
-     st1=title .. " (total lines=" .. sum .. ", " .. annee .. "-data)\n" .. st
+  
+  if context1 then     
+     if context1 ~= " " then
+        st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_" .. context1 .. "_" .. current_context
+     else
+        st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_no_context"
+     end
   else
-     st1=title .. " (total lines=" .. sum .. ")\n" .. st
+	 st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_no_context"
   end
+
+  --text legend of chart bottom-displayed
+  st1=label_legend .. " -- " .. st1 .. " (total lines=" .. sum .. "), " .. st
+  
   pie:label(st1)
   pie:labelsize(8)
+  pie:align(fltk.FL_ALIGN_WRAP + fltk.FL_ALIGN_BOTTOM) --chart's label alignment
   pie:color(fltk.FL_WHITE)
   
   Fl:check()
@@ -1282,7 +1296,7 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   Fl:check()
   
   countdown()
-  x,y,w,h=pie:x(), pie:y(), pie:w(), (pie:h()+25)
+  x,y,w,h=pie:x(), pie:y(), pie:w(), (pie:h()+30)
   read_Image()
   countdown()
 
@@ -1297,7 +1311,8 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
   local nb_criterias=0
   local nb_contexts=0
   local current_context
-  local str,str2,unit
+  local str,str2,unit,st2
+  local label_legend
   
   --debug block
 --print("query_fct() => context1 = " .. context1 .. "(#=" .. #context1 .. "// indexc1=" .. indexc1)
@@ -1326,6 +1341,22 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
          end
    end
    
+   --label_legend is the same part for all "multi-context" charts, and displays year of openmedic file and selections keys
+  st2=""
+  for i=1,#selval_select do
+       if selval_select[i] then
+          if selval_select[i] ~= "" then 
+             st2 = st2 .. selval_select[i] .. ", "
+          end
+       end
+  end
+  if annee then
+     label_legend="Year " .. annee .. ", downsize keywords selection=" .. st2
+  else
+     label_legend="Unknown OPENMEDIC year, downsize keywords selection=" .. st2
+  end
+
+  
   --GO! the final result is table described by an histogram with y-axis lines=nb_a1 = #cat_values[indexa1]
   --and ONE column=some agregate cells of transftable_data
   for i=1,nb_contexts do --nb of successive charts to draw  
@@ -1396,15 +1427,12 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
        end --end for j (lines)
 --results of this function have been validated with with LibreOfficeCALC & some SOMMEPROD()
      imageString, image2 = nil, nil
-     disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table) --mod 270824
+     disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend) --mod 270824
      --print("retour en fct query_fct")
      if pwindow then
         pwindow:hide() --close last charts' window
      end
      fileName = title .. ".png"
-     
-     --fltk:fl_message("Pause!") -- make a pause in charts displaying
-
      --test if file exists
      f = io.open(fileName,"rb")
      if f then
@@ -1706,7 +1734,8 @@ cy = (i+1)*height_button
   --left-most button "values" (no callback, just displaying purpose)
   cx=0
   cy = cy+(4*height_button)
-  cell1= fltk:Fl_Box(cx, cy, width_button, height_button, "New chart" )
+  --cell1= fltk:Fl_Box(cx, cy, width_button, height_button, "New chart" )
+  cell1= fltk:Fl_Box(cx, cy, width_button, height_button, "Charts' Y axis" )
   cell1:labelfont(fltk.FL_SCREEN )
   cell1:box(fltk.FL_BORDER_BOX)
   cell1= fltk:Fl_Box(cx+(2*width_button), cy, width_button, height_button, "For each/all" )
@@ -1717,7 +1746,7 @@ cy = (i+1)*height_button
   context1 = fltk:Fl_Choice(cx+(2*width_button), (cy+height_button), width_button, height_button)
   st = "Histogram chart for each possible value of this column (agregated for all values if no selection). Number of possible values = nb of charts"
   context1:tooltip( st )
-  context1:add( " " ) --adding empty string = "no selection option"
+  context1:add( " " ) --adding space string = "no selection option"
   for k=1,#new_legend do
        if #cat_values[k] ~= 0 then
           context1:add( new_legend[k] )
@@ -1737,8 +1766,14 @@ cy = (i+1)*height_button
   end
   --set 2nd dim of table
   cx=width_button
-  axis2 = fltk:Fl_Choice(cx, cy, width_button, height_button)
-  st = "Set a field for the X-axis of table/chart. PAY ATTENTION ! This field Has to be SUMABLE and will be handle as a Measure's Unit. If not, displayed values wouldn't make no sense !"
+  cell1= fltk:Fl_Box(cx, cy, width_button, height_button, "Charts' X axis" )
+  cell1:labelfont(fltk.FL_SCREEN )
+  cell1:box(fltk.FL_BORDER_BOX)
+  st = "Set a field for the X-axis of table/chart. PAY ATTENTION ! This field Has to be SUMABLE and will be handled as a Measure's Unit. If not, displayed values would make no sense !"
+  cell1:tooltip(st)
+  --axis2 = fltk:Fl_Choice(cx, cy, width_button, height_button)
+  axis2 = fltk:Fl_Choice(cx, cy+height_button, width_button, height_button)
+  st = "Set a field for the X-axis of table/chart. PAY ATTENTION ! This field Has to be SUMABLE and will be handled as a Measure's Unit. If not, displayed values would make no sense !"
   axis2:tooltip( st )
   for k=1,#new_legend do
         axis2:add( new_legend[k] )
@@ -1779,6 +1814,12 @@ cy = (i+1)*height_button
            indexa1, indexc1, valse =  compute_index(ax1, c1, valselect)
            --3_GUI fonction
            query_fct(ax1, indexa1, ax2, indexa2, c1, indexc1, valse)
+           --second launching of this function for a "last agregrate chart" -ONLY IF previous chart was not already "agregate chart"
+           if c1 ~= " " then
+              c1=" "
+              indexc1=nil
+              query_fct(ax1, indexa1, ax2, indexa2, " ", nil, valse)
+           end
         end
         end) --end local function
   Fl:check()
