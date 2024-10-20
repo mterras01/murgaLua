@@ -52,10 +52,10 @@ twindow=nil--window for original table
 
 pwindow=object --window for histogram chart, global var if system is linux, local var if system is windows
 pie=object --charts : rather global object if pwindow is global
+--spe_table={} --values of bar charts (local)
 
 selbuttons={} --selbuttons[i]:color(2) means "selected field/column", :color(1) means "NOT selected field/column"
 selcol={}
-histo={} --histo buttons
 keyword=nil -- GUI input objects for catching query values
 clearbutton=nil
 selvalbutton={}
@@ -224,6 +224,36 @@ osName="OS=" .. murgaLua.getHostOsName()
 print(osName)
 t00=0
 t11=0
+
+function palmares_sorting(spe_table)
+--sorting spe_table[i] by value
+ local spe_table_temp1={}
+ --local spe_table_temp1=spe_table --WRONG method, sorting spe_table_temp1 will sort spe_table, too (NO WAY!)
+ local idx={} -- local index of spe_table : 1 means unprocessed, other values=already processed
+ local spe_table_palm={} -- values of table will be index of spe_table, sorted by spe_table value
+ local i,j
+ 
+ for i=1,#spe_table do
+       table.insert(spe_table_temp1, spe_table[i])
+       table.insert(idx,1)
+ end
+ --print("Before = " .. table.concat(spe_table,"//"))
+ table.sort(spe_table_temp1) --ONLY table spe_table_temp1 is now sorted by (increasing) values, table spe_table_temp1 is NOT sorted
+ --print("After sorting spe_table_temp1 = " .. table.concat(spe_table_temp1,"//")) --ONLY table spe_table_temp1 is now sorted by (increasing) values, table spe_table_temp1 is NOT sorted
+ --print("spe_table = " .. table.concat(spe_table,"//"))
+
+ for i=#spe_table_temp1,1,-1 do
+      for j=1,#spe_table do
+           if idx[j] == 1 then
+              if spe_table[j] == spe_table_temp1[i] then
+                 table.insert(spe_table_palm, j) --similar to spe_table_palm[i] = j
+                 idx[j]=-1
+              end
+           end
+      end
+ end
+ return spe_table_palm
+end --end function
 
 function define_textfile_origin(data)
   local i,st
@@ -1148,7 +1178,8 @@ function read_Image()
    --murgaLua.sleep(100)
 end --end function
 
-function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table, label_legend)
+function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table, label_legend, sort_option)
+ --sort_option arg is a number : 0 => no sorting, 1 =>sorting
  local st,st1,st2
  local decx_chart   = 20
  local decy_chart   = 20
@@ -1164,12 +1195,9 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
  local nbcriteria=0
  local height_bar, width_bar, x_text, y_text, pixbar
  local barvalue=object
+ local spe_table_palm={} --table of spe_table indexes, sorted by decreasing value in this table
  
- --if not find(osName, "linux",1,true) then
- --   local pwindow=object -- must check if this code is REALLY needed for MS Windows: Answer 161024: NOT AT ALL!
- --end
- 
-  file_save=0 --flag for saved file with charts'image
+  --file_save=0 --flag for saved file with charts'image
   type_graphics=4
   --GUI for histogram chart
   if pwindow then
@@ -1199,7 +1227,11 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   else
      st = ax1 .. " // " .. ax2 .. "(no context)"
   end
-  
+  if sort_option == 1 then
+     spe_table_palm = palmares_sorting(spe_table) --TESTING SORTED TABLE -----------------------------------------------------------------------------------
+  else
+     spe_table_palm = nil --NOT SORTED
+  end
   -- --pie:type( type_chart[type_graphics] )
   pie:type( fltk.FL_HORBAR_CHART )
   pie:box(fltk.FL_SHADOW_BOX)
@@ -1211,7 +1243,7 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   --height_bar=height_chart/#spe_table
   height_bar=math.floor(height_chart/#spe_table) --height of bar chart in pixel, needing for drawing value at y position (computed)
   sum=0
-  --for sizing chart's bars and setting labels positions, extrema are needed before processing
+  --for sizing/formatting chart's bars and setting labels positions, extrema and sums are needed before processing
   for i=1,#spe_table do
       if spe_table[i] > maxv then
          maxv = spe_table[i]
@@ -1221,30 +1253,36 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
          minv = spe_table[i]
          idxmin=i
       end
+      sum=sum+spe_table[i]
   end
   pixbar = width_chart/spe_table[idxmax]
+  --end of sizing, now prepare displaying chart
   for i=1,#spe_table do
-      if spe_table[i] == maxv then
+      if sort_option == 1 then
+         j = spe_table_palm[i] --sorting data, decreasing order
+      else
+         j=i --no sorting data
+      end
+      if spe_table[ j ] == maxv then
 	     color=9 --max value, kind of red
-	  elseif spe_table[i] == minv then
+	  elseif spe_table[ j ] == minv then
 	     color=10 --min value, kind of green
 	  else
 	     color=12 --default color for chart bars, kind of blue
       end
-      pie:add(spe_table[ i ], "", color)
-      width_bar=pixbar*spe_table[i]
-      sum=sum+spe_table[i]
+      pie:add(spe_table[ j ], "", color)
+      width_bar=pixbar*spe_table[ j ]
       --compute text position giving value IN chart bar
-      st1 = spe_table[i] .. ""
+      st1 = spe_table[ j ] .. ""
       if ax1 == "BEN_REG" then
-         st1 = lib_small_region[ i ] .. "-" .. st1
+         st1 = lib_small_region[ j ] .. "-" .. st1
       elseif ax1 == "PSP_SPE" then
-         st1 = lib_small_SPE[ i ] .. "-" .. st1
+         st1 = lib_small_SPE[ j ] .. "-" .. st1
       else --no "small libelles", so display code "as is"
-         st1 = cat_values[indexa1][i] .. "-" .. st1
+         st1 = cat_values[indexa1][ j ] .. "-" .. st1
       end
+
       x_text = width_bar
-      --y_text = (i-1)*height_bar
       y_text = ((i-1)*height_bar)+1
       if width_bar<(0.25*width_chart) then
          barvalue = fltk:Fl_Box(10, decx_chart+y_text, 12+width_bar, height_bar, st1 ) --defines a text box : text will be displayed aligned within box
@@ -1256,6 +1294,7 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
       barvalue:labelsize(8)
       --barvalue:box(fltk.FL_BORDER_BOX) --debuggin' purpose
   end
+
   --have to add in pie label the optional criteria(s) (if defined)
   st=""
   for i=1,#new_legend do
@@ -1302,7 +1341,7 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
 
 end --end function
 
-function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
+function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse, sort_option)
   local i,j,k
   local spe_table={}
   local keepcr=0 --keep this criteria-friendly cell
@@ -1360,7 +1399,7 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse)
   --GO! the final result is table described by an histogram with y-axis lines=nb_a1 = #cat_values[indexa1]
   --and ONE column=some agregate cells of transftable_data
   for i=1,nb_contexts do --nb of successive charts to draw  
-       file_save=0 --flag for saved file with charts'image
+       --file_save=0 --flag for saved file with charts'image
        current_context = tostring(cat_values[indexc][i]) --convert to char
 print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "// nb contexts=" .. nb_contexts .. "\nCriterias number = " .. nb_criterias)
 
@@ -1427,7 +1466,7 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
        end --end for j (lines)
 --results of this function have been validated with with LibreOfficeCALC & some SOMMEPROD()
      imageString, image2 = nil, nil
-     disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend) --mod 270824
+     disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend, sort_option) --last arg "sorting actived=1 or not=0"
      --print("retour en fct query_fct")
      if pwindow then
         pwindow:hide() --close last charts' window
@@ -1533,12 +1572,12 @@ function disp_sample3()
   local cell1=nil
   local u_quit=nil
   local uwindow=nil
-  local histo={}
   local valselect={}
   local co=#new_legend
   local axis1,axis2,context1
   local spe_chart=nil
   local valse={}
+  local sort_option=1
   
   if f_downsize ~= 1 then
      return
@@ -1641,41 +1680,13 @@ i=6
 cy = (i+1)*height_button
  for j=1,co do
       cx = j*width_button
-      st = "Hist" .. j
-      table.insert(histo, fltk:Fl_Button(cx, cy, width_button, height_button, st ) )
-	  histo[#histo]:labelfont( fltk.FL_SCREEN )
-      histo[#histo]:color(12)
-      st="click here to display Histogram of possible values for column \"" .. new_legend[j] .. "\""
-	  histo[#histo]:tooltip( st )
---print("disp_sample3(), putting histo button number " .. #histo)
-	  if #cat_values[#histo] == 0 then
-	     histo[#histo]:deactivate()
-	  end
-      histo[#histo]:callback(function (histo_fct)
-        local h=0
-        local i,j
-        for i=1,#histo do
-             if Fl.event_inside(histo[i]) == 1 then
-                h=i
-                --disp_histo(h)
-                --break
-                for j=1,#histo do --if one histo button pressed, all available histo are displayed and saved
-                     if histo[j]:active() == 1 then
-                        disp_histo(j)
-                     end
-                end
-                break
-             end
-        end
-        end) --end local function
-
       --text legend for line "nb of possible values"
       if j ==1 then
          -- this text legend button should NOT be multi-defined in this loop
          cx=0
          st="Nb values"
          st2="Nb of possible values for this column"
-         cell1=fltk:Fl_Box(cx, cy+height_button, width_button, height_button, st )
+         cell1=fltk:Fl_Box(cx, cy, width_button, height_button, st )
          cell1:labelfont( fltk.FL_SCREEN )
          cell1:tooltip( st2 )
          cell1:box(fltk.FL_BORDER_BOX)
@@ -1683,7 +1694,7 @@ cy = (i+1)*height_button
       cx = j*width_button
       st = #cat_values[j] .. ""
       st2 = #cat_values[j] .. " possible values"
-      cell1=fltk:Fl_Button(cx, cy+height_button, width_button, height_button, st )
+      cell1=fltk:Fl_Button(cx, cy, width_button, height_button, st )
       cell1:labelfont( fltk.FL_SCREEN )
 	  cell1:tooltip( st2 )
 	  cell1:box(fltk.FL_BORDER_BOX)
@@ -1779,12 +1790,31 @@ cy = (i+1)*height_button
         axis2:add( new_legend[k] )
   end
   --set main callback for specialized charts
+  --select option : sorting data or NOT (default=yes)
+  cx=0
+  st = "Select here by clicking if charts have sorting data (default) enabled or not"
+  sortbut= fltk:Fl_Button(cx, cy+(3*height_button), width_button, height_button, "sorting data" )
+  sortbut:labelfont( fltk.FL_SCREEN )
+  sortbut:tooltip( st )
+  sortbut:color(2) --prev color=14
+  sortbut:callback(function (selsortdata)
+          local st = sortbut:label()
+          if st == "sorting data" then
+             st = "NO sorting data"
+             sort_option=0
+          else
+             st = "sorting data"
+             sort_option=1
+          end
+          sortbut:label(st)
+          sortbut:redraw()
+          end) --end local function
   cx=0
   st = "Reset ALL query's criterias"
-  cell1= fltk:Fl_Button(cx+width_button, cy+(2*height_button), width_button, height_button, "Reset" )
+  cell1= fltk:Fl_Button(cx, cy+(4*height_button), width_button, height_button, "Reset" )
   cell1:labelfont( fltk.FL_SCREEN )
   cell1:tooltip( st )
-  cell1:color(14)
+  cell1:color(2) --prev color=14
   cell1:callback(function (reset)
           local i
           axis1:value(0)
@@ -1801,7 +1831,7 @@ cy = (i+1)*height_button
   spe_chart= fltk:Fl_Button(cx, cy+(2*height_button), width_button, height_button, "Launch query" )
   spe_chart:labelfont( fltk.FL_SCREEN )
   spe_chart:tooltip( st )
-  spe_chart:color(12)
+  spe_chart:color(1) --prev color=12
   --new code for function
   spe_chart:callback(function (query_launch)
         local i, msg
@@ -1813,12 +1843,12 @@ cy = (i+1)*height_button
            --continue
            indexa1, indexc1, valse =  compute_index(ax1, c1, valselect)
            --3_GUI fonction
-           query_fct(ax1, indexa1, ax2, indexa2, c1, indexc1, valse)
+           query_fct(ax1, indexa1, ax2, indexa2, c1, indexc1, valse, sort_option)
            --second launching of this function for a "last agregrate chart" -ONLY IF previous chart was not already "agregate chart"
            if c1 ~= " " then
               c1=" "
               indexc1=nil
-              query_fct(ax1, indexa1, ax2, indexa2, " ", nil, valse)
+              query_fct(ax1, indexa1, ax2, indexa2, " ", nil, valse, sort_option)
            end
         end
         end) --end local function
@@ -1932,100 +1962,6 @@ function quit_callbackapp()
      pwindow:clear()
      pwindow = nil
   end
-end --end function
-
-function disp_histo(h)
- local st=""
- local decx_chart   = 20
- local decy_chart   = 0
- local width_chart  = 450
- local height_chart = 450
- local width_button = 160
- local dec_button = 0
- local i,j,k
- local maxv=0
- local minv=9999999
- local idxmax,idxmin
- local sum=0
- local fileName
-
-  type_graphics=4
-  --GUI for histogram chart
-  if pwindow then
-     pwindow:hide()
-     pwindow:clear()
-  end
-  st = "Histo " .. new_legend[ h ]
-  pwindow = fltk:Fl_Window(0,0,width_pwindow, height_pwindow, st)
-  
-  --centrage du bouton en bas de la fenetre pwindow
-  width_button = 100
-  quit = fltk:Fl_Button(dec_button+10, height_pwindow-30, width_button, 25, "Quit")
-  quit:tooltip("Quit")
-  quit:callback(quit_callbackapp)
-  --chart
-  pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
-  pie:position(decx_chart, decy_chart+20)
-  pie:size(width_chart, height_chart)
-  pie:label(new_legend[ h ])
-  --pie:type( type_chart[type_graphics] )
-  pie:type( fltk.FL_HORBAR_CHART )
-  --pie:box(1)
-  pie:box(fltk.FL_SHADOW_BOX)
-  pie:labelcolor(0)
-  pie:autosize(1)
-  pie:color(fltk.FL_WHITE)
-  
-  for i=1,#cat_values[h] do
-      if occ_values[h][i] > maxv then
-         maxv = occ_values[h][i]
-         idxmax=i
-      end
-      if occ_values[h][i] < minv then
-         minv = occ_values[h][i]
-         idxmin=i
-      end
-      if #cat_values[h]>=15 then --managing display according to nb of cars
-         --j = math.floor(#cat_values[h]/15)
-         j = math.floor(#cat_values[h]/10)
-         if (i % j) == 0 then
-            st = cat_values[h][i]  .. "-" .. occ_values[h][i]
-         else
-            st = ""
-         end
-         color=4
-      else
-         st = cat_values[h][i]  .. "-" .. occ_values[h][i]
-         color=4
-      end
-      pie:add(occ_values[h][i], st, color)
-      sum=sum+occ_values[h][i]
-  end
-  st = cat_values[h][idxmin]  .. "-" .. occ_values[h][idxmin]
-  pie:replace(idxmin, occ_values[h][idxmin], st, 2)
-  st = cat_values[h][idxmax]  .. "-" .. occ_values[h][idxmax]
-  pie:replace(idxmax, occ_values[h][idxmax], st, 1)
-  
-  st = "Histo " .. new_legend[ h ] .. "(total occurs=" .. sum .. ")"
-  pie:label(st)
-  pie:labelsize(8)
-  title = "Histo_" .. new_legend[ h ] --memo : var "title" is global = no need to pass it to read_Image()
-  
-  Fl:check()
-  pie:redraw()
-  pwindow:redraw()
-  pwindow:show()
-  Fl:flush()
-  pwindow:set_modal()
-  if fltk:fl_choice("Save Charts or not ?", "No", "Yes", nil) == 1 then
-     read_Image()
-     --Fl:wait(2)
-  end  
-  --murgaLua.sleep(450) --milliseconds
-  --read_Image()
-  --murgaLua.sleep(100) --milliseconds
-  pwindow:set_non_modal()
-  
 end --end function
 
  t00=0
