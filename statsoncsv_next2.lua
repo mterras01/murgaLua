@@ -1178,6 +1178,134 @@ function read_Image()
    --murgaLua.sleep(100)
 end --end function
 
+function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table, label_legend)
+ --sort_option arg always=1 =>sorting
+ local st,st1,st2
+ local decx_chart   = 20
+ local decy_chart   = 20
+ local width_chart  = 450
+ local height_chart = 450
+ local width_button = 160
+ local dec_button = 0
+ local i,j,k
+ local sum=0
+ local nbcriteria=0
+ local spe_table_palm={} --table of spe_table indexes, sorted by decreasing value in this table
+ local percent=0
+ 
+  --file_save=0 --flag for saved file with charts'image
+  type_graphics=fltk.FL_SPECIALPIE_CHART
+  --GUI for histogram chart
+  if pwindow then
+     pwindow:hide()
+     pwindow:clear()
+  end
+  
+  if context1 then     
+     if context1 ~= " " then
+        title = ax2 .. "_per_" .. ax1 .. "_" .. context1 .. "_" .. current_context
+     else
+        title = ax2 .. "_per_" .. ax1 .. "_no_context"
+     end
+  else
+     title = ax2 .. "_per_" .. ax1 .. "_no_context"
+  end
+  pwindow = fltk:Fl_Window(0,0,width_pwindow, height_pwindow, title)
+  pwindow:label(title)
+  --centrage du bouton en bas de la fenetre pwindow
+  width_button = 45
+  --chart
+  pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
+  pie:position(decx_chart, decy_chart)
+  pie:size(width_chart, height_chart)     
+  if context1 then  
+     st = ax1 .. " // " .. ax2 .. "(" .. context1 .. " =" .. current_context .. ")"
+  else
+     st = ax1 .. " // " .. ax2 .. "(no context)"
+  end
+  
+  spe_table_palm = palmares_sorting(spe_table) --SORTED TABLE
+  
+  pie:type( fltk.FL_SPECIALPIE_CHART )
+  pie:box(fltk.FL_SHADOW_BOX)
+  pie:labelcolor(0)
+  pie:autosize(1)
+  --pie:labelfont( fltk.FL_SCREEN )
+  pie:labelfont( fltk.FL_HELVETICA )
+  pie:labelsize( 8 )
+  sum=0
+  --for sizing/formatting chart's bars and setting labels positions, extrema and sums are needed before processing
+  for i=1,#spe_table do
+      sum=sum+spe_table[i]
+  end
+  --end of sizing, now prepare displaying chart
+  for i=1,#spe_table do
+      j = spe_table_palm[i] --always sorting data, decreasing order      
+      --5 first items display in special pie chart
+      if i<6 then
+         color=87+i
+         st1 = spe_table[ j ] .. ""
+         if ax1 == "BEN_REG" then
+            st1 = lib_small_region[ j ] .. "\n" .. st1
+         elseif ax1 == "PSP_SPE" then
+            st1 = lib_small_SPE[ j ] .. "\n" .. st1
+         else --no "small libelles", so display code "as is"
+            st1 = cat_values[indexa1][ j ] .. "\n" .. st1
+         end
+         percent=string.format("%2.1f",(spe_table[ j ]*100/sum)) .. "%"
+         st1 = st1 .. "\n" .. percent
+      else
+        st1=""
+        color=12 --default color for chart bars, kind of blue
+      end
+      pie:add(spe_table[ j ], st1, color)
+  end
+
+  --have to add in pie label the optional criteria(s) (if defined)
+  st=""
+  for i=1,#new_legend do
+       if valse[i] ~= " " then
+          st = st .. new_legend[i] .. "=" .. valse[i] ..", "
+          nbcriteria=nbcriteria+1
+          if nbcriteria>3 then
+             st=st .. "\n"
+          end
+       end
+  end
+  if st == "" then
+     st = "No optional criteria"
+  end
+  
+  if context1 then     
+     if context1 ~= " " then
+        st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_" .. context1 .. "_" .. current_context
+     else
+        st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_no_context"
+     end
+  else
+	 st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_no_context"
+  end
+
+  --text legend of chart bottom-displayed
+  st1=label_legend .. " -- " .. st1 .. " (total lines=" .. sum .. "), " .. st
+  
+  pie:label(st1)
+  pie:labelsize(8)
+  pie:align(fltk.FL_ALIGN_WRAP + fltk.FL_ALIGN_BOTTOM) --chart's label alignment
+  pie:color(fltk.FL_WHITE)
+  
+  Fl:check()
+  pwindow:show()
+  pwindow:redraw()
+  Fl:flush()
+  Fl:check()
+  
+  countdown()
+  x,y,w,h=pie:x(), pie:y(), pie:w(), (pie:h()+30)
+  --read_Image()
+  countdown()
+end --end function
+
 function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table, label_legend, sort_option)
  --sort_option arg is a number : 0 => no sorting, 1 =>sorting
  local st,st1,st2
@@ -1338,7 +1466,6 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   x,y,w,h=pie:x(), pie:y(), pie:w(), (pie:h()+30)
   read_Image()
   countdown()
-
 end --end function
 
 function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse, sort_option)
@@ -1468,6 +1595,11 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
      imageString, image2 = nil, nil
      disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend, sort_option) --last arg "sorting actived=1 or not=0"
      --print("retour en fct query_fct")
+     if pwindow then
+        pwindow:hide() --close last charts' window
+     end
+     imageString, image2 = nil, nil
+     disp_piechart(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend)
      if pwindow then
         pwindow:hide() --close last charts' window
      end
