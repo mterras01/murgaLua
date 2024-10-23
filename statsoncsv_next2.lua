@@ -1192,6 +1192,8 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
  local nbcriteria=0
  local spe_table_palm={} --table of spe_table indexes, sorted by decreasing value in this table
  local percent=0
+ local cell=object --table for text-legend
+ local boxcol={}
  
   --file_save=0 --flag for saved file with charts'image
   type_graphics=fltk.FL_SPECIALPIE_CHART
@@ -1203,12 +1205,12 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
   
   if context1 then     
      if context1 ~= " " then
-        title = ax2 .. "_per_" .. ax1 .. "_" .. context1 .. "_" .. current_context
+        title = "Pie_" .. ax2 .. "_per_" .. ax1 .. "_" .. context1 .. "_" .. current_context
      else
-        title = ax2 .. "_per_" .. ax1 .. "_no_context"
+        title = "Pie_" .. ax2 .. "_per_" .. ax1 .. "_no_context"
      end
   else
-     title = ax2 .. "_per_" .. ax1 .. "_no_context"
+     title = "Pie_" .. ax2 .. "_per_" .. ax1 .. "_no_context"
   end
   pwindow = fltk:Fl_Window(0,0,width_pwindow, height_pwindow, title)
   pwindow:label(title)
@@ -1239,6 +1241,14 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
       sum=sum+spe_table[i]
   end
   --end of sizing, now prepare displaying chart
+  --box for text-legend in upper chart-area
+  cell = fltk:Fl_Box(decx_chart, decy_chart, width_chart, 60, "")
+  cell:labelfont( fltk.FL_SCREEN )
+  cell:labelsize( 8 )
+  cell:color( fltk.FL_WHITE )
+  cell:box(fltk.FL_BORDER_BOX)
+  cell:align(fltk.FL_ALIGN_INSIDE+fltk.FL_ALIGN_LEFT)
+  
   for i=1,#spe_table do
       j = spe_table_palm[i] --always sorting data, decreasing order      
       --5 first items display in special pie chart
@@ -1246,18 +1256,30 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
          color=87+i
          st1 = spe_table[ j ] .. ""
          if ax1 == "BEN_REG" then
-            st1 = lib_small_region[ j ] .. "\n" .. st1
+            --st1 = lib_small_region[ j ] .. "\n" .. st1
+            st1 = lib_small_region[ j ] .. "-" .. st1
          elseif ax1 == "PSP_SPE" then
-            st1 = lib_small_SPE[ j ] .. "\n" .. st1
+            --st1 = lib_small_SPE[ j ] .. "\n" .. st1
+            st1 = lib_small_SPE[ j ] .. "-" .. st1
          else --no "small libelles", so display code "as is"
-            st1 = cat_values[indexa1][ j ] .. "\n" .. st1
+            --st1 = cat_values[indexa1][ j ] .. "\n" .. st1
+            st1 = cat_values[indexa1][ j ] .. "-" .. st1
          end
          percent=string.format("%2.1f",(spe_table[ j ]*100/sum)) .. "%"
-         st1 = st1 .. "\n" .. percent
+         --st1 = st1 .. "\n" .. percent
+         st1 = "Number " .. i .. ". " .. st1 .. ", ie " .. percent
+         --display range, name, value and % in a excel-sheet-look
+         st = cell:label() .. "      " .. st1 .. "\n" --spaces are expected to leave some place for a mini-graphic box with color related to item's range
+         cell:label( st )
+         table.insert(boxcol,  fltk:Fl_Box(decx_chart+10, decy_chart+5+(10*(i-1)), 9, 9, "") ) --box with color related to item's range
+         boxcol[ #boxcol ]:color( color )
+         boxcol[ #boxcol ]:box(fltk.FL_BORDER_BOX)
+         st1 = i .. ""   --displaying within pie-chart
       else
         st1=""
         color=12 --default color for chart bars, kind of blue
       end
+      --pie:add(spe_table[ j ], st1, color)
       pie:add(spe_table[ j ], st1, color)
   end
 
@@ -1302,7 +1324,7 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
   
   countdown()
   x,y,w,h=pie:x(), pie:y(), pie:w(), (pie:h()+30)
-  --read_Image()
+  read_Image()
   countdown()
 end --end function
 
@@ -1335,12 +1357,12 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   
   if context1 then     
      if context1 ~= " " then
-        title = ax2 .. "_per_" .. ax1 .. "_" .. context1 .. "_" .. current_context
+        title = "Bar_" .. ax2 .. "_per_" .. ax1 .. "_" .. context1 .. "_" .. current_context
      else
-        title = ax2 .. "_per_" .. ax1 .. "_no_context"
+        title = "Bar_" .. ax2 .. "_per_" .. ax1 .. "_no_context"
      end
   else
-     title = ax2 .. "_per_" .. ax1 .. "_no_context"
+     title = "Bar_" .. ax2 .. "_per_" .. ax1 .. "_no_context"
   end
   pwindow = fltk:Fl_Window(0,0,width_pwindow, height_pwindow, title)
   pwindow:label(title)
