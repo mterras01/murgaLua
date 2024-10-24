@@ -1243,7 +1243,8 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
   --end of sizing, now prepare displaying chart
   --box for text-legend in upper chart-area
   cell = fltk:Fl_Box(decx_chart, decy_chart, width_chart, 60, "")
-  cell:labelfont( fltk.FL_SCREEN )
+  --cell:labelfont( fltk.FL_SCREEN )
+  cell:labelfont( fltk.FL_HELVETICA )
   cell:labelsize( 8 )
   cell:color( fltk.FL_WHITE )
   cell:box(fltk.FL_BORDER_BOX)
@@ -1269,7 +1270,7 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
          --st1 = st1 .. "\n" .. percent
          st1 = "Number " .. i .. ". " .. st1 .. ", ie " .. percent
          --display range, name, value and % in a excel-sheet-look
-         st = cell:label() .. "      " .. st1 .. "\n" --spaces are expected to leave some place for a mini-graphic box with color related to item's range
+         st = cell:label() .. "        " .. st1 .. "\n" --spaces are expected to leave some place for a mini-graphic box with color related to item's range
          cell:label( st )
          table.insert(boxcol,  fltk:Fl_Box(decx_chart+10, decy_chart+5+(10*(i-1)), 9, 9, "") ) --box with color related to item's range
          boxcol[ #boxcol ]:color( color )
