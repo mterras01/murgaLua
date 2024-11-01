@@ -1194,6 +1194,7 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
  local percent=0
  local cell=object --table for text-legend
  local boxcol={}
+ local cumul=0
  
   --file_save=0 --flag for saved file with charts'image
   type_graphics=fltk.FL_SPECIALPIE_CHART
@@ -1242,7 +1243,7 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
   end
   --end of sizing, now prepare displaying chart
   --box for text-legend in upper chart-area
-  cell = fltk:Fl_Box(decx_chart, decy_chart, width_chart, 60, "")
+  cell = fltk:Fl_Box(decx_chart, decy_chart, width_chart, 64, "")
   --cell:labelfont( fltk.FL_SCREEN )
   cell:labelfont( fltk.FL_HELVETICA )
   cell:labelsize( 8 )
@@ -1272,16 +1273,30 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
          --display range, name, value and % in a excel-sheet-look
          st = cell:label() .. "        " .. st1 .. "\n" --spaces are expected to leave some place for a mini-graphic box with color related to item's range
          cell:label( st )
-         table.insert(boxcol,  fltk:Fl_Box(decx_chart+10, decy_chart+5+(10*(i-1)), 9, 9, "") ) --box with color related to item's range
+         --table.insert(boxcol,  fltk:Fl_Box(decx_chart+10, decy_chart+5+(10*(i-1)), 9, 9, "") ) --box with color related to item's range
+         table.insert(boxcol,  fltk:Fl_Box(decx_chart+10, decy_chart+2+(10*(i-1)), 9, 9, "") ) --box with color related to item's range
          boxcol[ #boxcol ]:color( color )
          boxcol[ #boxcol ]:box(fltk.FL_BORDER_BOX)
          st1 = i .. ""   --displaying within pie-chart
+         pie:add(spe_table[ j ], st1, color)
       else
+        cumul = cumul+spe_table[ j ]
         st1=""
         color=12 --default color for chart bars, kind of blue
+        if i == #spe_table then
+           percent=string.format("%2.1f",(cumul*100/sum)) .. "%"
+           st1 = "Other data. " .. cumul .. ", ie " .. percent
+           --display range, name, value and % in a excel-sheet-look
+           st = cell:label() .. "        " .. st1 .. "\n" --spaces are expected to leave some place for a mini-graphic box with color related to item's range
+           cell:label( st )
+           table.insert(boxcol,  fltk:Fl_Box(decx_chart+10, decy_chart+2+(10*(6-1)), 9, 9, "") ) --box with color related to item's range
+           boxcol[ #boxcol ]:color( color )
+           boxcol[ #boxcol ]:box(fltk.FL_BORDER_BOX)
+           pie:add(cumul, st1, color)
+        end
       end
       --pie:add(spe_table[ j ], st1, color)
-      pie:add(spe_table[ j ], st1, color)
+      --pie:add(spe_table[ j ], st1, color)
   end
 
   --have to add in pie label the optional criteria(s) (if defined)
