@@ -1,13 +1,12 @@
 #!/bin/murgaLua
 
 --this murgaLua script has been tested with version 0750 https://github.com/igame3dbill/MurgaLua_0.7.5
---thanks igame3dbill !!!
---210724 from version statsoncsv_next.lua => statsoncsv_next2.lua
+--thanks to igame3dbill for this upgrade!!!
+--fork from 21/07/2024 statsoncsv_next.lua => statsoncsv_next2.lua
 --allows via a GUI the fields filtering after pre-loading  of huge CSV (first xxx lines)
 --downsizing of original file (>450Mb for year 2023)
-
---original file requiring changes since statsoncsv_next.lua
---OPEN_MEDIC_2023.CSV  (from SNDS)
+--and giving some statistics and charts
+--original file to process OPEN_MEDIC_2023.CSV  (from SNDS)
 --url = https://open-data-assurance-maladie.ameli.fr/medicaments/download_file2.php?file=Open_MEDIC_Base_Complete/OPEN_MEDIC_2023.zip
 
 
@@ -55,7 +54,10 @@ pie=object --charts : rather global object if pwindow is global
 --spe_table={} --values of bar charts (local)
 
 selbuttons={} --selbuttons[i]:color(2) means "selected field/column", :color(1) means "NOT selected field/column"
-selcol={}
+unitbuttons={} --if selected, related field is handled as the UNIQUE unit of measurement
+selcol={} --related to selbuttons table
+selunit={} --related to unitbuttons table
+label_unit="" --label of the field set as unit measurement
 keyword=nil -- GUI input objects for catching query values
 clearbutton=nil
 selvalbutton={}
@@ -861,6 +863,46 @@ local i
   return                                              
 end  --end function
 
+function select_unit_field_fct()
+  --choose a UNIQUE fied as unit of measurement
+ local i,j
+  for i=1,#unitbuttons do
+       if Fl.event_inside(unitbuttons[i]) == 1 then
+          if unitbuttons[i]:label() == "" then
+             --empy label means previously deselected
+             label_unit = legend_data[i]
+print("label_unit set to " .. label_unit)
+             unitbuttons[i]:label( "UNIT" )
+             unitbuttons[i]:tooltip( "This field is set as UNIQUE unit of measurement" )
+             unitbuttons[i]:show()
+             selunit[i] = 1
+--print("selunit[" .. i .. "] = " .. selunit[i])
+             --reseting other unit buttons
+             for j=1,#unitbuttons do
+                  if j ~= i then
+                     selunit[j] = 0
+                     unitbuttons[j]:label( "" )
+                     unitbuttons[j]:tooltip( "Click here to set this fied as UNIQUE unit of measurement" )
+                     unitbuttons[j]:show()
+                  end
+             end
+          else
+             --reseting ALL unit buttons
+             for j=1,#unitbuttons do
+                  selunit[j] = 0
+                  unitbuttons[j]:label( "" )
+                  unitbuttons[j]:tooltip( "Click here to set this fied as UNIQUE unit of measurement" )
+                  unitbuttons[j]:show()
+             end
+             label_unit = ""
+print("label_unit set to " .. label_unit)
+--print("selunit[" .. i .. "] = " .. selunit[i])
+          end
+       end
+  end
+  return  
+end  --end function
+
 function select_val_fct()
   local i,st
 
@@ -882,7 +924,7 @@ function preselection()
  local button2deselect={1,2,3,4,5,6,7,8,10,11,13,14,20,21}
  local button2select={1,2,3,4,5,6,7,8,10,11,13,14,20,21}
  
--- select the two keywords N05 & N06
+-- select the two keywords N05 & N06 (or only one !)
   --First clear previous values (if any)
   clear_val_fct()
   st="N05"
@@ -915,6 +957,19 @@ function preselection()
        selcol[j] = 1
        selbuttons[j]:show()
   end
+  --select field set as "unit of measurement"
+  for i=1,#selunit do
+       selunit[i]=0
+       unitbuttons[i]:label( "" )
+       unitbuttons[i]:tooltip( "" )
+       unitbuttons[i]:show()
+  end
+  selunit[19] = 1 --DEFAULT UNIT FIELD in this preselection is "BOITES" field
+  unitbuttons[19]:label( "UNIT" )
+  unitbuttons[19]:tooltip( "This field is set as UNIQUE unit of measurement" )
+  unitbuttons[19]:show()
+  label_unit = legend_data[19]
+print("label_unit set to " .. label_unit) 
   downsize()
 end --end function
 
@@ -1120,6 +1175,12 @@ function disp_sample2()
       selbuttons[#selbuttons]:color(2)
 	  selbuttons[#selbuttons]:tooltip( "Selected col" )
       selbuttons[#selbuttons]:callback(select_field_fct)
+      --adding UNIQUE unit of measurement  selector
+      table.insert(unitbuttons, fltk:Fl_Button(cx, cy+height_button, width_button, height_button, "" ) )
+      unitbuttons[#unitbuttons]:labelfont( fltk.FL_SCREEN )
+      unitbuttons[#unitbuttons]:labelcolor( 1 ) --default color for string label=RED
+	  unitbuttons[#unitbuttons]:tooltip( "Click here to set this fied as UNIQUE unit of measurement" )
+      unitbuttons[#unitbuttons]:callback(select_unit_field_fct)
   end  
 
 --area for catching query values
@@ -1229,7 +1290,12 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
   
   spe_table_palm = palmares_sorting(spe_table) --SORTED TABLE
   
-  pie:type( fltk.FL_SPECIALPIE_CHART )
+  if #spe_table>5 then 
+     pie:type( fltk.FL_SPECIALPIE_CHART )
+  else
+     pie:type( fltk.FL_PIE_CHART ) --this choice makes the chart more compact with less slices
+  end
+  
   pie:box(fltk.FL_SHADOW_BOX)
   pie:labelcolor(0)
   pie:autosize(1)
@@ -1244,16 +1310,15 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
   --end of sizing, now prepare displaying chart
   --box for text-legend in upper chart-area
   cell = fltk:Fl_Box(decx_chart, decy_chart, width_chart, 64, "")
-  --cell:labelfont( fltk.FL_SCREEN )
   cell:labelfont( fltk.FL_HELVETICA )
   cell:labelsize( 8 )
   cell:color( fltk.FL_WHITE )
   cell:box(fltk.FL_BORDER_BOX)
   cell:align(fltk.FL_ALIGN_INSIDE+fltk.FL_ALIGN_LEFT)
-  
+
   for i=1,#spe_table do
       j = spe_table_palm[i] --always sorting data, decreasing order      
-      --5 first items display in special pie chart
+      --5 first items display in special pie chart -- or less than 5, according to number of possible values
       if i<6 then
          color=87+i
          st1 = spe_table[ j ] .. ""
@@ -1273,12 +1338,19 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
          --display range, name, value and % in a excel-sheet-look
          st = cell:label() .. "        " .. st1 .. "\n" --spaces are expected to leave some place for a mini-graphic box with color related to item's range
          cell:label( st )
-         --table.insert(boxcol,  fltk:Fl_Box(decx_chart+10, decy_chart+5+(10*(i-1)), 9, 9, "") ) --box with color related to item's range
          table.insert(boxcol,  fltk:Fl_Box(decx_chart+10, decy_chart+2+(10*(i-1)), 9, 9, "") ) --box with color related to item's range
          boxcol[ #boxcol ]:color( color )
          boxcol[ #boxcol ]:box(fltk.FL_BORDER_BOX)
          st1 = i .. ""   --displaying within pie-chart
          pie:add(spe_table[ j ], st1, color)
+         if i == #spe_table then 
+            --display is quasi-made, but nb of items is lower than 5
+            for k=#spe_table,5 do
+                 --adding newline for increasing the legend-text's offset (empty text)
+                 st = cell:label() .. "\n"
+                 cell:label( st )
+           end
+         end
       else
         cumul = cumul+spe_table[ j ]
         st1=""
@@ -1295,8 +1367,6 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
            pie:add(cumul, st1, color)
         end
       end
-      --pie:add(spe_table[ j ], st1, color)
-      --pie:add(spe_table[ j ], st1, color)
   end
 
   --have to add in pie label the optional criteria(s) (if defined)
@@ -1655,7 +1725,7 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
 end  --end function
 
 function consistency_checking(ax1, ax2, c1)
-  local i, indexa2
+  local i, indexa2, indexa1
   --rule one
   if ax1 ~= 0 and ax2 ~= 0 then
      --ok
@@ -1676,6 +1746,20 @@ function consistency_checking(ax1, ax2, c1)
      fltk:fl_alert(msg)
      return(nil)
   end
+  --rule two and a half
+  for i=1,#new_legend do
+       if ax1 == new_legend[i] then
+          indexa1=i
+print("Criteria nb 1 = " .. ax1 .. "// index new_legend = " .. indexa1)
+          --additional condition = nb of possible value has to be <>0
+          if #cat_values[ indexa1 ] == 0 then
+print("Criteria " .. ax1 .. " has too much possible values => no dataviz provided !")
+             return(nil)
+          end
+          break
+       end
+  end  
+ 
   --rule three
   --axis2 variable's type MUST BE "number" AND with a number of possible values displayable (<100)
   --find index of ax2 in new_legend
@@ -1708,6 +1792,7 @@ function compute_index(ax1, c1, valselect)
        if ax1 == new_legend[i] then
           indexa1=i
           print("Criteria nb 1 = " .. ax1 .. "// index new_legend = " .. indexa1)
+          --additional condition = nb of possible value has to be <>0
           break
        end
  end       
@@ -1744,8 +1829,10 @@ function disp_sample3()
   local uwindow=nil
   local valselect={}
   local co=#new_legend
-  local axis1,axis2,context1
+  --local axis1,axis2,context1
+  local axis1,context1
   local spe_chart=nil
+  local spe_report=nil
   local valse={}
   local sort_option=1
   
@@ -1845,7 +1932,7 @@ function disp_sample3()
       end 
   end
   
---histogram buttons
+--"nb values" and "unit" buttons (two lines)
 i=6
 cy = (i+1)*height_button
  for j=1,co do
@@ -1868,7 +1955,14 @@ cy = (i+1)*height_button
       cell1:labelfont( fltk.FL_SCREEN )
 	  cell1:tooltip( st2 )
 	  cell1:box(fltk.FL_BORDER_BOX)
-	  
+	  --display field set as unit measurement 
+	  if label_unit == new_legend[j] then
+	     cell1=fltk:Fl_Button(cx, cy+height_button, width_button, height_button, "UNIT" )
+         cell1:labelfont( fltk.FL_SCREEN )
+	     cell1:tooltip( "This field is set as UNIT of measurement" )
+	     cell1:labelcolor( 1 ) --RED
+	     cell1:box(fltk.FL_BORDER_BOX)
+	  end
       --WHERE GUI version 2
       --now, (conditionnal) displaying a "menu button" handling possible values
       --legend text for these selection tools
@@ -1930,7 +2024,10 @@ cy = (i+1)*height_button
   context1:add( " " ) --adding space string = "no selection option"
   for k=1,#new_legend do
        if #cat_values[k] ~= 0 then
-          context1:add( new_legend[k] )
+          if label_unit ~= new_legend[k] then
+             --exclude field set as "unit of measurement"
+             context1:add( new_legend[k] )
+          end
        end
   end
 
@@ -1943,22 +2040,37 @@ cy = (i+1)*height_button
   st = "Set a field for the Y-axis of table/chart"
   axis1:tooltip( st )
   for k=1,#new_legend do
-        axis1:add( new_legend[k] )
+       if label_unit ~= new_legend[k] then
+          --exclude field set as "unit of measurement"
+          axis1:add( new_legend[k] )
+       end
   end
   --set 2nd dim of table
   cx=width_button
   cell1= fltk:Fl_Box(cx, cy, width_button, height_button, "Charts' X axis" )
   cell1:labelfont(fltk.FL_SCREEN )
   cell1:box(fltk.FL_BORDER_BOX)
-  st = "Set a field for the X-axis of table/chart. PAY ATTENTION ! This field Has to be SUMABLE and will be handled as a Measure's Unit. If not, displayed values would make no sense !"
+  st = "This field is a SUMABLE number and will be handled as a Measure's Unit (If not, displayed values would make no sense !)"
   cell1:tooltip(st)
-  --axis2 = fltk:Fl_Choice(cx, cy, width_button, height_button)
+  
+  cell1= fltk:Fl_Box(cx, cy+height_button, width_button, height_button, label_unit )
+  cell1:labelfont(fltk.FL_SCREEN )
+  cell1:box(fltk.FL_BORDER_BOX)
+  st = "This field is a SUMABLE number and will be handled as a Measure's Unit (If not, displayed values would make no sense !)"
+  cell1:tooltip(st)
+  --[[
   axis2 = fltk:Fl_Choice(cx, cy+height_button, width_button, height_button)
   st = "Set a field for the X-axis of table/chart. PAY ATTENTION ! This field Has to be SUMABLE and will be handled as a Measure's Unit. If not, displayed values would make no sense !"
   axis2:tooltip( st )
+  
   for k=1,#new_legend do
-        axis2:add( new_legend[k] )
+        if label_unit == new_legend[k] then
+           axis2:add( new_legend[k] )
+           axis2:value(1)
+           break
+        end
   end
+  ]]--
   --set main callback for specialized charts
   --select option : sorting data or NOT (default=yes)
   cx=0
@@ -1988,7 +2100,7 @@ cy = (i+1)*height_button
   cell1:callback(function (reset)
           local i
           axis1:value(0)
-          axis2:value(0)
+          --axis2:value(0)
           context1:value(0)
           for i=1,#valselect do
                 valselect[i]:value(0)
@@ -2005,7 +2117,7 @@ cy = (i+1)*height_button
   --new code for function
   spe_chart:callback(function (query_launch)
         local i, msg
-        local ax1, ax2, c1=axis1:text(), axis2:text(), context1:text()  
+        local ax1, ax2, c1=axis1:text(), label_unit, context1:text()
         local indexa1,indexa2,indexc1
         --1_consistency_checking
         indexa2 = consistency_checking(ax1, ax2, c1)
@@ -2022,6 +2134,44 @@ cy = (i+1)*height_button
            end
         end
         end) --end local function
+  --launch automatic reporting with one click
+  st = "Launch automatic reporting, all charts and tables in HTML-format document"
+  spe_report= fltk:Fl_Button(cx, cy+(5*height_button), width_button, height_button, "Launch report" )
+  spe_report:labelfont( fltk.FL_SCREEN )
+  spe_report:tooltip( st )
+  spe_report:color(1) --prev color=12
+  spe_report:callback(function (report_launch)
+        local i, data, context
+        local ax2=label_unit
+        local ax1, c1
+        local indexa1,indexa2,indexc1
+print("axis1:size() = " .. axis1:size() .. "\ncontext1:size() = " .. context1:size())
+        for data=1, axis1:size() do
+             axis1:value(data) --parse all values
+             ax1=axis1:text()
+print("axis1:text() = " .. axis1:text())
+             for context=1, context1:size() do
+                  context1:value(context) --parse all values
+                  c1=context1:text()
+print("context1:text() = " .. context1:text())
+                  --1_consistency_checking
+                  indexa2 = consistency_checking(ax1, ax2, c1)
+                  if indexa2 then
+                     --continue
+                     indexa1, indexc1, valse =  compute_index(ax1, c1, valselect)
+                     --3_GUI fonction
+                     query_fct(ax1, indexa1, ax2, indexa2, c1, indexc1, valse, sort_option)
+                     --second launching of this function for a "last agregrate chart" -ONLY IF previous chart was not already "agregate chart"
+                     if c1 ~= " " then
+                        c1=" "
+                        indexc1=nil
+                        query_fct(ax1, indexa1, ax2, indexa2, " ", nil, valse, sort_option)
+                     end
+                  end
+             end -- end for context
+        end --end for data
+        end) --end local function  
+  
   Fl:check()
   uwindow:show()
 end  --end function
