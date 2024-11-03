@@ -781,8 +781,14 @@ print("Error while Backup of new downsized CSV file " .. fn)
 end  --end function
 
 function downsize()
-  local i
+  local i, msg
   
+  if label_unit == "" then
+     msg = "No field is set as unique UNIT of measurement (REQUIRED) : no other processing can be done\nThis choice can be done with the buttons under those which de/select fields for downsizing process."
+     print(msg)
+     fltk:fl_alert(msg)
+     return
+  end
   t00 = os.time() --top chrono
   --build new table selval_select
   for i=1,#selval do
