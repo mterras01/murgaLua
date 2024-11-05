@@ -58,6 +58,7 @@ unitbuttons={} --if selected, related field is handled as the UNIQUE unit of mea
 selcol={} --related to selbuttons table
 selunit={} --related to unitbuttons table
 label_unit="" --label of the field set as unit measurement
+selcross={} --lists items of new_legend indexes table and sets to 1 if field is selected for a cross-analyse with others or 0 if not
 keyword=nil -- GUI input objects for catching query values
 clearbutton=nil
 selvalbutton={}
@@ -1841,6 +1842,7 @@ function disp_sample3()
   local spe_report=nil
   local valse={}
   local sort_option=1
+  local cross={}
   
   if f_downsize ~= 1 then
      return
@@ -1851,6 +1853,11 @@ function disp_sample3()
   legend_data=nil
   table_data=nil
   collectgarbage()
+  
+  --table selcross init
+  for i=1,#new_legend do
+       table.insert(selcross, 0) --default = no cross-analyse for current field
+  end
   
   --fenetre graphique pour la restitution du tableau CSV
   width_twindow = 1024
@@ -2036,8 +2043,8 @@ cy = (i+1)*height_button
           end
        end
   end
-
-
+  
+  --defining catalog menu for Charts' Y axis
   cell1= fltk:Fl_Button(cx+width_button, cy+height_button, width_button, height_button)
   cell1:labelfont( fltk.FL_SCREEN )
   cell1:box(fltk.FL_DOWN_BOX)
@@ -2046,9 +2053,11 @@ cy = (i+1)*height_button
   st = "Set a field for the Y-axis of table/chart"
   axis1:tooltip( st )
   for k=1,#new_legend do
-       if label_unit ~= new_legend[k] then
-          --exclude field set as "unit of measurement"
-          axis1:add( new_legend[k] )
+       if #cat_values[k] ~= 0 then
+          if label_unit ~= new_legend[k] then
+             --exclude field set as "unit of measurement"
+             axis1:add( new_legend[k] )
+          end
        end
   end
   --set 2nd dim of table
@@ -2064,19 +2073,7 @@ cy = (i+1)*height_button
   cell1:box(fltk.FL_BORDER_BOX)
   st = "This field is a SUMABLE number and will be handled as a Measure's Unit (If not, displayed values would make no sense !)"
   cell1:tooltip(st)
-  --[[
-  axis2 = fltk:Fl_Choice(cx, cy+height_button, width_button, height_button)
-  st = "Set a field for the X-axis of table/chart. PAY ATTENTION ! This field Has to be SUMABLE and will be handled as a Measure's Unit. If not, displayed values would make no sense !"
-  axis2:tooltip( st )
-  
-  for k=1,#new_legend do
-        if label_unit == new_legend[k] then
-           axis2:add( new_legend[k] )
-           axis2:value(1)
-           break
-        end
-  end
-  ]]--
+
   --set main callback for specialized charts
   --select option : sorting data or NOT (default=yes)
   cx=0
@@ -2140,21 +2137,76 @@ cy = (i+1)*height_button
            end
         end
         end) --end local function
+        
+  --cosmetic GUI for automatic report
+  cx=(6*width_button)
+  cy = (10*height_button)
+  for k=1,#new_legend do
+       --if #cat_values[k] ~= 0 then
+          --if label_unit ~= new_legend[k] then
+             --exclude field set as "unit of measurement"
+             cmdbox = fltk:Fl_Box(cx, cy, width_button, height_button, new_legend[k])
+             cmdbox:box(fltk.FL_DOWN_BOX)
+             cmdbox:labelfont( fltk.FL_SCREEN )
+             cmdbox:labelsize( 8 )
+             cmdbox:color( fltk.FL_WHITE )
+             table.insert( cross, fltk:Fl_Button((cx+width_button), cy, 32, height_button, " "))
+             cross[ #cross ]:labelcolor( fltk.FL_RED )
+             cross[ #cross ]:tooltip( "Click here for a crossed-analyse of this field with the other" )
+             if (#cat_values[k] == 0) or (label_unit == new_legend[k]) then
+                cross[ #cross ]:deactivate()
+                cross[ #cross ]:tooltip( "Not available!" )
+                cmdbox:color(16)
+             end
+             cross[ #cross ]:callback(function (sel_cross)
+               local i
+               for i=1,#cross do
+                    if Fl.event_inside(cross[ i ]) == 1 then
+                       if cross[ i ]:label() == " " then
+                          cross[ i ]:label("@-5circle")
+                          selcross[i] = 1
+                       else
+                          cross[ i ]:label(" ")
+                          selcross[i] = 0
+                       end
+                       break
+                    end
+               end
+               end) --end local function
+             cy = cy+height_button
+          --end
+       --end
+  end
   --launch automatic reporting with one click
   st = "Launch automatic reporting, all charts and tables in HTML-format document"
-  spe_report= fltk:Fl_Button(cx, cy+(5*height_button), width_button, height_button, "Launch report" )
+  --spe_report= fltk:Fl_Button(cx, cy+(5*height_button), width_button, height_button, "Launch report" )
+  spe_report= fltk:Fl_Button(cx, cy, width_button, height_button, "Launch report" )
   spe_report:labelfont( fltk.FL_SCREEN )
   spe_report:tooltip( st )
   spe_report:color(1) --prev color=12
   spe_report:callback(function (report_launch)
-        local i, data, context
+        local i, data, context,j,k,allow
         local ax2=label_unit
         local ax1, c1
         local indexa1,indexa2,indexc1
+        --defines depth of reporting : how many fields (and which one) are crossed-analysed ?
+        --selcross
+        
 print("axis1:size() = " .. axis1:size() .. "\ncontext1:size() = " .. context1:size())
         for data=1, axis1:size() do
              axis1:value(data) --parse all values
              ax1=axis1:text()
+             --continue ONLY if field was selected in selcross table
+             allow=0
+             for j=1,#new_legend do
+                  if ax1 == new_legend[j] then
+                     if selcross[j] == 1 then
+                        allow=1
+                        break
+                     end
+                  end
+             end
+          if allow == 1 then
 print("axis1:text() = " .. axis1:text())
              for context=1, context1:size() do
                   context1:value(context) --parse all values
@@ -2175,6 +2227,7 @@ print("context1:text() = " .. context1:text())
                      end
                   end
              end -- end for context
+          end --end if allow
         end --end for data
         end) --end local function  
   
