@@ -94,7 +94,7 @@ lib_spe_ps ={'MEDECINE GENERALE LIBERALE',
 'DIRECTEUR LABORATOIRE MEDECIN LIBERAL',
 'ENDOCRINOLOGIE ET METABOLISMES LIBERAL',
 'PRESCRIPTEURS SALARIES',
-'PRESCRIPTEURS DE VILLE AUTRES QUE MEDECINS (Dentistes, Auxiliaires médicaux, Laboratoires, Sages-Femmes)',
+'PRESCRIPTEURS DE VILLE AUTRES QUE MEDECINS (Dentistes, Auxiliaires medicaux, Laboratoires, Sages-Femmes)',
 'VALEUR INCONNUE'}
 lib_small_SPE={'MGLIB',
 'ANEST',
@@ -134,19 +134,19 @@ end
 
 --region dictionnary
 lib_region ={--'Inconnu1',
-                'Régions et Départements d\'outre-mer',
+                'Regions et Departements d\'outre-mer',
                 'Ile-de-France',
                 'Centre-Val de Loire',
-                'Bourgogne-Franche-Comté',
+                'Bourgogne-Franche-Comte',
                 'Normandie',
                 'Nord-Pas-de-Calais-Picardie',
                 'Alsace-Champagne-Ardenne-Lorraine',
                 'Pays de la Loire',
                 'Bretagne',
                 'Aquitaine-Limousin-Poitou-Charentes',
-                'Languedoc-Roussillon-Midi-Pyrénées',
-                'Auvergne-Rhône-Alpes',
-                'Provence-Alpes-Côte d\'Azur et Corse',
+                'Languedoc-Roussillon-Midi-Pyrenees',
+                'Auvergne-Rhone-Alpes',
+                'Provence-Alpes-Cote d\'Azur et Corse',
                 'Inconnu'}
 lib_small_region ={--'INC1?',
                 'DOMTOM',
@@ -1239,6 +1239,75 @@ function read_Image()
    --murgaLua.sleep(100)
 end --end function
 
+function find_slib_from(context1, current_context, small)
+  local i, option
+  
+  if small then
+     if small == 1 then
+        option=1 --default = small libelle -if available-
+     elseif small == 2 then
+        option=2 --plain libelle
+     else
+        option=0 --no libelle, but code
+     end
+  else
+    option=0 --no libelle, but code
+  end
+  --returns small_libelle (if relevant) from current_context
+  if context1 == "BEN_REG" then
+     for i=1, #indx_region do
+          if (current_context .. "") == (indx_region[ i ] .. "") then
+             if option == 1 then
+                return lib_small_region[ i ]
+             elseif option == 2 then
+                return lib_region[ i ]
+             else
+                return current_context 
+             end
+          end
+     end
+  elseif context1 == "PSP_SPE" then
+     for i=1, #indx_spe do
+          if (current_context .. "")  == (indx_spe[ i ] .. "") then
+             if option == 1 then
+                return lib_small_SPE[ i ]
+             elseif option == 2 then
+                return lib_spe_ps[ i ]
+             else
+                return current_context
+             end
+          end
+     end
+  elseif context1 == "age" then
+     for i=1, #indx_age do
+          if (current_context .. "")  == (indx_age[ i ] .. "") then
+             if option == 1 then
+                return lib_age[ i ]
+             elseif option == 2 then
+                return lib_age[ i ]
+             else
+                return current_context
+             end
+          end
+     end
+  elseif context1 == "sexe" then
+     for i=1, #indx_sex do
+          if (current_context .. "")  == (indx_sex[ i ] .. "") then
+             if option == 1 then
+                return lib_sex[ i ]
+             elseif option == 2 then
+                return lib_sex[ i ]
+             else
+                return current_context 
+             end
+          end
+     end
+  else
+     return current_context 
+  end
+  return current_context
+end --end function
+
 function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table, label_legend)
  --sort_option arg always=1 =>sorting
  local st,st1,st2
@@ -1246,7 +1315,7 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
  local decy_chart   = 20
  local width_chart  = 450
  local height_chart = 450
- local width_button = 160
+ --local width_button = 160
  local dec_button = 0
  local i,j,k
  local sum=0
@@ -1277,11 +1346,12 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
   pwindow = fltk:Fl_Window(0,0,width_pwindow, height_pwindow, title)
   pwindow:label(title)
   --centrage du bouton en bas de la fenetre pwindow
-  width_button = 45
+  --width_button = 45
   --chart
   pie = fltk:Fl_Chart(0, 0, 5, 5, nil)
   pie:position(decx_chart, decy_chart)
-  pie:size(width_chart, height_chart)     
+  pie:size(width_chart, height_chart)
+
   if context1 then  
      st = ax1 .. " // " .. ax2 .. "(" .. context1 .. " =" .. current_context .. ")"
   else
@@ -1298,7 +1368,7 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
   
   pie:box(fltk.FL_SHADOW_BOX)
   pie:labelcolor(0)
-  pie:autosize(1)
+  --pie:autosize(1)
   --pie:labelfont( fltk.FL_SCREEN )
   pie:labelfont( fltk.FL_HELVETICA )
   pie:labelsize( 8 )
@@ -1320,7 +1390,8 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
       j = spe_table_palm[i] --always sorting data, decreasing order      
       --5 first items display in special pie chart -- or less than 5, according to number of possible values
       if i<6 then
-         color=87+i
+         --color=87+i
+         color=179+i
          st1 = spe_table[ j ] .. ""
          if ax1 == "BEN_REG" then
             --st1 = lib_small_region[ j ] .. "\n" .. st1
@@ -1388,12 +1459,14 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
   
   if context1 then     
      if context1 ~= " " then
-        st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_" .. context1 .. "_" .. current_context
+        --st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_" .. context1 .. "_" .. current_context
+        --if relevant, find var current_context in catalog of small_libelle and replace it with small libelle
+        st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. " (" .. context1 .. "=" .. find_slib_from(context1, current_context, 2).. ")" --2 means "plain libelle"
      else
-        st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_no_context"
+        st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. " (no_context)"
      end
   else
-	 st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_no_context"
+	 st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. " (no_context)"
   end
 
   --text legend of chart bottom-displayed
@@ -1552,12 +1625,14 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   
   if context1 then     
      if context1 ~= " " then
-        st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_" .. context1 .. "_" .. current_context
+        --st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_" .. context1 .. "_" .. current_context
+        --if relevant, find var current_context in catalog of small_libelle and replace it with small libelle
+        st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. " (" .. context1 .. "=" .. find_slib_from(context1, current_context, 2) .. ")" --2 means plain libelle
      else
-        st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_no_context"
+        st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. " (no_context)"
      end
   else
-	 st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. "_no_context"
+	 st1 = clib_new_legend[indexa2] .. " / " .. clib_new_legend[indexa1] .. " (no_context)"
   end
 
   --text legend of chart bottom-displayed
