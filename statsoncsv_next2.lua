@@ -57,7 +57,8 @@ selbuttons={} --selbuttons[i]:color(2) means "selected field/column", :color(1) 
 unitbuttons={} --if selected, related field is handled as the UNIQUE unit of measurement
 selcol={} --related to selbuttons table
 selunit={} --related to unitbuttons table
-label_unit="" --label of the field set as unit measurement
+label_unit="" --string var = label of the field set as unit measurement
+index_unit=0--index of string var "label_unit" in downsized table "new_legend"
 selcross={} --lists items of new_legend indexes table and sets to 1 if field is selected for a cross-analyse with others or 0 if not
 keyword=nil -- GUI input objects for catching query values
 clearbutton=nil
@@ -518,17 +519,6 @@ print(new_legend[i] .. " too many possible string values => aborting catalog bui
        else
            --rien
        end
-       --occurences computing : keep commented code "for history"
---        if #cat_values > 0 then
---           if #cat_values[i] > 1 then
---              table.sort(cat_values[i]) -- pour avoir les valeurs possibles triées par valeur/par ordre alpha
--- print("Catalogue des valeurs = " .. table.concat(cat_values[i],"//") .. "\nNb de valeurs possibles = " .. #cat_values[i])
--- 		     for j=1,#cat_values[i] do
---                    _, occ_values[i][j] = st:gsub(cat_values[i][j],"")
---                     _, occ_values[i][j] = global_buffer:gsub(cat_values[i][j],"")
--- 		     end
---           end
---        end
 
 k=i*100/co
 progress_bar3:value(k)
@@ -878,6 +868,7 @@ function select_unit_field_fct()
           if unitbuttons[i]:label() == "" then
              --empy label means previously deselected
              label_unit = legend_data[i]
+             index_unit = i
 print("label_unit set to " .. label_unit)
              unitbuttons[i]:label( "UNIT" )
              unitbuttons[i]:tooltip( "This field is set as UNIQUE unit of measurement" )
@@ -902,6 +893,7 @@ print("label_unit set to " .. label_unit)
                   unitbuttons[j]:show()
              end
              label_unit = ""
+             index_unit = 0
 print("label_unit set to " .. label_unit)
 --print("selunit[" .. i .. "] = " .. selunit[i])
           end
@@ -934,7 +926,7 @@ function preselection()
 -- select the two keywords N05 & N06 (or only one !)
   --First clear previous values (if any)
   clear_val_fct()
-  st="N05"
+  st="N05AX"
   selvalbutton[1]:label(st)
   selval[1]=st
   --st="N06"
@@ -1221,6 +1213,7 @@ function disp_sample2()
   st="This button calls a Countdown Modal Window"
   cmwinbutton:tooltip(st)
   cmwinbutton:callback(countdown)
+  cmwinbutton:deactivate()
   Fl:check()
   twindow:show()
 end --end function
@@ -1378,14 +1371,16 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
 
   --have to add in pie label the optional criteria(s) (if defined)
   st=""
-  for i=1,#new_legend do
-       if valse[i] ~= " " then
-          st = st .. new_legend[i] .. "=" .. valse[i] ..", "
-          nbcriteria=nbcriteria+1
-          if nbcriteria>3 then
-             st=st .. "\n"
+  if valse then
+     for i=1,#new_legend do
+          if valse[i] ~= " " then
+             st = st .. new_legend[i] .. "=" .. valse[i] ..", "
+             nbcriteria=nbcriteria+1
+             if nbcriteria>3 then
+                st=st .. "\n"
+             end
           end
-       end
+     end
   end
   if st == "" then
      st = "No optional criteria"
@@ -1540,14 +1535,16 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
 
   --have to add in pie label the optional criteria(s) (if defined)
   st=""
-  for i=1,#new_legend do
-       if valse[i] ~= " " then
-          st = st .. new_legend[i] .. "=" .. valse[i] ..", "
-          nbcriteria=nbcriteria+1
-          if nbcriteria>3 then
-             st=st .. "\n"
+  if valse then
+     for i=1,#new_legend do
+          if valse[i] ~= " " then
+             st = st .. new_legend[i] .. "=" .. valse[i] ..", "
+             nbcriteria=nbcriteria+1
+             if nbcriteria>3 then
+                st=st .. "\n"
+             end
           end
-       end
+     end
   end
   if st == "" then
      st = "No optional criteria"
@@ -1583,11 +1580,11 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   countdown()
 end --end function
 
-function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse, sort_option)
+function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse, sort_option,report)
   local i,j,k
   local spe_table={}
   local keepcr=0 --keep this criteria-friendly cell
-  local keepco=0 --keep this context-friendly cell
+  --local keepco=0 --keep this context-friendly cell
   local indexc=0
   local nb_criterias=0
   local nb_contexts=0
@@ -1614,12 +1611,17 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse, sort_op
      indexc=1 --factice value
   end
   nb_a1 = #cat_values[indexa1]
-  nb_a2 = #cat_values[indexa2]
+  if indexa2>0 then
+     nb_a2 = #cat_values[indexa2]
+     --else
+  end
   --find number of criteria in valselect
-   for k=1,#valse do
-         if valse[k] ~= " " then
-            nb_criterias=nb_criterias+1
-         end
+  if valse then
+      for k=1,#valse do
+            if valse[k] ~= " " then
+               nb_criterias=nb_criterias+1
+            end
+      end
    end
    
    --label_legend is the same part for all "multi-context" charts, and displays year of openmedic file and selections keys
@@ -1643,7 +1645,7 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse, sort_op
   for i=1,nb_contexts do --nb of successive charts to draw  
        --file_save=0 --flag for saved file with charts'image
        current_context = tostring(cat_values[indexc][i]) --convert to char
-print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "// nb contexts=" .. nb_contexts .. "\nCriterias number = " .. nb_criterias)
+print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "// nb contexts=" .. nb_contexts .. "// Criterias number = " .. nb_criterias)
 
 --reinit table for re-using
       spe_table=nil
@@ -1655,13 +1657,40 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
        for j=1,#transftable_data do
             --lines scan
             --test context
-            keepco=0
+            --keepco=0
           if nb_contexts>1 then
             if tostring(transftable_data[j][indexc]) == current_context then
-               keepco=1
+               --keepco=1
                --test criterias
                keepcr=0
-               --for k=1,#new_legend do
+               if valse then
+                  for k=1,#valse do
+                       --apply valse criterias to colums
+                       str=tostring(transftable_data[j][k])
+                       str2=valse[k]
+                       if str == str2 then
+                          --keep line / this cell
+                          keepcr=keepcr+1
+                       end
+                  end --end for k
+               end
+               unit=0
+               if keepcr == nb_criterias then
+                  str=tostring(transftable_data[j][indexa1])
+                  unit=tonumber(transftable_data[j][indexa2])
+--print("Matching criterias for transftable_data[" .. j .. "][" .. indexa1 .. "] = " .. transftable_data[j][indexa1])
+--print("Matching criterias for transftable_data[" .. j .. "][" .. indexa2 .. "] = " .. ", label_unit =" .. label_unit)
+                  for k=1,nb_a1 do
+                       str2=tostring(cat_values[indexa1][k])
+                       if str == str2 then
+                          spe_table[k] = spe_table[k]+unit
+                       end
+                  end
+               end --end if keepcr 
+            end --end if [...] current_context
+         else  --nb_contexts<=1   ====== ONE context=hyper-agregate & specialized histogram
+            keepcr=0
+            if valse then
                for k=1,#valse do
                     --apply valse criterias to colums
                     str=tostring(transftable_data[j][k])
@@ -1671,29 +1700,8 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
                        keepcr=keepcr+1
                     end
                end --end for k
-               if keepcr == nb_criterias then
-                  str=tostring(transftable_data[j][indexa1])
-                  unit=tonumber(transftable_data[j][indexa2])
---print("Matching criterias for transftable_data[" .. j .. "][" .. indexa1 .. "] = " .. transftable_data[j][indexa1] .. " // boites=" .. unit)
-                  for k=1,nb_a1 do
-                       str2=tostring(cat_values[indexa1][k])
-                       if str == str2 then
-                          spe_table[k] = spe_table[k]+unit
-                       end
-                  end
-               end
-            end --end if keeopco==1
-         else  --nb_contexts<=1   ====== ONE context=hyper-agregate & specialized histogram
-            keepcr=0
-            for k=1,#valse do
-                 --apply valse criterias to colums
-                 str=tostring(transftable_data[j][k])
-                 str2=valse[k]
-                 if str == str2 then
-                    --keep line / this cell
-                    keepcr=keepcr+1
-                 end
-            end --end for k
+            end
+            unit=0
             if keepcr == nb_criterias then
                str=tostring(transftable_data[j][indexa1])
                unit=tonumber(transftable_data[j][indexa2])
@@ -1727,7 +1735,6 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
      else
         print("File " .. fileName .. " DOES NOT exist in default path.") 
      end
-     --murgaLua.sleep(0) --commented 021024 PM
     end --end for i (context)
 end  --end function
 
@@ -1768,7 +1775,7 @@ print("Criteria " .. ax1 .. " has too much possible values => no dataviz provide
   end  
  
   --rule three
-  --axis2 variable's type MUST BE "number" AND with a number of possible values displayable (<100)
+  --axis2 variable's type MUST BE "number"
   --find index of ax2 in new_legend
   for i=1,#new_legend do
         if ax2 == new_legend[i] then
@@ -1790,11 +1797,23 @@ print("Criteria nb 2 = " .. ax2 .. "// index new_legend = " .. indexa2)
   return(indexa2)
 end  --end function
 
-function compute_index(ax1, c1, valselect)
+function compute_index(ax1, c1, valselect, report)
   --compute index of other sent variables
   --find index of ax1 in new_legend
   local i, indexa1, indexc1,valse0=0,nil,nil,{}
   
+  --info zero
+  print("Args passed to compute_index()\nax1 = " .. ax1 .. ", c1=" .. c1)
+  --info one
+  if report then
+     if report == "report" then
+print("Reporting context in function compute_index()")
+     else
+print("No reporting context  in function compute_index()")
+     end
+  else
+print("No reporting context  in function compute_index()")
+  end
   for i=1,#new_legend do
        if ax1 == new_legend[i] then
           indexa1=i
@@ -1816,14 +1835,18 @@ print("Context1 = " .. c1 .. "// index new_legend = " .. indexc1)
 print("Context1 = none")
   end
   --valse0{} is related to table of Fl_Choice
-  for i=1,#new_legend do
-       if valselect[i]:text() then
-          table.insert(valse0, valselect[i]:text() )
-       else
-          table.insert(valse0, " ")
-       end   
+  if  valselect then
+     for i=1,#new_legend do
+          if valselect[i]:text() then
+             table.insert(valse0, valselect[i]:text() )
+          else
+             table.insert(valse0, " ")
+          end   
+      end
+  else 
+      valse0=nil
+print("Valselect table passed to compute_index() WAS NIL !")
   end
-  
   return indexa1, indexc1, valse0
 end  --end function
 
@@ -1831,12 +1854,11 @@ function disp_sample3()
  --GUI : selecting fields with criteria to be analysed
   local i,j,k,cx,cy
   local st,st1,st2,st3
-  local cell1=nil
+  local cellq,cellr,cell1=nil,nil,nil
   local u_quit=nil
   local uwindow=nil
   local valselect={}
   local co=#new_legend
-  --local axis1,axis2,context1
   local axis1,context1
   local spe_chart=nil
   local spe_report=nil
@@ -1866,12 +1888,14 @@ function disp_sample3()
   height_button = 20
   nb_car = math.floor(width_button/11) --nb cars affichables dans la largeur du bouton
   
-  --window for dowbsized table
+  --window for downsized table
   width_twindow = 1024
   height_twindow = 450
   uwindow = fltk:Fl_Window(width_twindow, height_twindow, "Downsized CSV")   
   width_button = math.floor(width_twindow/(co+1)) --ajout d'une colonne "legende" (stats)
-  u_quit = fltk:Fl_Button(10, height_twindow-30, width_button, 25, "Quit")
+  --u_quit = fltk:Fl_Button(10, height_twindow-30, width_button, 25, "Quit")
+  u_quit = fltk:Fl_Button(0, (8*height_button), width_button, height_button, "Quit")
+  u_quit:color(fltk.FL_RED)
   u_quit:tooltip("Quit this application")
   --u_quit:callback(quit_u)
   u_quit:callback(function (quit_u)
@@ -1881,7 +1905,26 @@ function disp_sample3()
      os.exit()
   end)
 --print("Fct disp_sample3(), var f_downsize = " .. f_downsize .. "\ncolumns = " .. co .. " // lines #transftable_data = " .. #transftable_data)
-
+ 
+ --first group box for individual Query
+  cy = (10*height_button)
+  -- group box for individual query ---
+  cellq= fltk:Fl_Box(cx, cy-height_button, (5.5*width_button), (20*height_button), "GUI Area for Individual Query" )
+  cellq:labelfont(fltk.FL_SCREEN )
+  cellq:box(fltk.FL_DOWN_BOX)
+  cellq:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_CENTER+fltk.FL_ALIGN_INSIDE)
+  cellq:tooltip("GUI Area for Individual Query")
+  --end 1st group box
+  -- group box for automatic reporting ---
+  cx=(5.5*width_button)+5
+  cellr= fltk:Fl_Box(cx, cy-height_button, (3*width_button), (20*height_button), "GUI Area for Automatic reporting" )
+  cellr:labelfont(fltk.FL_SCREEN )
+  cellr:box(fltk.FL_DOWN_BOX)
+  cellr:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_CENTER+fltk.FL_ALIGN_INSIDE)
+  cellr:tooltip("GUI Area for Automatic reporting")
+  --end 2nd group box
+  
+  
   --table legendes
   cx, cy=0,0
   cell1= fltk:Fl_Box(cx, cy, width_button, height_button, "LABELS" )
@@ -2021,8 +2064,8 @@ cy = (i+1)*height_button
   --cross-table visual query (chart)
   --left-most button "values" (no callback, just displaying purpose)
   cx=0
-  cy = cy+(4*height_button)
-  --cell1= fltk:Fl_Box(cx, cy, width_button, height_button, "New chart" )
+  --cy = cy+(4*height_button)
+  cy = cy+(3*height_button)
   cell1= fltk:Fl_Box(cx, cy, width_button, height_button, "Charts' Y axis" )
   cell1:labelfont(fltk.FL_SCREEN )
   cell1:box(fltk.FL_BORDER_BOX)
@@ -2126,7 +2169,7 @@ cy = (i+1)*height_button
         indexa2 = consistency_checking(ax1, ax2, c1)
         if indexa2 then
            --continue
-           indexa1, indexc1, valse =  compute_index(ax1, c1, valselect)
+           indexa1, indexc1, valse =  compute_index(ax1, c1, valselect, nil)
            --3_GUI fonction
            query_fct(ax1, indexa1, ax2, indexa2, c1, indexc1, valse, sort_option)
            --second launching of this function for a "last agregrate chart" -ONLY IF previous chart was not already "agregate chart"
@@ -2142,9 +2185,6 @@ cy = (i+1)*height_button
   cx=(6*width_button)
   cy = (10*height_button)
   for k=1,#new_legend do
-       --if #cat_values[k] ~= 0 then
-          --if label_unit ~= new_legend[k] then
-             --exclude field set as "unit of measurement"
              cmdbox = fltk:Fl_Box(cx, cy, width_button, height_button, new_legend[k])
              cmdbox:box(fltk.FL_DOWN_BOX)
              cmdbox:labelfont( fltk.FL_SCREEN )
@@ -2174,8 +2214,6 @@ cy = (i+1)*height_button
                end
                end) --end local function
              cy = cy+height_button
-          --end
-       --end
   end
   --launch automatic reporting with one click
   st = "Launch automatic reporting, all charts and tables in HTML-format document"
@@ -2185,49 +2223,50 @@ cy = (i+1)*height_button
   spe_report:tooltip( st )
   spe_report:color(1) --prev color=12
   spe_report:callback(function (report_launch)
-        local i, data, context,j,k,allow
-        local ax2=label_unit
+        local i, j,data, context,j,k,allow
+        local ax2, indexa2=label_unit, index_unit
         local ax1, c1
-        local indexa1,indexa2,indexc1
+        local indexa1,indexc1
         --defines depth of reporting : how many fields (and which one) are crossed-analysed ?
-        --selcross
         
-print("axis1:size() = " .. axis1:size() .. "\ncontext1:size() = " .. context1:size())
-        for data=1, axis1:size() do
-             axis1:value(data) --parse all values
-             ax1=axis1:text()
-             --continue ONLY if field was selected in selcross table
-             allow=0
-             for j=1,#new_legend do
-                  if ax1 == new_legend[j] then
-                     if selcross[j] == 1 then
-                        allow=1
-                        break
-                     end
-                  end
-             end
-          if allow == 1 then
-print("axis1:text() = " .. axis1:text())
-             for context=1, context1:size() do
-                  context1:value(context) --parse all values
-                  c1=context1:text()
-print("context1:text() = " .. context1:text())
-                  --1_consistency_checking
-                  indexa2 = consistency_checking(ax1, ax2, c1)
-                  if indexa2 then
-                     --continue
-                     indexa1, indexc1, valse =  compute_index(ax1, c1, valselect)
-                     --3_GUI fonction
-                     query_fct(ax1, indexa1, ax2, indexa2, c1, indexc1, valse, sort_option)
-                     --second launching of this function for a "last agregrate chart" -ONLY IF previous chart was not already "agregate chart"
-                     if c1 ~= " " then
-                        c1=" "
-                        indexc1=nil
-                        query_fct(ax1, indexa1, ax2, indexa2, " ", nil, valse, sort_option)
-                     end
-                  end
-             end -- end for context
-          end --end if allow
+        if label_unit then
+           --compute global var index_unit
+           for i=1,#new_legend do
+              if label_unit == new_legend[i] then
+                 index_unit = i
+                 indexa2=index_unit
+                 break
+              end
+           end
+        else
+           msg="No unit of measurement defined = no reporting is possible. \nPlease Define one unit !"
+           fltk:fl_alert(msg)
+           return
+        end
+        
+        for data=1, #new_legend do
+             if selcross[ data ] == 1 then
+                ax1=new_legend[ data ]
+                for context=1, #new_legend do
+                    indexa2 = consistency_checking(ax1, ax2, c1,"report")
+                    if context ~= data then
+                       c1 = new_legend[ context ]
+                       --indexa1, indexc1, valse =  compute_index(ax1, c1, valselect,"report")
+                       indexa1=data
+                       indexc1=context
+                       valse=nil
+                       --3_GUI fonction
+                       query_fct(ax1, indexa1, label_unit, index_unit, c1, indexc1, nil, sort_option,"report")
+                --second launching of this function for a "last agregrate chart" -ONLY IF previous chart was not already "agregate chart"
+                    end --if context
+                end --end for context
+                if c1 ~= " " then
+                   c1=" "
+                   indexc1=nil
+                   query_fct(ax1, indexa1, ax2, indexa2, " ", nil, valse, sort_option,"report")
+                end
+                
+          end --end if selcross
         end --end for data
         end) --end local function  
   
