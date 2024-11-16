@@ -68,6 +68,9 @@ selval_select={}
 title="" --title of pwindow, special histogram-chart
 x,y,w,h=0,0,0,0
 
+--html export
+html_buffer="<!DOCTYPE html><html lang='en'><head><title>OPENMEDIC stats</title><style>table, th, td {border: 1px solid black;   border-collapse: collapse; } </style></head><body>\n<TABLE><TR><TH>BAR CHART</TH><TH>VALUES</TH><TH>PIE CHART</TH></TR>"
+
 --specialist dictionnary
 lib_spe_ps ={'MEDECINE GENERALE LIBERALE',
 'ANESTHESIOLOGIE - REANIMATION LIBERALE',
@@ -926,7 +929,8 @@ function preselection()
 -- select the two keywords N05 & N06 (or only one !)
   --First clear previous values (if any)
   clear_val_fct()
-  st="N05AX"
+  --st="N05AX"
+  st="N05A"
   selvalbutton[1]:label(st)
   selval[1]=st
   --st="N06"
@@ -1477,6 +1481,13 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
   pie:align(fltk.FL_ALIGN_WRAP + fltk.FL_ALIGN_BOTTOM) --chart's label alignment
   pie:color(fltk.FL_WHITE)
   
+  --magical action to transform pie chart in donut chart
+  --i=decx_chart+(width_chart/2)
+  --j=decy_chart+(height_chart/2)
+  --local ray=100
+  --fltk.fl_color(1)
+  --fltk.fl_circle(i, j, ray)
+
   Fl:check()
   pwindow:show()
   pwindow:redraw()
@@ -1655,6 +1666,19 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
   countdown()
 end --end function
 
+function disp_table_report(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend)
+  local i
+  
+  html_buffer = html_buffer .. "<TD><CENTER><TABLE>"
+  html_buffer = html_buffer .. "<TR><TH COLSPAN=2>" .. context1 .. "(" .. find_slib_from(context1, current_context, 2) .. ") </TH></TR>"
+  html_buffer = html_buffer .. "<TR><TH>LABELS</TH><TH>VALUES</TH></TR>"
+  for i=1,#spe_table do
+       html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ i ] .. "</TD>"
+       html_buffer = html_buffer .. "<TD style='text-align: right;'>" .. spe_table[i] .. "</TD></TR>"
+  end
+  html_buffer = html_buffer .. "</TABLE></CENTER></TD>"
+end --end function
+
 function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse, sort_option,report)
   local i,j,k
   local spe_table={}
@@ -1789,12 +1813,21 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
             end
          end --end if nb_contexts>1
        end --end for j (lines)
---results of this function have been validated with with LibreOfficeCALC & some SOMMEPROD()
+--results of this function have been validated with with LibreOfficeCALC & some SUMPRODUCT() -or SOMMEPROD()-
+   --preparing table legend text for same groups : same context
      imageString, image2 = nil, nil
      disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend, sort_option) --last arg "sorting actived=1 or not=0"
+     fileName = title .. ".png"
+     if report == "report" then
+        html_buffer = html_buffer .. "\n<TR><TD><IMG SRC='" .. fileName .. "'></TD>"
+     end
      --print("retour en fct query_fct")
      if pwindow then
         pwindow:hide() --close last charts' window
+     end
+     if report == "report" then
+        --adding a table with values and text labels in the middle column
+        disp_table_report(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend)
      end
      imageString, image2 = nil, nil
      disp_piechart(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend)
@@ -1802,6 +1835,9 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
         pwindow:hide() --close last charts' window
      end
      fileName = title .. ".png"
+     if report == "report" then
+        html_buffer = html_buffer .. "\n<TD><IMG SRC='" .. fileName .. "'></TD></TR>\n"
+     end
      --test if file exists
      f = io.open(fileName,"rb")
      if f then
@@ -1878,7 +1914,7 @@ function compute_index(ax1, c1, valselect, report)
   local i, indexa1, indexc1,valse0=0,nil,nil,{}
   
   --info zero
-  print("Args passed to compute_index()\nax1 = " .. ax1 .. ", c1=" .. c1)
+--print("Args passed to compute_index()\nax1 = " .. ax1 .. ", c1=" .. c1)
   --info one
   if report then
      if report == "report" then
@@ -2302,6 +2338,7 @@ cy = (i+1)*height_button
         local ax2, indexa2=label_unit, index_unit
         local ax1, c1
         local indexa1,indexc1
+        local f,fn
         --defines depth of reporting : how many fields (and which one) are crossed-analysed ?
         
         if label_unit then
@@ -2343,6 +2380,20 @@ cy = (i+1)*height_button
                 
           end --end if selcross
         end --end for data
+        --now save html report
+        if annee then
+           fn = "Report_OpenMedic" .. annee .. ".html"
+        else
+           fn = "Report_OpenMedic" .. annee_inconnue .. ".html"
+        end
+        f = io.open(fn,"wb")
+        if f then
+           --adding HTML footer
+           html_buffer = html_buffer .. "\n</TABLE>\n</body></HTML>"
+           f:write(html_buffer)
+           print(fn .. " HTML report saved, size is " .. #html_buffer .. " bytes.")
+           io.close(f)
+        end
         end) --end local function  
   
   Fl:check()
