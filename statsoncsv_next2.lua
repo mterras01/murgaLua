@@ -1721,7 +1721,11 @@ end --end function
 
 function disp_table_report(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend)
  local i
-
+ local spe_table_palm={} --table of spe_table indexes, sorted by decreasing value in this table
+ 
+ --"palmares sorting values"
+ spe_table_palm = palmares_sorting(spe_table)
+ 
  if context1 == " " then
     html_buffer = html_buffer .. "<TR><TH COLSPAN=3>" .. label_legend .. ", no context (agregated data) </TH></TR>"
  else
@@ -1735,8 +1739,11 @@ function disp_table_report(ax1, indexa1, ax2, indexa2, context1, current_context
   end
   html_buffer = html_buffer .. "<TR><TH>".. ax1 .. "</TH><TH>" .. ax2 .. "</TH></TR>"
   for i=1,#spe_table do
-       html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ i ] .. " (".. lib_atc5_CIP13[ i ] .. ")</TD>"
-       html_buffer = html_buffer .. "<TD style='text-align: right;'>" .. spe_table[i] .. "</TD></TR>"
+       j = spe_table_palm[i]
+       --html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ i ] .. " (".. lib_atc5_CIP13[ i ] .. ")</TD>"
+       --html_buffer = html_buffer .. "<TD style='text-align: right;'>" .. spe_table[i] .. "</TD></TR>"
+       html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ j ] .. " (".. lib_atc5_CIP13[ j ] .. ")</TD>"
+       html_buffer = html_buffer .. "<TD style='text-align: right;'>" .. spe_table[ j ] .. "</TD></TR>"
   end
   html_buffer = html_buffer .. "</TABLE></CENTER></TD>"
 end --end function
