@@ -70,7 +70,7 @@ x,y,w,h=0,0,0,0
 
 --html export
 html_buffer="" --have to retrieve year of data in the OPENMEDIC file's label
-
+previous_context1="" --used in html reporting, making groups (=HTML table) of same data-context 
 
 --labels from CIP13, related to ATC5 codes : ATTENTION : one ATC5 is potentially related to many CIP13 labels
 --methodology=for the 1st ATC5 code founf in OPENMEDIC, take the 1st word of related CIP13=commercial name (or chemical name)
@@ -1723,19 +1723,31 @@ function disp_table_report(ax1, indexa1, ax2, indexa2, context1, current_context
  local i
  local spe_table_palm={} --table of spe_table indexes, sorted by decreasing value in this table
  
+ 
  --"palmares sorting values"
  spe_table_palm = palmares_sorting(spe_table)
- 
- if context1 == " " then
-    html_buffer = html_buffer .. "<TR><TH COLSPAN=3>" .. label_legend .. ", no context (agregated data) </TH></TR>"
+ if previous_context1 == context1 then
+    --continue with no change
  else
-    html_buffer = html_buffer .. "<TR><TH COLSPAN=3>" .. label_legend .. ", " .. find_clib_from(context1) .. "=" .. find_slib_from(context1, current_context, 2) .. " </TH></TR>"
+    --group all ax1-related-data in a HTML table apart
+    --so 1st action is to make end to previous HTML meta-table
+    html_buffer = html_buffer .. "</TABLE>\n<BR>\n"
+    --and second make new HTML meta-table
+    html_buffer = html_buffer .. "<TABLE style='width:100%'>"
+    previous_context1 = context1
+ end
+ if context1 == " " then
+    html_buffer = html_buffer .. "<TR><TH COLSPAN=3>" .. label_legend .. " no context (agregated data) </TH></TR>"
+ else
+    --html_buffer = html_buffer .. "<TR><TH COLSPAN=3>" .. label_legend .. ", " .. find_clib_from(context1) .. "=" .. find_slib_from(context1, current_context, 2) .. " </TH></TR>"
+    html_buffer = html_buffer .. "<TR><TH COLSPAN=3>" .. label_legend .. " " .. find_clib_from(ax2) .. " per " .. find_clib_from(ax1) .. ", context=" .. find_clib_from(context1) .. " </TH></TR>"
   end
   html_buffer = html_buffer .. "<TR><TD><CENTER><TABLE>"
   if context1 == " " then
        html_buffer = html_buffer .. "<TR><TH COLSPAN=2> no context (agregated data) </TH></TR>"
   else
-     html_buffer = html_buffer .. "<TR><TH COLSPAN=2>" .. context1 .. "(" .. find_slib_from(context1, current_context, 2) .. ") </TH></TR>"
+     --html_buffer = html_buffer .. "<TR><TH COLSPAN=2>" .. context1 .. "(" .. find_slib_from(context1, current_context, 2) .. ") </TH></TR>"
+     html_buffer = html_buffer .. "<TR><TH COLSPAN=2>" .. find_clib_from(context1) .. " (" .. find_slib_from(context1, current_context, 2) .. ") </TH></TR>"
   end
   html_buffer = html_buffer .. "<TR><TH>".. ax1 .. "</TH><TH>" .. ax2 .. "</TH></TR>"
   for i=1,#spe_table do
@@ -1896,19 +1908,11 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
      disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend, sort_option) --last arg "sorting activated=1 or not=0"
      fileName = title .. ".png"     
      if report == "report" then
-        --html_buffer = html_buffer .. "\n<TR><TD><IMG SRC='" .. fileName .. "'></TD>"
         html_buffer = html_buffer .. "\n<TD><IMG SRC='" .. fileName .. "'></TD>"
      end
-     --print("retour en fct query_fct")
      if pwindow then
         pwindow:hide() --close last charts' window
      end
-     --[[
-     if report == "report" then
-        --adding a table with values and text labels in a column
-        disp_table_report(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend)
-     end
-     ]]--
      imageString, image2 = nil, nil
      disp_piechart(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend)
      if pwindow then
@@ -2606,7 +2610,7 @@ end --end function
  if filename then
     annee = tonumber( sub(filename,-8,-5) )
     print("Year of open_medic data (according to name of file) = " .. annee)
-    html_buffer="<!DOCTYPE html><html lang='en'><head><title>OPENMEDIC stats YEAR " .. annee .. "</title><style>table, th, td {border: 1px solid black;   border-collapse: collapse; } th { background-color: #D6EEEE;}</style></head><body>\n<TABLE><TR><TH>VALUES</TH><TH>BAR CHART</TH><TH>PIE CHART</TH></TR>"
+    html_buffer="<!DOCTYPE html><html lang='en'><head><title>OPENMEDIC stats YEAR " .. annee .. "</title><style>table, th, td {border: 1px solid black;   border-collapse: collapse; } th { background-color: #D6EEEE;}</style></head><body>\n<TABLE style='width:100%'>"
  end
  print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo())
  
