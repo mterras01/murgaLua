@@ -69,7 +69,12 @@ title="" --title of pwindow, special histogram-chart
 x,y,w,h=0,0,0,0
 
 --html export
-html_buffer="<!DOCTYPE html><html lang='en'><head><title>OPENMEDIC stats</title><style>table, th, td {border: 1px solid black;   border-collapse: collapse; } </style></head><body>\n<TABLE><TR><TH>BAR CHART</TH><TH>VALUES</TH><TH>PIE CHART</TH></TR>"
+html_buffer="" --have to retrieve year of data in the OPENMEDIC file's label
+
+
+--labels from CIP13, related to ATC5 codes : ATTENTION : one ATC5 is potentially related to many CIP13 labels
+--methodology=for the 1st ATC5 code founf in OPENMEDIC, take the 1st word of related CIP13=commercial name (or chemical name)
+lib_atc5_CIP13={}
 
 --specialist dictionnary
 lib_spe_ps ={'MEDECINE GENERALE LIBERALE',
@@ -474,12 +479,6 @@ function rapport_base()
                   break --new column
                end
           end
-          --NONSENSE at 120824 : transftable_data[i] is a line, NOT a column <= needs working on this
-          --median[ i ] = stats.series.median(transftable_data[i])
-          --moyenne[i] = stats.series.mean(transftable_data[i])
-          --variance[i] = stats.series.variance(transftable_data[i])
-          --min[i],max[i] = stats.series.getExtremes(transftable_data[i])
-           --init table
 --print("#buffer = " .. #buffer .. "\n#cat_values[" .. i .. "] = "  .. #cat_values[i])
 print(new_legend[i] .. " : Possible values = "  .. #cat_values[i])
        elseif type_new_data[i] == "string" then
@@ -775,7 +774,8 @@ print("Error while Backup of new downsized CSV file " .. fn)
 end  --end function
 
 function downsize()
-  local i, msg
+  local i, j, k, l, nl, msg, st, st2
+  local allow=0
   
   if label_unit == "" then
      msg = "No field is set as unique UNIT of measurement (REQUIRED) : no other processing can be done\nThis choice can be done with the buttons under those which de/select fields for downsizing process."
@@ -823,13 +823,54 @@ function downsize()
           table.insert(clib_new_legend, "Specialite prescripteur")
        elseif new_legend[i] == "BOITES" then
           table.insert(clib_new_legend, "Unite=boites")
+       else
+          table.insert(clib_new_legend, new_legend[i]) --without this line, tables new_legend and clib_new_legend are not sharing same index
        end
        print(i .. ". small legend=" .. new_legend[i] .. " // " .. clib_new_legend[i])
   end
 
   f_downsize=1
   catval_sorting() --sorting 2 tables possible values and nb of occurences for each possible value
-  
+  --build table lib_atc5_CIP13
+  --This is possible ONLY IF CIP13 has been selected in downsizing
+  allow=0
+  for i=1,#new_legend do
+       if new_legend[i] == "l_cip13" then
+          allow=i
+          break
+       end
+  end
+  if allow~=0 then
+     for i=1,#new_legend do
+          if new_legend[i] == "ATC5" then
+             nl=i
+             for j=1, #cat_values[i] do
+                  st=cat_values[i][j]
+                  for k=2,#transftable_data do
+                       if transftable_data[k][i] == st then
+                          msg = transftable_data[ k ][ allow ]
+                          if msg then
+                             l = find(msg," ", 1,true)
+                             if l then
+                                st2 = sub(msg, 1, l-1)
+                                if st2 then
+                                   table.insert(lib_atc5_CIP13, st2)
+                                   break
+                                end
+                             end
+                          end
+                       end
+                  end
+                  --if lib_atc5_CIP13[j] == nil then
+                  --   table.insert(lib_atc5_CIP13, "NA")
+                  --end
+             end
+       end
+     end
+     for j=1,#lib_atc5_CIP13 do
+print("ATC5=" .. cat_values[nl][j] .. " // libelle=" .. lib_atc5_CIP13[j])
+     end
+  end
   disp_sample3()
 end  --end function
 
@@ -1241,6 +1282,18 @@ function read_Image()
    Fl:flush()
    Fl:check()
    --murgaLua.sleep(100)
+end --end function
+
+function find_clib_from(context1)
+ local i
+ for i=1,#new_legend do
+      if context1 == new_legend[i] then
+         if clib_new_legend[i] then
+            return clib_new_legend[i]
+         end
+      end
+ end
+ return context1
 end --end function
 
 function find_slib_from(context1, current_context, small)
@@ -1667,13 +1720,22 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
 end --end function
 
 function disp_table_report(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend)
-  local i
-  
-  html_buffer = html_buffer .. "<TD><CENTER><TABLE>"
-  html_buffer = html_buffer .. "<TR><TH COLSPAN=2>" .. context1 .. "(" .. find_slib_from(context1, current_context, 2) .. ") </TH></TR>"
-  html_buffer = html_buffer .. "<TR><TH>LABELS</TH><TH>VALUES</TH></TR>"
+ local i
+
+ if context1 == " " then
+    html_buffer = html_buffer .. "<TR><TH COLSPAN=3>" .. label_legend .. ", no context (agregated data) </TH></TR>"
+ else
+    html_buffer = html_buffer .. "<TR><TH COLSPAN=3>" .. label_legend .. ", " .. find_clib_from(context1) .. "=" .. find_slib_from(context1, current_context, 2) .. " </TH></TR>"
+  end
+  html_buffer = html_buffer .. "<TR><TD><CENTER><TABLE>"
+  if context1 == " " then
+       html_buffer = html_buffer .. "<TR><TH COLSPAN=2> no context (agregated data) </TH></TR>"
+  else
+     html_buffer = html_buffer .. "<TR><TH COLSPAN=2>" .. context1 .. "(" .. find_slib_from(context1, current_context, 2) .. ") </TH></TR>"
+  end
+  html_buffer = html_buffer .. "<TR><TH>".. ax1 .. "</TH><TH>" .. ax2 .. "</TH></TR>"
   for i=1,#spe_table do
-       html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ i ] .. "</TD>"
+       html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ i ] .. " (".. lib_atc5_CIP13[ i ] .. ")</TD>"
        html_buffer = html_buffer .. "<TD style='text-align: right;'>" .. spe_table[i] .. "</TD></TR>"
   end
   html_buffer = html_buffer .. "</TABLE></CENTER></TD>"
@@ -1815,20 +1877,31 @@ print("current_context (" .. new_legend[indexc] .. ")= " .. current_context .. "
        end --end for j (lines)
 --results of this function have been validated with with LibreOfficeCALC & some SUMPRODUCT() -or SOMMEPROD()-
    --preparing table legend text for same groups : same context
-     imageString, image2 = nil, nil
-     disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend, sort_option) --last arg "sorting actived=1 or not=0"
-     fileName = title .. ".png"
+
+     
+     --First column of report=table of numeric data
      if report == "report" then
-        html_buffer = html_buffer .. "\n<TR><TD><IMG SRC='" .. fileName .. "'></TD>"
+        --adding a table with values and text labels in a column
+        disp_table_report(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend)
+     end
+     
+     imageString, image2 = nil, nil
+     disp_spe_histo(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend, sort_option) --last arg "sorting activated=1 or not=0"
+     fileName = title .. ".png"     
+     if report == "report" then
+        --html_buffer = html_buffer .. "\n<TR><TD><IMG SRC='" .. fileName .. "'></TD>"
+        html_buffer = html_buffer .. "\n<TD><IMG SRC='" .. fileName .. "'></TD>"
      end
      --print("retour en fct query_fct")
      if pwindow then
         pwindow:hide() --close last charts' window
      end
+     --[[
      if report == "report" then
-        --adding a table with values and text labels in the middle column
+        --adding a table with values and text labels in a column
         disp_table_report(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend)
      end
+     ]]--
      imageString, image2 = nil, nil
      disp_piechart(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend)
      if pwindow then
@@ -2526,6 +2599,7 @@ end --end function
  if filename then
     annee = tonumber( sub(filename,-8,-5) )
     print("Year of open_medic data (according to name of file) = " .. annee)
+    html_buffer="<!DOCTYPE html><html lang='en'><head><title>OPENMEDIC stats YEAR " .. annee .. "</title><style>table, th, td {border: 1px solid black;   border-collapse: collapse; } th { background-color: #D6EEEE;}</style></head><body>\n<TABLE><TR><TH>VALUES</TH><TH>BAR CHART</TH><TH>PIE CHART</TH></TR>"
  end
  print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo())
  
