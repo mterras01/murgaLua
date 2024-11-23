@@ -182,7 +182,7 @@ end
 --end
 
 --sex dictionnary
-lib_sex ={'MASCULIN','FEMININ','VALEUR INCONNUE'}
+lib_sex ={'MASCULIN','FEMININ','SEXE INCONNU ou NON PRECISE'}
 indx_sex = {1,2,9}
 indx_sex2={}
 for k,v in pairs(indx_sex) do
@@ -190,7 +190,7 @@ for k,v in pairs(indx_sex) do
 end
 
 --age dictionnary
-lib_age ={'0-19','20-59','+60','INCONNU'}
+lib_age ={'0-19 ans','20-59 ans','+60 ans','age INCONNU'}
 indx_age = {0,20,60,99}
 indx_age2={}
 for k,v in pairs(indx_age) do
@@ -1250,7 +1250,7 @@ function disp_sample2()
   end
 --preselect button
   preselbutton = fltk:Fl_Button(width_button, (cy+(4*height_button)), (2*width_button), height_button, "PRESEL_MT" )
-  st="All-ready M.TERRAS-Preselection-button : select lines with 'N05' and fields 'ATC5', 'l_cip13', 'age', 'sexe', 'BEN_REG', 'PSP_SPE','BOITES'"
+  st="All-ready M.TERRAS-Preselection-button : select lines with 'N05A' and fields 'ATC5', 'l_cip13', 'age', 'sexe', 'BEN_REG', 'PSP_SPE','BOITES'"
   preselbutton:tooltip(st)
   preselbutton:callback(preselection)
 --countdown modal window : testing purpose only
@@ -1368,7 +1368,7 @@ function find_slib_from(context1, current_context, small)
      end
      for i=1,#lib_atc5_CIP13 do 
          if cat_values[ j ][ i ] == current_context then
-           return current_context .. "=" .. lib_atc5_CIP13[ i ] 
+           return current_context .. " like " .. lib_atc5_CIP13[ i ] 
            --break
          end
      end
@@ -2459,7 +2459,7 @@ cy = (i+1)*height_button
         local indexa1,indexc1
         local f,fn
         --defines depth of reporting : how many fields (and which one) are crossed-analysed ?
-        
+        local t00_report
         if label_unit then
            --compute global var index_unit
            for i=1,#new_legend do
@@ -2475,8 +2475,9 @@ cy = (i+1)*height_button
            return
         end
         
+        t00_report = os.time() --top chrono / time needed for HTML report
         --this written here to reinit HTML report buffer for each separated call to launch_query
-        html_buffer="<!DOCTYPE html><html lang='en'><head><title>OPENMEDIC stats YEAR " .. annee .. "</title><style>table, th, td {border: 1px solid black;   border-collapse: collapse; } th { background-color: #D6EEEE;}</style></head><body>\n<TABLE style='width:100%'>"
+        html_buffer="<!DOCTYPE html><html lang='en'><head><title>OPENMEDIC stats YEAR " .. annee .. "</title><style>table, th, td {border: 1px solid black;   border-collapse: collapse; } th { background-color: #D6EEEE;}\n</style></head><body>\n<TABLE style='width:100%'>"
         
         for data=1, #new_legend do
              if selcross[ data ] == 1 then
@@ -2510,8 +2511,11 @@ cy = (i+1)*height_button
         end
         f = io.open(fn,"wb")
         if f then
+           --adding time needed for this report from clic to file_saving
+print("HTML Report Built in " .. os.difftime(os.time(), t00_report) .. " seconds, ie " .. string.format('%.2f',(os.difftime(os.time(), t00_report)/60)) .. " mn, ie " .. string.format('%.2f',(os.difftime(os.time(), t00_report)/3600)) .. " hours")
+           html_buffer = html_buffer .. "\n</TABLE>\n" .. "<BR><CENTER>HTML Report Built in " .. os.difftime(os.time(), t00_report) .. " seconds, ie " .. string.format('%.2f',(os.difftime(os.time(), t00_report)/60)) .. " mn, ie " .. string.format('%.2f',(os.difftime(os.time(), t00_report)/3600)) .. " hours</CENTER>\n"
            --adding HTML footer
-           html_buffer = html_buffer .. "\n</TABLE>\n</body></HTML>"
+           html_buffer = html_buffer .. "</body></HTML>"
            f:write(html_buffer)
            print(fn .. " HTML report saved, size is " .. #html_buffer .. " bytes.")
            io.close(f)
@@ -2648,7 +2652,8 @@ end --end function
  if filename then
     annee = tonumber( sub(filename,-8,-5) )
     print("Year of open_medic data (according to name of file) = " .. annee)
-    html_buffer="<!DOCTYPE html><html lang='en'><head><title>OPENMEDIC stats YEAR " .. annee .. "</title><style>table, th, td {border: 1px solid black;   border-collapse: collapse; } th { background-color: #D6EEEE;}</style></head><body>\n<TABLE style='width:100%'>"
+    --html_buffer="<!DOCTYPE html><html lang='en'><head><title>OPENMEDIC stats YEAR " .. annee .. "</title><style>table, th, td {border: 1px solid black;   border-collapse: collapse; } th { background-color: #D6EEEE;}</style></head><body>\n<TABLE style='width:100%'>"
+    html_buffer=""
  end
  print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo())
  
@@ -2662,8 +2667,6 @@ print(st)
 
   --print("Free RAM by collectgarbage(\"count\") = " .. collectgarbage("count"))
   print("RAM used AFTER opData by  gcinfo() = " .. gcinfo())
-                                                 
- --print("Traitement en " .. os.difftime(os.time(), t00) .. " secondes, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, soit en " .. string.format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " heures")
 
 Fl:check()
 Fl:run()
