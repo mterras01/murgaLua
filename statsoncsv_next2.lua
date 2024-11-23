@@ -1297,7 +1297,7 @@ function find_clib_from(context1)
 end --end function
 
 function find_slib_from(context1, current_context, small)
-  local i, option
+  local i, j, option
   
   if small then
      if small == 1 then
@@ -1315,9 +1315,9 @@ function find_slib_from(context1, current_context, small)
      for i=1, #indx_region do
           if (current_context .. "") == (indx_region[ i ] .. "") then
              if option == 1 then
-                return lib_small_region[ i ]
+                return current_context .. "=" .. lib_small_region[ i ]
              elseif option == 2 then
-                return lib_region[ i ]
+                return current_context .. "=" .. lib_region[ i ]
              else
                 return current_context 
              end
@@ -1327,9 +1327,9 @@ function find_slib_from(context1, current_context, small)
      for i=1, #indx_spe do
           if (current_context .. "")  == (indx_spe[ i ] .. "") then
              if option == 1 then
-                return lib_small_SPE[ i ]
+                return current_context .. "=" .. lib_small_SPE[ i ]
              elseif option == 2 then
-                return lib_spe_ps[ i ]
+                return current_context .. "=" .. lib_spe_ps[ i ]
              else
                 return current_context
              end
@@ -1339,9 +1339,9 @@ function find_slib_from(context1, current_context, small)
      for i=1, #indx_age do
           if (current_context .. "")  == (indx_age[ i ] .. "") then
              if option == 1 then
-                return lib_age[ i ]
+                return current_context .. "=" .. lib_age[ i ]
              elseif option == 2 then
-                return lib_age[ i ]
+                return current_context .. "=" .. lib_age[ i ]
              else
                 return current_context
              end
@@ -1351,18 +1351,52 @@ function find_slib_from(context1, current_context, small)
      for i=1, #indx_sex do
           if (current_context .. "")  == (indx_sex[ i ] .. "") then
              if option == 1 then
-                return lib_sex[ i ]
+                return current_context .. "=" .. lib_sex[ i ]
              elseif option == 2 then
-                return lib_sex[ i ]
+                return current_context .. "=" .. lib_sex[ i ]
              else
                 return current_context 
              end
           end
      end
+  elseif context1 == "ATC5" then
+     for i=1,#new_legend do
+          if new_legend[i] == context1 then
+             j=i
+             break
+          end
+     end
+     for i=1,#lib_atc5_CIP13 do 
+         if cat_values[ j ][ i ] == current_context then
+           return current_context .. "=" .. lib_atc5_CIP13[ i ] 
+           --break
+         end
+     end
+     return current_context
   else
      return current_context 
   end
   return current_context
+end --end function
+
+function find_lib_from(ax1, indexa1, index)
+  if ax1 == 'ATC5' then
+     if lib_atc5_CIP13[ index ] then
+        return lib_atc5_CIP13[ index ] 
+     else
+        return ""
+     end
+  elseif ax1 == 'BEN_REG' then
+     return lib_small_region[ index ]
+  elseif ax1 == 'PSP_SPE' then
+     return lib_small_SPE[ index ]
+  elseif ax1 == 'age' then
+     return lib_age[ index ]
+  elseif ax1 == 'sexe' then
+     return lib_sex[ index ]
+  else 
+     return ""
+  end
 end --end function
 
 function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, valse, spe_table, label_legend)
@@ -1747,14 +1781,15 @@ function disp_table_report(ax1, indexa1, ax2, indexa2, context1, current_context
        html_buffer = html_buffer .. "<TR><TH COLSPAN=2> no context (agregated data) </TH></TR>"
   else
      --html_buffer = html_buffer .. "<TR><TH COLSPAN=2>" .. context1 .. "(" .. find_slib_from(context1, current_context, 2) .. ") </TH></TR>"
-     html_buffer = html_buffer .. "<TR><TH COLSPAN=2>" .. find_clib_from(context1) .. " (" .. find_slib_from(context1, current_context, 2) .. ") </TH></TR>"
+     html_buffer = html_buffer .. "<TR><TH COLSPAN=2>" .. find_clib_from(context1) .. " (" .. find_slib_from(context1, current_context, 2)  .. ") </TH></TR>"
   end
   html_buffer = html_buffer .. "<TR><TH>".. ax1 .. "</TH><TH>" .. ax2 .. "</TH></TR>"
   for i=1,#spe_table do
        j = spe_table_palm[i]
        --html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ i ] .. " (".. lib_atc5_CIP13[ i ] .. ")</TD>"
        --html_buffer = html_buffer .. "<TD style='text-align: right;'>" .. spe_table[i] .. "</TD></TR>"
-       html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ j ] .. " (".. lib_atc5_CIP13[ j ] .. ")</TD>"
+       --html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ j ] .. " (".. lib_atc5_CIP13[ j ] .. ")</TD>"
+       html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ j ] .. " (".. find_lib_from(ax1,indexa1, j) .. ")</TD>"
        html_buffer = html_buffer .. "<TD style='text-align: right;'>" .. spe_table[ j ] .. "</TD></TR>"
   end
   html_buffer = html_buffer .. "</TABLE></CENTER></TD>"
@@ -2439,6 +2474,9 @@ cy = (i+1)*height_button
            fltk:fl_alert(msg)
            return
         end
+        
+        --this written here to reinit HTML report buffer for each separated call to launch_query
+        html_buffer="<!DOCTYPE html><html lang='en'><head><title>OPENMEDIC stats YEAR " .. annee .. "</title><style>table, th, td {border: 1px solid black;   border-collapse: collapse; } th { background-color: #D6EEEE;}</style></head><body>\n<TABLE style='width:100%'>"
         
         for data=1, #new_legend do
              if selcross[ data ] == 1 then
