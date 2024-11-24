@@ -521,7 +521,19 @@ print(new_legend[i] .. " too many possible string values => aborting catalog bui
        else
            --rien
        end
-
+       --added 24/11/24
+       if new_legend[i] == "l_cip13" then
+          --exclude field "l_cip13" from crossed-analyses. Elements of this field are similar (related to same ATC5 code), but in the same time very different (related to the administration route : per os, intra-muscular, intravenous, intra-ocular, etc.). 
+          --They shoud be selected through the 1st GUI of code via "keywords".
+          while 1 do 
+            if #cat_values[i]>0 then
+               table.remove(cat_values[i])
+            else
+               break
+            end
+          end
+       end
+       
 k=i*100/co
 progress_bar3:value(k)
 progress_bar3:draw()
@@ -962,21 +974,166 @@ function select_val_fct()
   keyword:value("")
 end --end function
 
-function preselection()
+function preselection1()
  local i,j
  local button2deselect={1,2,3,4,5,6,7,8,10,11,13,14,20,21}
  local button2select={1,2,3,4,5,6,7,8,10,11,13,14,20,21}
  
--- select the two keywords N05 & N06 (or only one !)
   --First clear previous values (if any)
   clear_val_fct()
-  --st="N05AX"
   st="N05A"
   selvalbutton[1]:label(st)
   selval[1]=st
-  --st="N06"
-  --selvalbutton[2]:label(st)
-  --selval[2]=st
+  
+--deselect fields : list of buttons to deselect
+  for i=1,#button2deselect do
+       j = button2deselect[i]
+       selbuttons[j]:color(1)
+       selcol[j] = 1
+       --1 means red means de-selected
+       selbuttons[j]:label( "DSEL" )
+       selbuttons[j]:tooltip( "De-selected field" )
+       selbuttons[j]:show()
+  end
+--select expected fields
+  for i=1,#button2select do
+       j = button2select[i]
+       selbuttons[j]:color(2) 
+       selcol[j] = 2
+       --2 means green means selected
+       selbuttons[j]:label( "SEL" )
+       selbuttons[j]:tooltip( "Selected field" )
+       selbuttons[j]:show()
+       selbuttons[j]:color(1)
+       selcol[j] = 1
+       selbuttons[j]:show()
+  end
+  --select field set as "unit of measurement"
+  for i=1,#selunit do
+       selunit[i]=0
+       unitbuttons[i]:label( "" )
+       unitbuttons[i]:tooltip( "" )
+       unitbuttons[i]:show()
+  end
+  selunit[19] = 1 --DEFAULT UNIT FIELD in this preselection is "BOITES" field
+  unitbuttons[19]:label( "UNIT" )
+  unitbuttons[19]:tooltip( "This field is set as UNIQUE unit of measurement" )
+  unitbuttons[19]:show()
+  label_unit = legend_data[19]
+print("label_unit set to " .. label_unit) 
+  downsize()
+end --end function
+
+function preselection2()
+ local i,j
+ local button2deselect={1,2,3,4,5,6,7,8,10,11,13,14,20,21}
+ local button2select={1,2,3,4,5,6,7,8,10,11,13,14,20,21}
+ 
+  --First clear previous values (if any)
+  clear_val_fct()
+  st="N05B"
+  selvalbutton[1]:label(st)
+  selval[1]=st
+  
+--deselect fields : list of buttons to deselect
+  for i=1,#button2deselect do
+       j = button2deselect[i]
+       selbuttons[j]:color(1)
+       selcol[j] = 1
+       --1 means red means de-selected
+       selbuttons[j]:label( "DSEL" )
+       selbuttons[j]:tooltip( "De-selected field" )
+       selbuttons[j]:show()
+  end
+--select expected fields
+  for i=1,#button2select do
+       j = button2select[i]
+       selbuttons[j]:color(2) 
+       selcol[j] = 2
+       --2 means green means selected
+       selbuttons[j]:label( "SEL" )
+       selbuttons[j]:tooltip( "Selected field" )
+       selbuttons[j]:show()
+       selbuttons[j]:color(1)
+       selcol[j] = 1
+       selbuttons[j]:show()
+  end
+  --select field set as "unit of measurement"
+  for i=1,#selunit do
+       selunit[i]=0
+       unitbuttons[i]:label( "" )
+       unitbuttons[i]:tooltip( "" )
+       unitbuttons[i]:show()
+  end
+  selunit[19] = 1 --DEFAULT UNIT FIELD in this preselection is "BOITES" field
+  unitbuttons[19]:label( "UNIT" )
+  unitbuttons[19]:tooltip( "This field is set as UNIQUE unit of measurement" )
+  unitbuttons[19]:show()
+  label_unit = legend_data[19]
+print("label_unit set to " .. label_unit) 
+  downsize()
+end --end function
+
+function preselection3()
+ local i,j
+ local button2deselect={1,2,3,4,5,6,7,8,10,11,13,14,20,21}
+ local button2select={1,2,3,4,5,6,7,8,10,11,13,14,20,21}
+ 
+  --First clear previous values (if any)
+  clear_val_fct()
+  st="N05C"
+  selvalbutton[1]:label(st)
+  selval[1]=st
+  
+--deselect fields : list of buttons to deselect
+  for i=1,#button2deselect do
+       j = button2deselect[i]
+       selbuttons[j]:color(1)
+       selcol[j] = 1
+       --1 means red means de-selected
+       selbuttons[j]:label( "DSEL" )
+       selbuttons[j]:tooltip( "De-selected field" )
+       selbuttons[j]:show()
+  end
+--select expected fields
+  for i=1,#button2select do
+       j = button2select[i]
+       selbuttons[j]:color(2) 
+       selcol[j] = 2
+       --2 means green means selected
+       selbuttons[j]:label( "SEL" )
+       selbuttons[j]:tooltip( "Selected field" )
+       selbuttons[j]:show()
+       selbuttons[j]:color(1)
+       selcol[j] = 1
+       selbuttons[j]:show()
+  end
+  --select field set as "unit of measurement"
+  for i=1,#selunit do
+       selunit[i]=0
+       unitbuttons[i]:label( "" )
+       unitbuttons[i]:tooltip( "" )
+       unitbuttons[i]:show()
+  end
+  selunit[19] = 1 --DEFAULT UNIT FIELD in this preselection is "BOITES" field
+  unitbuttons[19]:label( "UNIT" )
+  unitbuttons[19]:tooltip( "This field is set as UNIQUE unit of measurement" )
+  unitbuttons[19]:show()
+  label_unit = legend_data[19]
+print("label_unit set to " .. label_unit) 
+  downsize()
+end --end function
+
+function preselection4()
+ local i,j
+ local button2deselect={1,2,3,4,5,6,7,8,10,11,13,14,20,21}
+ local button2select={1,2,3,4,5,6,7,8,10,11,13,14,20,21}
+ 
+  --First clear previous values (if any)
+  clear_val_fct()
+  st="N06A"
+  selvalbutton[1]:label(st)
+  selval[1]=st
   
 --deselect fields : list of buttons to deselect
   for i=1,#button2deselect do
@@ -1248,13 +1405,26 @@ function disp_sample2()
        selvalbutton[#selvalbutton]:box(fltk.FL_BORDER_BOX)
        selval[i]=""
   end
---preselect button
-  preselbutton = fltk:Fl_Button(width_button, (cy+(4*height_button)), (2*width_button), height_button, "PRESEL_MT" )
-  st="All-ready M.TERRAS-Preselection-button : select lines with 'N05A' and fields 'ATC5', 'l_cip13', 'age', 'sexe', 'BEN_REG', 'PSP_SPE','BOITES'"
-  preselbutton:tooltip(st)
-  preselbutton:callback(preselection)
+--preselect buttons
+  preselbutton1 = fltk:Fl_Button(width_button, (cy+(4*height_button)), (2*width_button), height_button, "PRESEL1" )
+  st="All-ready M.TERRAS-Preselection1-button : select lines with 'N05A' (antipsychotics) and fields 'ATC5', 'l_cip13', 'age', 'sexe', 'BEN_REG', 'PSP_SPE','BOITES'"
+  preselbutton1:tooltip(st)
+  preselbutton1:callback(preselection1)
+  preselbutton2 = fltk:Fl_Button(3*width_button, (cy+(4*height_button)), (2*width_button), height_button, "PRESEL2" )
+  st="All-ready M.TERRAS-Preselection2-button : select lines with 'N05B' (anxiolytics) and fields 'ATC5', 'l_cip13', 'age', 'sexe', 'BEN_REG', 'PSP_SPE','BOITES'"
+  preselbutton2:tooltip(st)
+  preselbutton2:callback(preselection2)
+  preselbutton3 = fltk:Fl_Button(5*width_button, (cy+(4*height_button)), (2*width_button), height_button, "PRESEL3" )
+  st="All-ready M.TERRAS-Preselection3-button : select lines with 'N05C' (hypnotics & sedatives) and fields 'ATC5', 'l_cip13', 'age', 'sexe', 'BEN_REG', 'PSP_SPE','BOITES'"
+  preselbutton3:tooltip(st)
+  preselbutton3:callback(preselection3)
+  preselbutton3 = fltk:Fl_Button(7*width_button, (cy+(4*height_button)), (2*width_button), height_button, "PRESEL4" )
+  st="All-ready M.TERRAS-Preselection4-button : select lines with 'N06A' (antidepressant) and fields 'ATC5', 'l_cip13', 'age', 'sexe', 'BEN_REG', 'PSP_SPE','BOITES'"
+  preselbutton3:tooltip(st)
+  preselbutton3:callback(preselection4)
+  
 --countdown modal window : testing purpose only
-  cmwinbutton = fltk:Fl_Button(3*width_button, (cy+(4*height_button)), (2*width_button), height_button, "CD" )
+  cmwinbutton = fltk:Fl_Button(9*width_button, (cy+(4*height_button)), (2*width_button), height_button, "CD" )
   st="This button calls a Countdown Modal Window"
   cmwinbutton:tooltip(st)
   cmwinbutton:callback(countdown)
@@ -1808,7 +1978,7 @@ function query_fct(ax1, indexa1, ax2, indexa2, context1, indexc1, valse, sort_op
   local label_legend
   
   --debug block
---print("query_fct() => context1 = " .. context1 .. "(#=" .. #context1 .. "// indexc1=" .. indexc1)
+--print("query_fct() => context1 = " .. context1 .. "(#=" .. #context1 .. ")// indexc1=" .. indexc1 .. "\nax1=" .. ax1 .. ", indexa1=" .. indexa1 .. "\nax2=" .. ax2 .. ", indexa2=" .. indexa2)
   --end debug block
   
   if context1 ~= " " then
@@ -2423,7 +2593,7 @@ cy = (i+1)*height_button
              table.insert( cross, fltk:Fl_Button((cx+width_button), cy, 32, height_button, " "))
              cross[ #cross ]:labelcolor( fltk.FL_RED )
              cross[ #cross ]:tooltip( "Click here for a crossed-analyse of this field with the other" )
-             if (#cat_values[k] == 0) or (label_unit == new_legend[k]) then
+             if (#cat_values[k] == 0) or (label_unit == new_legend[k]) or(new_legend[k] == "l_cip13") then
                 cross[ #cross ]:deactivate()
                 cross[ #cross ]:tooltip( "Not available!" )
                 cmdbox:color(16)
@@ -2485,13 +2655,13 @@ cy = (i+1)*height_button
                 for context=1, #new_legend do
                     indexa2 = consistency_checking(ax1, ax2, c1,"report")
                     if context ~= data then
-                       c1 = new_legend[ context ]
-                       --indexa1, indexc1, valse =  compute_index(ax1, c1, valselect,"report")
-                       indexa1=data
-                       indexc1=context
-                       valse=nil
-                       --3_GUI fonction
-                       query_fct(ax1, indexa1, label_unit, index_unit, c1, indexc1, nil, sort_option,"report")
+                          c1 = new_legend[ context ]
+                          --indexa1, indexc1, valse =  compute_index(ax1, c1, valselect,"report")
+                          indexa1=data
+                          indexc1=context
+                          valse=nil
+                          --3_GUI fonction
+                          query_fct(ax1, indexa1, label_unit, index_unit, c1, indexc1, nil, sort_option,"report")
                 --second launching of this function for a "last agregrate chart" -ONLY IF previous chart was not already "agregate chart"
                     end --if context
                 end --end for context
