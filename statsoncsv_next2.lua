@@ -77,7 +77,8 @@ previous_context1="" --used in html reporting, making groups (=HTML table) of sa
 lib_atc5_CIP13={}
 
 --specialist dictionnary
-lib_spe_ps ={'MEDECINE GENERALE LIBERALE',
+lib_spe_ps ={
+'MEDECINE GENERALE LIBERALE',
 'ANESTHESIOLOGIE - REANIMATION LIBERALE',
 'PATHOLOGIE CARDIO-VASCULAIRE LIBERALE',
 'CHIRURGIE LIBERALE',
@@ -102,9 +103,10 @@ lib_spe_ps ={'MEDECINE GENERALE LIBERALE',
 'DIRECTEUR LABORATOIRE MEDECIN LIBERAL',
 'ENDOCRINOLOGIE ET METABOLISMES LIBERAL',
 'PRESCRIPTEURS SALARIES',
-'PRESCRIPTEURS DE VILLE AUTRES QUE MEDECINS (Dentistes, Auxiliaires medicaux, Laboratoires, Sages-Femmes)',
+'PRESCRIPTEURS DE VILLE AUTRES QUE MEDECINS (Dentistes-Auxiliaires medicaux-Laboratoires-Sages-Femmes)',
 'VALEUR INCONNUE'}
-lib_small_SPE={'MGLIB',
+lib_small_SPE={
+'MGLIB',
 'ANEST',
 'CARDIO',
 'CHIR',
@@ -130,15 +132,15 @@ lib_small_SPE={'MGLIB',
 'ENDOC',
 'PSALARIES',
 'PVILAU',
-'INC?'}
+'NC'}
 indx_spe = {1,2,3,4,5,6,7,8,9,11,12,13,14,15,17,18,19,31,32,35,36,37,38,42,90,98,99}
 indx_spe2={}
 for k,v in pairs(indx_spe) do
    indx_spe2[v]=k
 end
---for i=1,#indx_spe do
---     print(indx_spe[i] .. " = " .. lib_small_SPE[i])
---end
+for i=1,#indx_spe do
+     print(indx_spe[i] .. " = " .. lib_small_SPE[i])
+end
 
 --region dictionnary
 lib_region ={--'Inconnu1',
@@ -171,7 +173,6 @@ lib_small_region ={--'INC1?',
                 'ARA',
                 'PACAC',
                 'INC'}
---indx_region ={0,5,11,24,27,28,32,44,52,53,75,76,84,93,99}
 indx_region ={5,11,24,27,28,32,44,52,53,75,76,84,93,99}
 indx_region2={}
 for k,v in pairs(indx_region) do
@@ -1549,7 +1550,8 @@ function find_slib_from(context1, current_context, small)
   return current_context
 end --end function
 
-function find_lib_from(ax1, indexa1, index)
+function findsmalllibfrom(ax1, code, index)
+  local i
   if ax1 == 'ATC5' then
      if lib_atc5_CIP13[ index ] then
         return lib_atc5_CIP13[ index ] 
@@ -1557,9 +1559,20 @@ function find_lib_from(ax1, indexa1, index)
         return ""
      end
   elseif ax1 == 'BEN_REG' then
-     return lib_small_region[ index ]
+     for i=1,#indx_region do
+	   if code == indx_region[i] then
+	      return lib_small_region[ i ]
+	   end
+	end
+    return "BEN_REG ???"
+    --return lib_small_region[ index ]
   elseif ax1 == 'PSP_SPE' then
-     return lib_small_SPE[ index ]
+    for i=1,#indx_spe do
+	   if code == indx_spe[i] then
+	      return lib_small_SPE[ i ]
+	   end
+	end
+    return "PSP_SPE ???"
   elseif ax1 == 'age' then
      return lib_age[ index ]
   elseif ax1 == 'sexe' then
@@ -1655,13 +1668,11 @@ function disp_piechart(ax1,indexa1, ax2, indexa2, context1, current_context, val
          color=179+i
          st1 = spe_table[ j ] .. ""
          if ax1 == "BEN_REG" then
-            --st1 = lib_small_region[ j ] .. "\n" .. st1
-            st1 = lib_small_region[ j ] .. "-" .. st1
+            --st1 = cat_values[indexa1][ j ] .. " (" .. lib_small_region[ j ] .. ")-" .. st1
+            st1 = cat_values[indexa1][ j ] .. " (" .. findsmalllibfrom(ax1, cat_values[indexa1][ j ], j)..")-" .. st1
          elseif ax1 == "PSP_SPE" then
-            --st1 = lib_small_SPE[ j ] .. "\n" .. st1
-            st1 = lib_small_SPE[ j ] .. "-" .. st1
+            st1 = cat_values[indexa1][ j ] .. " (" .. findsmalllibfrom(ax1, cat_values[indexa1][ j ], j)..")-" .. st1
          else --no "small libelles", so display code "as is"
-            --st1 = cat_values[indexa1][ j ] .. "\n" .. st1
             st1 = cat_values[indexa1][ j ] .. "-" .. st1
          end
          percent=string.format("%2.1f",(spe_table[ j ]*100/sum)) .. "%"
@@ -1854,9 +1865,9 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
       --compute text position giving value IN chart bar
       st1 = spe_table[ j ] .. ""
       if ax1 == "BEN_REG" then
-         st1 = lib_small_region[ j ] .. "-" .. st1
+         st1 = cat_values[indexa1][ j ] .. " (" .. findsmalllibfrom(ax1, cat_values[indexa1][ j ], j)..")-" .. st1
       elseif ax1 == "PSP_SPE" then
-         st1 = lib_small_SPE[ j ] .. "-" .. st1
+        st1 = cat_values[indexa1][ j ] .. " (" .. findsmalllibfrom(ax1, cat_values[indexa1][ j ], j)..")-" .. st1
       else --no "small libelles", so display code "as is"
          st1 = cat_values[indexa1][ j ] .. "-" .. st1
       end
@@ -1924,9 +1935,8 @@ function disp_spe_histo(ax1,indexa1, ax2, indexa2, context1, current_context, va
 end --end function
 
 function disp_table_report(ax1, indexa1, ax2, indexa2, context1, current_context, valse, spe_table,label_legend)
- local i
+ local i,j
  local spe_table_palm={} --table of spe_table indexes, sorted by decreasing value in this table
- 
  
  --"palmares sorting values"
  spe_table_palm = palmares_sorting(spe_table)
@@ -1943,23 +1953,19 @@ function disp_table_report(ax1, indexa1, ax2, indexa2, context1, current_context
  if context1 == " " then
     html_buffer = html_buffer .. "<TR><TH COLSPAN=3>" .. label_legend .. " no context (agregated data) </TH></TR>"
  else
-    --html_buffer = html_buffer .. "<TR><TH COLSPAN=3>" .. label_legend .. ", " .. find_clib_from(context1) .. "=" .. find_slib_from(context1, current_context, 2) .. " </TH></TR>"
     html_buffer = html_buffer .. "<TR><TH COLSPAN=3>" .. label_legend .. " " .. find_clib_from(ax2) .. " per " .. find_clib_from(ax1) .. ", context=" .. find_clib_from(context1) .. " </TH></TR>"
   end
   html_buffer = html_buffer .. "<TR><TD><CENTER><TABLE>"
   if context1 == " " then
        html_buffer = html_buffer .. "<TR><TH COLSPAN=2> no context (agregated data) </TH></TR>"
   else
-     --html_buffer = html_buffer .. "<TR><TH COLSPAN=2>" .. context1 .. "(" .. find_slib_from(context1, current_context, 2) .. ") </TH></TR>"
      html_buffer = html_buffer .. "<TR><TH COLSPAN=2>" .. find_clib_from(context1) .. " (" .. find_slib_from(context1, current_context, 2)  .. ") </TH></TR>"
   end
   html_buffer = html_buffer .. "<TR><TH>".. ax1 .. "</TH><TH>" .. ax2 .. "</TH></TR>"
   for i=1,#spe_table do
        j = spe_table_palm[i]
-       --html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ i ] .. " (".. lib_atc5_CIP13[ i ] .. ")</TD>"
-       --html_buffer = html_buffer .. "<TD style='text-align: right;'>" .. spe_table[i] .. "</TD></TR>"
-       --html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ j ] .. " (".. lib_atc5_CIP13[ j ] .. ")</TD>"
-       html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ j ] .. " (".. find_lib_from(ax1,indexa1, j) .. ")</TD>"
+       --html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ j ] .. " (".. find_lib_from(ax1, cat_values[indexa1][ j ], j) .. ")</TD>"
+       html_buffer = html_buffer .. "<TR><TD>" .. cat_values[indexa1][ j ] .. " (".. findsmalllibfrom(ax1, cat_values[indexa1][ j ], j) .. ")</TD>"
        html_buffer = html_buffer .. "<TD style='text-align: right;'>" .. spe_table[ j ] .. "</TD></TR>"
   end
   html_buffer = html_buffer .. "</TABLE></CENTER></TD>"
