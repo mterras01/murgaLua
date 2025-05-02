@@ -66,17 +66,27 @@ diff_m={}
 comment_m={}
 
 --GUI
+cwindow=object --command window 
+width_cwindow, height_cwindow = 1200, 60
 window=object
-width_twindow = 1500
-height_twindow = 768
+width_twindow, height_twindow= 1500, 768
 u_quit,v_button=object,object
-magn_slider=object
+magn_slider_s=object
+magn_slider_m=object
+height_button=25
+width_button=80
+co={} --constellation buttons
+co_reset=object--constellation reset button
 
--- sky objects plotting:grid pataméters
+-- sky objects plotting:grid parameters
 grid_hor_width=60
 grid_vert_height=40
 grid_decx=37
 grid_decy=80
+
+--constellations names and abrev
+constellation_name={}
+constellation_abrev={}
 
 function extract_from_bsc_line(line) 
  local st
@@ -210,21 +220,37 @@ local i,j,k,b,c,st,st2
   end
 end --end function
 
+function plot_messier()  
+  local i
+  local posx,oldrposx,rposx,posy,f,decx
+  local c,d
+  
+  for i=1,#mess_cat do
+        if magn_m[i] < magn_slider_m:value() then
+             posx= floor(((24-(ra_h_m[i]+(ra_m_m[i]/60)))*grid_hor_width)+grid_decx)
+             if decl_m[i]>0 then
+                posy=floor((80-decl_m[i])*4)+grid_decy
+             else
+                posy=floor(-1*decl_m[i]*4)+320+grid_decy
+             end
+print("Messier " .. mess_cat[i] .. " plotting with x= " .. posx .. ", y=" .. posy )
+             fltk.fl_color(3)
+             fltk.fl_rectf(posx, posy, 4, 4)
+       end
+  end
+end --end function
+
 function plot_stars()
   local i
   local posx,oldrposx,rposx,posy,f,decx
   local c,d
-  --a star at 24h 80deg should be at coordinates x=0,y=0
-  --a star at 24h 0deg should be at coordinates x=0,y=halh of height
-  --a star at 12h 0deg should be at coordinates x=half of width (?),y=halh of height
-  --a star at 0h -80deg should be at coordinates x=whole width,y=whole height
   
   print("New plotting")
   for i=1,#star do
        if star[i] then
 --          if star[i] ~= "" and star[i] ~= " " then
 --if magn[i] <4 then 
-if magn[i] < magn_slider:value() then
+if magn[i] < magn_slider_s:value() then
              posx= floor(((24-(ra_h[i]+(ra_m[i]/60)+(ra_s[i]/3600)))*grid_hor_width)+grid_decx)
              
 --             if star[i] == "Betelgeuse" or star[i] == "Bellatrix" or star[i] == "Rigel" then
@@ -259,7 +285,7 @@ end
 --          end
        end
   end
-end
+end --end function
 
 function extract_from_mess_line(line) 
  if line == nil then
@@ -369,14 +395,91 @@ function extract_from_mess_line(line)
 
 end --end function
 
-function show_stars() 
-  --window:show()
-  --window:make_current()
+function show_objects()  
  window:make_current()
     grid()
     plot_stars()
+    plot_messier()
     window:show()
-end
+end --end function
+
+function select_const()
+ --select a unique constellation for separate display
+ for i=1,#co do
+       if Fl.event_inside(co[i]) == 1 then
+print(constellation_name[i] .. " has been selected !")
+       end
+ end
+end --end function
+
+function const_buttons()
+ local i,x,y
+ x=8*width_button
+ y=0
+ for i=1,#constellation_abrev do
+      table.insert(co, fltk:Fl_Button(x, y, 25, 11, constellation_abrev[i]) )
+      co[#co]:tooltip(constellation_name[i])
+      co[#co]:labelsize(8)
+      co[#co]:callback( select_const )
+      x=x+25
+      if x>=1175 then
+         x=8*width_button
+         y=y+11
+      end
+ end
+ co_reset = fltk:Fl_Button(x, y, 7*width_button, 11, "Reset constellations filter")
+ co_reset:tooltip("Select all constellations for displaying")
+ co_reset:labelsize(8)
+end --end function
+
+function cmd_display()
+ local i,j,k,l,st,b,c,st2
+ cwindow = fltk:Fl_Window(width_cwindow, height_cwindow, "Skymap Commander")   
+ u_quit = fltk:Fl_Button(0, 0, width_button, height_button, "Quit")
+ u_quit:color(fltk.FL_RED)
+ u_quit:tooltip("Quit this application")
+ u_quit:callback(function (quit_u)
+   cwindow:hide()
+   cwindow:clear()
+   cwindow = nil
+  os.exit()
+ end)
+ v_button = fltk:Fl_Button(width_button, 0, width_button, height_button, "Update")
+ --v_button:color(fltk.FL_RED)
+ v_button:tooltip("Update Skymap with current parameters")
+ v_button:callback(show_objects)
+ 
+ s_button = fltk:Fl_Light_Button((2*width_button), 0, width_button, height_button, "Stars")
+ s_button:tooltip("Display or not stars from Bright Stars catalog")
+ s_button:selection_color(2) --green as default "ON"
+ s_button:value(1) --default button as "ON"
+
+ m_button = fltk:Fl_Light_Button((2*width_button), height_button, width_button, height_button, "Messier")
+ m_button:tooltip("Display or not Messier Objects")
+ m_button:selection_color(2) --green as default "ON"
+ m_button:value(1) --default button as "ON"
+  
+ magn_slider_s=fltk:Fl_Value_Slider(3*width_button, 0, (4*width_button), 15, "Upper Magnitude for Stars")
+ magn_slider_s:type(fltk.FL_HOR_NICE_SLIDER)
+ magn_slider_s:labelsize(8)
+ magn_slider_s:textsize(8)
+ magn_slider_s:value(4)
+ magn_slider_s:maximum(30)
+ magn_slider_s:minimum(-30)
+ magn_slider_s:tooltip("Defines with this slider value an upper limit for Stars' Magnitude")
+ 
+ magn_slider_m=fltk:Fl_Value_Slider(3*width_button, height_button, (4*width_button), 15, "Upper Magnitude for Messier Objects")
+ magn_slider_m:type(fltk.FL_HOR_NICE_SLIDER)
+ magn_slider_m:labelsize(8)
+ magn_slider_m:textsize(8)
+ magn_slider_m:value(6)
+ magn_slider_m:maximum(30)
+ magn_slider_m:minimum(-30)
+ magn_slider_m:tooltip("Defines with this slider value an upper limit for Messier Objects' Magnitude")
+ --display constellations buttons
+ const_buttons()
+ cwindow:show()
+end --end function
 
 function main_display()
  local i,j,k,l,st,b,c,st2
@@ -407,31 +510,6 @@ function main_display()
             k=k+1
        end
   end
-
- height_button=25
- width_button=50 
-  u_quit = fltk:Fl_Button(5, 5, width_button, height_button, "Quit")
-  u_quit:color(fltk.FL_RED)
-  u_quit:tooltip("Quit this application")
-  u_quit:callback(function (quit_u)
-     window:hide()
-     window:clear()
-     window = nil
-     os.exit()
-  end)
-  v_button = fltk:Fl_Button(10+width_button, 5, width_button, height_button, "stars")
-  --v_button:color(fltk.FL_RED)
-  v_button:tooltip("Display the Stars")
-  v_button:callback(show_stars)
-  
-  magn_slider=fltk:Fl_Value_Slider(10+2*width_button, 5, (4*width_button), height_button, "Upper Magnitude")
-  magn_slider:type(fltk.FL_HOR_NICE_SLIDER)
-  magn_slider:textsize(8)
-  magn_slider:value(4)
-  magn_slider:maximum(30)
-  magn_slider:minimum(-30)
-  magn_slider:tooltip("Defines with this slider value an upper limit for objects' Magnitude")
-   
   window:show()
   window:make_current()
 end --end function
@@ -500,8 +578,6 @@ print("File " .. filename_bsc .. " opened for reading !")
 print(filename_const)
 separator_const=";"
 buffer=""
-constellation_name={}
-constellation_abrev={}
 nblines=0
  if filename_const then
      f = io.open(filename_const,"rb")
@@ -563,9 +639,9 @@ print("File " .. filename_mess .. " opened for reading !")
 print("Problem loading File " .. filename_mess .. " for reading !")
     end
  end 
- 
+ cmd_display()
  main_display()
- show_stars()
+ show_objects()
 
  print("RAM used AFTER pre_report() -and freeing some huge tables- by  gcinfo() = " .. gcinfo() .. ", reported by collectgarbage()=" .. collectgarbage("count"))
  
@@ -576,3 +652,4 @@ print("Problem loading File " .. filename_mess .. " for reading !")
 
 Fl:check()
 Fl:run()
+
