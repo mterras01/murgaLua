@@ -77,6 +77,9 @@ height_button=25
 width_button=80
 co={} --constellation buttons
 co_reset=object--constellation reset button
+starsb={} --stars'buttons (skymap)
+messiersb={} --Messiers objects' buttons (skymap)
+planetsb={} --planets & moon s' buttons (skymap)
 
 -- sky objects plotting:grid parameters
 grid_hor_width=60
@@ -87,6 +90,24 @@ grid_decy=80
 --constellations names and abrev
 constellation_name={}
 constellation_abrev={}
+
+function define_textfile_origin(data)
+  local i,st
+  --finding if -CURRENTLY OPENED- text file
+  -- is Unix or Windows -generated
+  --searching for CR/LF (windows)
+  st = string.char(13) .. string.char(10)
+  i = find(data, st)
+  if i then
+--print("Ce fichier a ete genere par Windows => size_eol=2")
+     size_eol=1 -- for windows remove CR+LF at end of line
+     return("windows")
+  else
+--print("Ce fichier a ete genere par un Unix-like => size_eol=1")
+     size_eol=1 -- for unixes remove only LF(?)
+     return("unix")
+  end
+end --end function
 
 function extract_from_bsc_line(line) 
  local st
@@ -178,112 +199,6 @@ function extract_from_const_line(line)
   end
   if abrev then
      table.insert(constellation_abrev, abrev)
-  end
-end --end function
-
-
-function define_textfile_origin(data)
-  local i,st
-  --finding if -CURRENTLY OPENED- text file
-  -- is Unix or Windows -generated
-  --searching for CR/LF (windows)
-  st = string.char(13) .. string.char(10)
-  i = find(data, st)
-  if i then
---print("Ce fichier a ete genere par Windows => size_eol=2")
-     size_eol=1 -- for windows remove CR+LF at end of line
-     return("windows")
-  else
---print("Ce fichier a ete genere par un Unix-like => size_eol=1")
-     size_eol=1 -- for unixes remove only LF(?)
-     return("unix")
-  end
-end --end function
-
-function grid()
-local i,j,k,b,c,st,st2
---local grid_hor_width,grid_vert_height=40,40
---local grid_decx,grid_decy=37,80
-
-  fltk.fl_color(256) --black is 256
-  --for i=23,-1,-1 do
-  for i=24,0,-1 do
-       k=0
-       for j=80,-80,-10 do
-            --fltk:fl_line(37+((23-i)*40), 80,37+((23-i)*40), 80+(16*40)) --vertical grid
-            --fltk:fl_line(grid_decx+((23-i)*grid_hor_width), grid_decy,grid_decx+((23-i)*grid_hor_width), grid_decy+(16*grid_vert_height)) --vertical grid
-            fltk:fl_line(grid_decx+((24-i)*grid_hor_width), grid_decy,grid_decx+((24-i)*grid_hor_width), grid_decy+(16*grid_vert_height)) --vertical grid
-            --fltk:fl_line(37, 80+(k*40),37+(24*40), 80+(k*40)) --horizontal grid
-            fltk:fl_line(grid_decx, grid_decy+(k*grid_vert_height),grid_decx+(24*grid_hor_width), grid_decy+(k*grid_vert_height)) --horizontal grid
-            k=k+1
-       end
-  end
-end --end function
-
-function plot_messier()  
-  local i
-  local posx,oldrposx,rposx,posy,f,decx
-  local c,d
-  
-  for i=1,#mess_cat do
-        if magn_m[i] < magn_slider_m:value() then
-             posx= floor(((24-(ra_h_m[i]+(ra_m_m[i]/60)))*grid_hor_width)+grid_decx)
-             if decl_m[i]>0 then
-                posy=floor((80-decl_m[i])*4)+grid_decy
-             else
-                posy=floor(-1*decl_m[i]*4)+320+grid_decy
-             end
-print("Messier " .. mess_cat[i] .. " plotting with x= " .. posx .. ", y=" .. posy )
-             fltk.fl_color(3)
-             fltk.fl_rectf(posx, posy, 4, 4)
-       end
-  end
-end --end function
-
-function plot_stars()
-  local i
-  local posx,oldrposx,rposx,posy,f,decx
-  local c,d
-  
-  print("New plotting")
-  for i=1,#star do
-       if star[i] then
---          if star[i] ~= "" and star[i] ~= " " then
---if magn[i] <4 then 
-if magn[i] < magn_slider_s:value() then
-             posx= floor(((24-(ra_h[i]+(ra_m[i]/60)+(ra_s[i]/3600)))*grid_hor_width)+grid_decx)
-             
---             if star[i] == "Betelgeuse" or star[i] == "Bellatrix" or star[i] == "Rigel" then
---print(star[i] .. "'s posx is " .. ra_h[i]+(ra_m[i]/60)+(ra_s[i]/3600))
---             end
-             
-             if decl[i]>0 then
-                --posy=floor((80-decl[i])*40)
-                posy=floor((80-decl[i])*4)+grid_decy
-             else
-                --posy=floor(-1*decl[i]*40)+320
-                posy=floor(-1*decl[i]*4)+320+grid_decy
-             end
---print("Star " .. star[i] .. " plotting with x= " .. posx .. ", y=" .. posy )
-             fltk.fl_color(1)
-             fltk.fl_rectf(posx, posy, 4, 4)
-             
-             --[-[--
-                if star[i] ~= "" then
-                   c=fltk:Fl_Button(posx, posy, 60, 20)
-                   c:align(fltk.FL_ALIGN_TOP)
-                   c:labelsize(8)
-                   c:labelcolor(256)
-                   c:color(2)
-                   c:label(star[i])
-                   c:tooltip(star[i])
-                   
-                end
-             --]]--
-             --fltk.fl_point((posx+37), (posy+40))
-end
---          end
-       end
   end
 end --end function
 
@@ -395,11 +310,112 @@ function extract_from_mess_line(line)
 
 end --end function
 
+function grid()
+local i,j,k,b,c,st,st2
+--local grid_hor_width,grid_vert_height=40,40
+--local grid_decx,grid_decy=37,80
+
+  fltk.fl_color(256) --black is 256
+  --for i=23,-1,-1 do
+  for i=24,0,-1 do
+       k=0
+       for j=80,-80,-10 do
+            --fltk:fl_line(37+((23-i)*40), 80,37+((23-i)*40), 80+(16*40)) --vertical grid
+            --fltk:fl_line(grid_decx+((23-i)*grid_hor_width), grid_decy,grid_decx+((23-i)*grid_hor_width), grid_decy+(16*grid_vert_height)) --vertical grid
+            fltk:fl_line(grid_decx+((24-i)*grid_hor_width), grid_decy,grid_decx+((24-i)*grid_hor_width), grid_decy+(16*grid_vert_height)) --vertical grid
+            --fltk:fl_line(37, 80+(k*40),37+(24*40), 80+(k*40)) --horizontal grid
+            fltk:fl_line(grid_decx, grid_decy+(k*grid_vert_height),grid_decx+(24*grid_hor_width), grid_decy+(k*grid_vert_height)) --horizontal grid
+            k=k+1
+       end
+  end
+end --end function
+
+function plot_messier()  
+  local i
+  local posx,oldrposx,rposx,posy,f,decx
+  local c,d
+  
+  for i=1,#mess_cat do
+        if magn_m[i] < magn_slider_m:value() then
+             posx= floor(((24-(ra_h_m[i]+(ra_m_m[i]/60)))*grid_hor_width)+grid_decx)
+             if decl_m[i]>0 then
+                posy=floor((80-decl_m[i])*4)+grid_decy
+             else
+                posy=floor(-1*decl_m[i]*4)+320+grid_decy
+             end
+--print("Messier " .. mess_cat[i] .. " plotting with x= " .. posx .. ", y=" .. posy )
+             fltk.fl_color(3)
+             fltk.fl_rectf(posx, posy, 4, 4)
+             
+             messiersb[i]:position(posx, posy)
+             messiersb[i]:labelsize(8)
+             messiersb[i]:labelcolor(256)
+             messiersb[i]:redraw_label()
+             --[[
+             c=fltk:Fl_Button(posx, posy, 60, 20)
+             c:align(fltk.FL_ALIGN_TOP)
+             c:labelsize(8)
+             c:labelcolor(256)
+             c:color(2)
+             c:label(mess_cat[i])
+             c:tooltip(comment_m[i])
+             c:show()
+             --Fl:check()
+             ]]--
+       end
+  end
+end --end function
+
+function plot_stars()
+  local i
+  local posx,oldrposx,rposx,posy,f,decx
+  local c,d
+  
+  print("New plotting")
+  for i=1,#star do
+       if star[i] then
+--          if star[i] ~= "" and star[i] ~= " " then
+--if magn[i] <4 then 
+if magn[i] < magn_slider_s:value() then
+             posx= floor(((24-(ra_h[i]+(ra_m[i]/60)+(ra_s[i]/3600)))*grid_hor_width)+grid_decx)
+             
+--             if star[i] == "Betelgeuse" or star[i] == "Bellatrix" or star[i] == "Rigel" then
+--print(star[i] .. "'s posx is " .. ra_h[i]+(ra_m[i]/60)+(ra_s[i]/3600))
+--             end
+             
+             if decl[i]>0 then
+                --posy=floor((80-decl[i])*40)
+                posy=floor((80-decl[i])*4)+grid_decy
+             else
+                --posy=floor(-1*decl[i]*40)+320
+                posy=floor(-1*decl[i]*4)+320+grid_decy
+             end
+--print("Star " .. star[i] .. " plotting with x= " .. posx .. ", y=" .. posy )
+             fltk.fl_color(1)
+             --fltk.fl_rectf(posx, posy, 4, 4)
+             fltk.fl_rectf(posx, posy, 4, 4)
+             
+             starsb[i]:position(posx, posy)
+             starsb[i]:labelsize(8)
+             starsb[i]:labelcolor(256)
+             starsb[i]:redraw_label()
+
+             --fltk.fl_point((posx+37), (posy+40))
+end
+--          end
+       end
+  end
+end --end function
+
+function plot_planets()
+end --end function
+
 function show_objects()  
  window:make_current()
     grid()
     plot_stars()
     plot_messier()
+    plot_planets()
     window:show()
 end --end function
 
@@ -481,10 +497,33 @@ function cmd_display()
  cwindow:show()
 end --end function
 
+function info_p()
+ --display info about mouse-pointed planet (or moon)
+end --end function
+
+function info_m()
+ --display info about mouse-pointed Messier's object
+ for i=1,#messiersb do
+       if Fl.event_inside(messiersb[i]) == 1 then
+fltk:fl_alert(comment_m[i])
+       end
+ end
+end --end function
+
+function info_s()
+ --display info about mouse-pointed star
+ for i=1,#starsb do
+       if Fl.event_inside(starsb[i]) == 1 then
+fltk:fl_alert(comment_bsc[i])
+       end
+ end
+end --end function
+
 function main_display()
  local i,j,k,l,st,b,c,st2
  --window = fltk:Fl_Double_Window(width_twindow, height_twindow, "Global skymap")   
- window = fltk:Fl_Window(width_twindow, height_twindow, "Global skymap")   
+ window = fltk:Fl_Window(width_twindow, height_twindow, "Global skymap")
+ --marks for grid
  for i=24,0,-1 do
        k=0
        for j=80,-80,-10 do
@@ -510,6 +549,23 @@ function main_display()
             k=k+1
        end
   end
+  --buttons for stars, messiers, and planets, created with a "standard" location (not in visible area)
+  for i=1,#star do
+      st=star[i] ..""
+      table.insert(starsb, fltk:Fl_Button(-30, -30, 4, 4,st) )
+      starsb[#starsb]:color(1)
+      starsb[#starsb]:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_CENTER)
+      starsb[#starsb]:callback(info_s)
+      --starsb[#starsb]:tooltip(comment_bsc[i])
+  end
+  for i=1,#mess_cat do
+       table.insert(messiersb, fltk:Fl_Button(-30, -30, 4, 4,mess_cat[i]) )
+       messiersb[#messiersb]:color(3)
+       messiersb[#messiersb]:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_CENTER)
+       messiersb[#messiersb]:callback(info_m)
+       --messiersb[#messiersb]:tooltip(comment_m[i])
+  end
+  
   window:show()
   window:make_current()
 end --end function
@@ -524,10 +580,9 @@ end --end function
  print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo() .. ", reported by collectgarbage()=" .. collectgarbage("count"))
 
  
- 
 --csv file for celestial objects data loading
 --Bright Star Catalogue / dezipped file yalebsc.tar.bz2
---url=https://ian.macky.net/pat/yalebsc/yalebsc.tar.bz2
+--source=https://ian.macky.net/pat/yalebsc/yalebsc.tar.bz2
 --Fields description
 --
 --	field name	p  w  storage   type     units    format    flags
@@ -575,6 +630,7 @@ print("File " .. filename_bsc .. " opened for reading !")
  end
  
  filename_const="/home/terras/Téléchargements/AstroLua_docs/data/space/constellation_abrev.csv"
+ --source=https://www.aavso.org/constellation-names-and-abbreviations
 print(filename_const)
 separator_const=";"
 buffer=""
@@ -608,6 +664,8 @@ print("Found \"Tags;;;\" field ")
  print(table.concat(constellation_abrev,"/"))
  
  --Now, download Messier catalog (110 objects)
+ --source page=https://starlust.org/messier-catalog/Messier_Catalog_StarLust.html
+ --file at https://docs.google.com/spreadsheets/d/11keXJH6XIeJh6N90yRQ-9X_Pdg9vpq34vWZY8RA9I5c/edit?usp=sharing
  filename_mess="/home/terras/Téléchargements/AstroLua_docs/data/space/Messier_Catalog_110_List3.csv"
 print(filename_mess)
 separator_mess=";"
