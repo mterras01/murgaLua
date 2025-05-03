@@ -77,6 +77,7 @@ height_button=25
 width_button=80
 co={} --constellation buttons
 co_reset=object--constellation reset button
+gridb={} --grid (skymap)
 starsb={} --stars'buttons (skymap)
 messiersb={} --Messiers objects' buttons (skymap)
 planetsb={} --planets & moon s' buttons (skymap)
@@ -90,6 +91,9 @@ grid_decy=80
 --constellations names and abrev
 constellation_name={}
 constellation_abrev={}
+
+--location for database files (ONE path for all files)
+pathname=""
 
 function define_textfile_origin(data)
   local i,st
@@ -110,7 +114,7 @@ function define_textfile_origin(data)
 end --end function
 
 function extract_from_bsc_line(line) 
- local st
+ local st,i,constp
  if line == nil then
     return
  end
@@ -163,7 +167,18 @@ exit(0)
     table.insert(let, letter)
     table.insert(const, constellation)
     table.insert(star, starname)
-    st="RA="..ra_h[#ra_h] .."h ".. ra_m[#ra_m] .."mn " .. ra_s[#ra_s].. "s\nDecl=" .. decl[#decl] .."deg\nMagn=".. magn[#magn] .."\nGrphSym=" ..sym[#sym] .."\nSpec Type=" .. spect[#spect] .."\nLetter=" .. let[#let] .."\n" .. "Const=" .. const[#const] .. "\nStar)" ..star[#star]
+    --find complete constellation name from its abrev
+    constp=""
+    for i=1,#constellation_abrev do
+         if const[#const] == constellation_abrev[i] then
+            constp = constellation_name[i]
+            break
+         end
+    end
+    if constp == "" then
+       constp=const[#const]
+    end
+    st="RA="..ra_h[#ra_h] .."h ".. ra_m[#ra_m] .."mn " .. ra_s[#ra_s].. "s\nDecl=" .. decl[#decl] .."deg\nMagn=".. magn[#magn] .."\nGrphSym=" ..sym[#sym] .."\nSpec Type=" .. spect[#spect] .."\nLetter=" .. let[#let] .."\n" .. "Const=" .. constp .. "\nStar=" ..star[#star]
     table.insert(comment_bsc, st)
 
 --print("=====> spectral type " ..spectral_type)
@@ -182,12 +197,14 @@ function extract_from_const_line(line)
  
   pos1=find(line, separator_const, 1)
   if pos1 then
-     name = upper(sub(line,1, pos1-2))
+     --name = upper(sub(line,1, pos1-2))
+     name = sub(line,1, pos1-2)
      pos2=find(line, separator_const, (pos1+1))
      if pos2 then
         pos3=find(line, separator_const, (pos2+1))
         if pos3 then
-           abrev = upper(sub(line,pos2+1, pos3-1))
+           --abrev = upper(sub(line,pos2+1, pos3-1))
+           abrev = sub(line,pos2+1, pos3-1)
            if sub(abrev,-1,-1) == " " then
               abrev = sub(abrev,1,-2)
            end
@@ -344,24 +361,13 @@ function plot_messier()
                 posy=floor(-1*decl_m[i]*4)+320+grid_decy
              end
 --print("Messier " .. mess_cat[i] .. " plotting with x= " .. posx .. ", y=" .. posy )
-             fltk.fl_color(3)
-             fltk.fl_rectf(posx, posy, 4, 4)
+             --fltk.fl_color(3)
+             --fltk.fl_rectf(posx, posy, 4, 4)
              
              messiersb[i]:position(posx, posy)
              messiersb[i]:labelsize(8)
              messiersb[i]:labelcolor(256)
              messiersb[i]:redraw_label()
-             --[[
-             c=fltk:Fl_Button(posx, posy, 60, 20)
-             c:align(fltk.FL_ALIGN_TOP)
-             c:labelsize(8)
-             c:labelcolor(256)
-             c:color(2)
-             c:label(mess_cat[i])
-             c:tooltip(comment_m[i])
-             c:show()
-             --Fl:check()
-             ]]--
        end
   end
 end --end function
@@ -374,26 +380,17 @@ function plot_stars()
   print("New plotting")
   for i=1,#star do
        if star[i] then
---          if star[i] ~= "" and star[i] ~= " " then
---if magn[i] <4 then 
 if magn[i] < magn_slider_s:value() then
              posx= floor(((24-(ra_h[i]+(ra_m[i]/60)+(ra_s[i]/3600)))*grid_hor_width)+grid_decx)
              
---             if star[i] == "Betelgeuse" or star[i] == "Bellatrix" or star[i] == "Rigel" then
---print(star[i] .. "'s posx is " .. ra_h[i]+(ra_m[i]/60)+(ra_s[i]/3600))
---             end
-             
              if decl[i]>0 then
-                --posy=floor((80-decl[i])*40)
                 posy=floor((80-decl[i])*4)+grid_decy
              else
-                --posy=floor(-1*decl[i]*40)+320
                 posy=floor(-1*decl[i]*4)+320+grid_decy
              end
 --print("Star " .. star[i] .. " plotting with x= " .. posx .. ", y=" .. posy )
-             fltk.fl_color(1)
+             --fltk.fl_color(1)
              --fltk.fl_rectf(posx, posy, 4, 4)
-             fltk.fl_rectf(posx, posy, 4, 4)
              
              starsb[i]:position(posx, posy)
              starsb[i]:labelsize(8)
@@ -450,7 +447,7 @@ end --end function
 
 function cmd_display()
  local i,j,k,l,st,b,c,st2
- cwindow = fltk:Fl_Window(width_cwindow, height_cwindow, "Skymap Commander")   
+ cwindow = fltk:Fl_Window(0,0, width_cwindow, height_cwindow, "Skymap Commander")   
  u_quit = fltk:Fl_Button(0, 0, width_button, height_button, "Quit")
  u_quit:color(fltk.FL_RED)
  u_quit:tooltip("Quit this application")
@@ -520,10 +517,10 @@ fltk:fl_alert(comment_bsc[i])
 end --end function
 
 function main_display()
- local i,j,k,l,st,b,c,st2
- --window = fltk:Fl_Double_Window(width_twindow, height_twindow, "Global skymap")   
- window = fltk:Fl_Window(width_twindow, height_twindow, "Global skymap")
- --marks for grid
+ local i,j,k,l,st,b,c,st2,x,y
+ --window = fltk:Fl_Double_Window(width_twindow, height_twindow, "Global skymap")
+ window = fltk:Fl_Window(0,130, width_twindow, height_twindow, "Global skymap")
+ --text for grid
  for i=24,0,-1 do
        k=0
        for j=80,-80,-10 do
@@ -549,10 +546,27 @@ function main_display()
             k=k+1
        end
   end
+  --marks for grid
+  for i=24,0,-1 do
+       x=grid_decx+((24-i)*grid_hor_width)
+       table.insert(gridb, fltk:Fl_Box(x, grid_decy, 2, (16*grid_vert_height) ) )
+       k=0
+       for j=80,-80,-10 do
+            y=grid_decy+(k*grid_vert_height)
+            --table.insert(gridb, fltk:Fl_Button(x, y, grid_hor_width, grid_vert_height) )
+            --gridb[#gridb]:box(fltk.FL_FLAT_BOX)
+            --gridb[#gridb]:deactivate()
+            
+            --fltk:fl_line(grid_decx+((24-i)*grid_hor_width), grid_decy,grid_decx+((24-i)*grid_hor_width), grid_decy+(16*grid_vert_height)) --vertical grid
+            --fltk:fl_line(grid_decx, grid_decy+(k*grid_vert_height),grid_decx+(24*grid_hor_width), grid_decy+(k*grid_vert_height)) --horizontal grid
+            k=k+1
+       end
+  end
   --buttons for stars, messiers, and planets, created with a "standard" location (not in visible area)
   for i=1,#star do
       st=star[i] ..""
       table.insert(starsb, fltk:Fl_Button(-30, -30, 4, 4,st) )
+      starsb[#starsb]:box(fltk.FL_FLAT_BOX)
       starsb[#starsb]:color(1)
       starsb[#starsb]:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_CENTER)
       starsb[#starsb]:callback(info_s)
@@ -560,6 +574,7 @@ function main_display()
   end
   for i=1,#mess_cat do
        table.insert(messiersb, fltk:Fl_Button(-30, -30, 4, 4,mess_cat[i]) )
+       messiersb[#messiersb]:box(fltk.FL_FLAT_BOX)
        messiersb[#messiersb]:color(3)
        messiersb[#messiersb]:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_CENTER)
        messiersb[#messiersb]:callback(info_m)
@@ -570,15 +585,96 @@ function main_display()
   window:make_current()
 end --end function
 
+function search_path()
+ local f
+ local fn="astro_lua_path.txt"
+ f = io.open(fn,"rb")
+ if f then
+print("File " .. fn .. " found & opened for reading !")
+    pathname = f:read("*all")
+    io.close(f)
+    return(1)
+ else
+print("File " .. fn .. " not found : have to ask you for databases pathname & save it...")
+    return nil
+ end
+end --end function
+
+function save_path()
+ local f
+ local fn="astro_lua_path.txt"
+ f = io.open(fn,"wb")
+ if f then
+    f:write(pathname)
+    io.close(f)
+print("File " .. fn .. " created !")
+ else
+print("Problem saving File " .. fn .. " ! Please check/delete it and retry :")
+ end
+end --end function
+
+function path_finder()
+  -- ask user to select path where database files are located
+  -- then save it to a file
+  -- then directly load the file
+  pathname = fltk.fl_dir_chooser("PATH SELECTION for database files (CSV, DAT)", "CSV Files (*.{csv,CSV,dat,DAT})", SINGLE, nil)
+  print("pathname = " .. pathname)
+end --end function
+
  t00=0
  t00 = os.time() --top chrono
- osName="OS=" .. murgaLua.getHostOsName()
+ --osName="OS=" .. murgaLua.getHostOsName()
   --version FLTK
  print("Fltk version "  .. fltk.FL_MAJOR_VERSION .. "." .. fltk.FL_MINOR_VERSION .. "." .. fltk.FL_PATCH_VERSION)
-                                                 
- 
  print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo() .. ", reported by collectgarbage()=" .. collectgarbage("count"))
 
+ if search_path() == nil then
+    --first launch => ask for path => save path
+    path_finder()
+    save_path()
+ end
+ 
+ --download abrevations & complete names for constellations
+ if find(osName, "linux",1,true) then
+     --filename_const="/home/terras/Téléchargements/AstroLua_docs/data/space/constellation_abrev.csv"
+     filename_const=pathname .. "/constellation_abrev.csv"
+ else
+     --windows, i presume
+     filename_const=pathname .. "\\constellation_abrev.csv"
+ end
+ --source=https://www.aavso.org/constellation-names-and-abbreviations
+print(filename_const)
+separator_const=";"
+buffer=""
+nblines=0
+ if filename_const then
+     f = io.open(filename_const,"rb")
+     if f then
+print("File " .. filename_const .. " opened for reading !")
+       buffer = f:read("*all")
+       buffer=upper(buffer)
+       io.close(f)
+       pos=1
+       while 1 do
+             j = find(buffer,"\n",pos)
+             if j then
+	            line = sub(buffer, pos, j)
+	            if find(line,"TAGS;;;",1,true) then
+print("Found \"TAGS;;;\" field ")
+	               --following lines are like "text legend"
+	               break
+	            end
+                extract_from_const_line(line)
+                pos = j+1
+                nblines=nblines+1
+             else
+                  break
+             end
+       end
+    end
+ end 
+ --print(table.concat(constellation_name,"/"))
+ --print(table.concat(constellation_abrev,"/"))
  
 --csv file for celestial objects data loading
 --Bright Star Catalogue / dezipped file yalebsc.tar.bz2
@@ -602,7 +698,15 @@ end --end function
 -- color		spectral spectral_type, magnitude
 -- scale		((6 - magnitude) / 2)
 --symbol		(type = "SS"), solid circle, (type = "SD"), circle, \ (type = "SV"), box
-filename_bsc="/home/terras/Téléchargements/AstroLua_docs/data/space/yalebsc.dat"
+
+ if find(osName, "linux",1,true) then
+    --filename_bsc="/home/terras/Téléchargements/AstroLua_docs/data/space/yalebsc.dat"
+    filename_bsc=pathname .. "/yalebsc.dat"
+else
+    --windows, i presume
+    filename_bsc=pathname .. "\\yalebsc.dat"
+end
+
 print(filename_bsc)
 separator=";"
 buffer_bsc=""
@@ -629,44 +733,16 @@ print("File " .. filename_bsc .. " opened for reading !")
     end
  end
  
- filename_const="/home/terras/Téléchargements/AstroLua_docs/data/space/constellation_abrev.csv"
- --source=https://www.aavso.org/constellation-names-and-abbreviations
-print(filename_const)
-separator_const=";"
-buffer=""
-nblines=0
- if filename_const then
-     f = io.open(filename_const,"rb")
-     if f then
-print("File " .. filename_const .. " opened for reading !")
-       buffer = f:read("*all")
-       io.close(f)
-       pos=1
-       while 1 do
-             j = find(buffer,"\n",pos)
-             if j then
-	            line = sub(buffer, pos, j)
-	            if find(line,"Tags;;;",1,true) then
-print("Found \"Tags;;;\" field ")
-	               --following lines are like "text legend"
-	               break
-	            end
-                extract_from_const_line(line)
-                pos = j+1
-                nblines=nblines+1
-             else
-                  break
-             end
-       end
-    end
- end 
- print(table.concat(constellation_name,"/"))
- print(table.concat(constellation_abrev,"/"))
- 
  --Now, download Messier catalog (110 objects)
  --source page=https://starlust.org/messier-catalog/Messier_Catalog_StarLust.html
  --file at https://docs.google.com/spreadsheets/d/11keXJH6XIeJh6N90yRQ-9X_Pdg9vpq34vWZY8RA9I5c/edit?usp=sharing
- filename_mess="/home/terras/Téléchargements/AstroLua_docs/data/space/Messier_Catalog_110_List3.csv"
+ if find(osName, "linux",1,true) then
+    --filename_mess="/home/terras/Téléchargements/AstroLua_docs/data/space/Messier_Catalog_110_List3.csv"
+    filename_mess=pathname .. "/Messier_Catalog_110_List3.csv"
+ else
+    --windows, i presume
+    filename_mess=pathname .. "\\Messier_Catalog_110_List3.csv"
+ end
 print(filename_mess)
 separator_mess=";"
 buffer=""
@@ -696,7 +772,12 @@ print("File " .. filename_mess .. " opened for reading !")
     else
 print("Problem loading File " .. filename_mess .. " for reading !")
     end
- end 
+ end
+ if #comment_bsc == 0 or #comment_m == 0 or #constellation_name == 0 then
+    st="At least a database is missing, please check your path for following 3 files :\nMessier_Catalog_110_List3.csv\nyalebsc.dat\nconstellation_abrev.csv"
+    fltk:fl_alert(comment_m[i])
+    exit(0)
+ end
  cmd_display()
  main_display()
  show_objects()
