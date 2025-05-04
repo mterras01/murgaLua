@@ -37,7 +37,14 @@ format = string.format
 osName="OS=" .. murgaLua.getHostOsName()
 size_eol = 0 -- varie selon Unix (+MacOs) ou Windows
 
+--constellations names and abrev
+filename_const="constellation_abrev.csv"
+separator_const=";"
+constellation_name={}
+constellation_abrev={}
+
 --database / tables : tables for bright star catalog data
+filename_bsc="yalebsc.dat"
 ra_h={}
 ra_m={}
 ra_s={}
@@ -51,6 +58,8 @@ star={}
 comment_bsc={}
 
 --database / tables : tables for messier catalog data
+filename_mess="Messier_Catalog_110_List3.csv"
+separator_mess=";"
 mess_cat={}
 mess_ngc_cat={}
 mess_type={}
@@ -87,10 +96,6 @@ grid_hor_width=60
 grid_vert_height=40
 grid_decx=37
 grid_decy=80
-
---constellations names and abrev
-constellation_name={}
-constellation_abrev={}
 
 --location for database files (ONE path for all files)
 pathname=""
@@ -312,7 +317,7 @@ function extract_from_mess_line(line)
                                   st=sub(line, s[10]+1,-1)
                                   table.insert(diff_m, st)
 --print("Viewing diff=" .. diff_m[#diff_m])
-                                  st = "Messier=" .. mess_cat[#mess_cat] .."\nNGC/Name=" ..mess_ngc_cat[#mess_ngc_cat] .."\nMessier Type=" ..mess_type[#mess_type] .."\nConstellation=" .. mess_cons[#mess_cons] .."\nRight Ascension=" .. ra_h_m[#ra_h_m] .. "h".. ra_m_m[#ra_m_m] .. "m\nDeclination=" .. dec1.."deg " .. dec2.. "s ".. "(" .. decl_m[#decl_m]..")\nMagnitude="..magn_m[#magn_m] .."\nSize="..size_m[#size_m] .."\nDistance="..dist_m[#dist_m].." light year(s)\nViewing season=" ..season_m[#season_m] .. "\nViewing difficulty="..diff_m[#diff_m]
+                                  st = "Messier=" .. mess_cat[#mess_cat] .."\nNGC/Name=" ..mess_ngc_cat[#mess_ngc_cat] .."\nMessier Type=" ..mess_type[#mess_type] .."\nConstellation=" .. mess_cons[#mess_cons] .."\nRight Ascension=" .. ra_h_m[#ra_h_m] .. "h".. ra_m_m[#ra_m_m] .. "m\nDeclination=" .. dec1.."deg " .. dec2.. "s \nMagnitude="..magn_m[#magn_m] .."\nSize="..size_m[#size_m] .."\nDistance="..dist_m[#dist_m].." light year(s)\nViewing season=" ..season_m[#season_m] .. "\nViewing difficulty="..diff_m[#diff_m]
                                   table.insert(comment_m, st)
                                end
                             end
@@ -549,14 +554,16 @@ function main_display()
   --marks for grid
   for i=24,0,-1 do
        x=grid_decx+((24-i)*grid_hor_width)
-       table.insert(gridb, fltk:Fl_Box(x, grid_decy, 2, (16*grid_vert_height) ) )
+       table.insert(gridb, fltk:Fl_Box(x, grid_decy, 1, (16*grid_vert_height) ) )
+       gridb[#gridb]:box(fltk.FL_FLAT_BOX)
+       gridb[#gridb]:color(4)
        k=0
        for j=80,-80,-10 do
             y=grid_decy+(k*grid_vert_height)
-            --table.insert(gridb, fltk:Fl_Button(x, y, grid_hor_width, grid_vert_height) )
-            --gridb[#gridb]:box(fltk.FL_FLAT_BOX)
-            --gridb[#gridb]:deactivate()
-            
+            table.insert(gridb, fltk:Fl_Box(grid_decx, y, 24*grid_hor_width, 1) )
+            gridb[#gridb]:box(fltk.FL_FLAT_BOX)
+            gridb[#gridb]:color(4)
+            --(bad) old method with low level drawing functions
             --fltk:fl_line(grid_decx+((24-i)*grid_hor_width), grid_decy,grid_decx+((24-i)*grid_hor_width), grid_decy+(16*grid_vert_height)) --vertical grid
             --fltk:fl_line(grid_decx, grid_decy+(k*grid_vert_height),grid_decx+(24*grid_hor_width), grid_decy+(k*grid_vert_height)) --horizontal grid
             k=k+1
@@ -570,15 +577,14 @@ function main_display()
       starsb[#starsb]:color(1)
       starsb[#starsb]:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_CENTER)
       starsb[#starsb]:callback(info_s)
-      --starsb[#starsb]:tooltip(comment_bsc[i])
   end
   for i=1,#mess_cat do
        table.insert(messiersb, fltk:Fl_Button(-30, -30, 4, 4,mess_cat[i]) )
        messiersb[#messiersb]:box(fltk.FL_FLAT_BOX)
        messiersb[#messiersb]:color(3)
-       messiersb[#messiersb]:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_CENTER)
+       --messiersb[#messiersb]:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_CENTER)
+       messiersb[#messiersb]:align(fltk.FL_ALIGN_BOTTOM+fltk.FL_ALIGN_CENTER)
        messiersb[#messiersb]:callback(info_m)
-       --messiersb[#messiersb]:tooltip(comment_m[i])
   end
   
   window:show()
@@ -621,31 +627,21 @@ function path_finder()
   print("pathname = " .. pathname)
 end --end function
 
- t00=0
- t00 = os.time() --top chrono
- --osName="OS=" .. murgaLua.getHostOsName()
-  --version FLTK
- print("Fltk version "  .. fltk.FL_MAJOR_VERSION .. "." .. fltk.FL_MINOR_VERSION .. "." .. fltk.FL_PATCH_VERSION)
- print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo() .. ", reported by collectgarbage()=" .. collectgarbage("count"))
-
- if search_path() == nil then
-    --first launch => ask for path => save path
-    path_finder()
-    save_path()
- end
- 
+function dl_constellations()
+ local buffer=""
+ local nblines=0
+ local pos,j
  --download abrevations & complete names for constellations
+ --source=https://www.aavso.org/constellation-names-and-abbreviations
  if find(osName, "linux",1,true) then
-     --filename_const="/home/terras/Téléchargements/AstroLua_docs/data/space/constellation_abrev.csv"
-     filename_const=pathname .. "/constellation_abrev.csv"
+     filename_const=pathname .. "/" .. filename_const
  else
      --windows, i presume
-     filename_const=pathname .. "\\constellation_abrev.csv"
+     --filename_const=pathname .. "\\constellation_abrev.csv"
+     filename_const=pathname .. "\\" .. filename_const
  end
- --source=https://www.aavso.org/constellation-names-and-abbreviations
+ 
 print(filename_const)
-separator_const=";"
-buffer=""
 nblines=0
  if filename_const then
      f = io.open(filename_const,"rb")
@@ -675,54 +671,36 @@ print("Found \"TAGS;;;\" field ")
  end 
  --print(table.concat(constellation_name,"/"))
  --print(table.concat(constellation_abrev,"/"))
- 
+end --end function
+
+function dl_bsc()
+ local buffer="" 
+ local nblines=0
+ local pos,j
 --csv file for celestial objects data loading
 --Bright Star Catalogue / dezipped file yalebsc.tar.bz2
 --source=https://ian.macky.net/pat/yalebsc/yalebsc.tar.bz2
---Fields description
---
---	field name	p  w  storage   type     units    format    flags
---       ---------------------------------------------------------------------
---field	ra		0  6  double	ra       hour     hhmmss    longitude
---field	declination	0  5  double	decl     dd       sddmm     latitude
---field	magnitude	0  3  double	vismag   none     mag3      0
---field	type		0  2  string	string   none     string    0
---field	spectral_type	0  2  ub2	spectral none     spectral  null-ok
---field	letter		0  2  string	string   none     string    null-ok
---field	constellation	0  3  string	string   none     string    null-ok
---field	name		0  0  string	string   none     string    null-ok
--- -----------------------------------
--- 0D details
--- points		9010
--- fields		8
--- color		spectral spectral_type, magnitude
--- scale		((6 - magnitude) / 2)
---symbol		(type = "SS"), solid circle, (type = "SD"), circle, \ (type = "SV"), box
-
  if find(osName, "linux",1,true) then
-    --filename_bsc="/home/terras/Téléchargements/AstroLua_docs/data/space/yalebsc.dat"
-    filename_bsc=pathname .. "/yalebsc.dat"
+    --filename_bsc=pathname .. "/yalebsc.dat"
+    filename_bsc=pathname .. "/" .. filename_bsc
 else
     --windows, i presume
-    filename_bsc=pathname .. "\\yalebsc.dat"
+    filename_bsc=pathname .. "\\" .. filename_bsc
 end
 
 print(filename_bsc)
-separator=";"
-buffer_bsc=""
-tab_bsc={}
 nblines=0
  if filename_bsc then
      f = io.open(filename_bsc,"rb")
      if f then
 print("File " .. filename_bsc .. " opened for reading !")
-       buffer_bsc = f:read("*all")
+       buffer = f:read("*all")
        io.close(f)
        pos=1
        while 1 do
-             j = find(buffer_bsc,"\n",pos)
+             j = find(buffer,"\n",pos)
              if j then
-	            line = sub(buffer_bsc, pos, j)
+	            line = sub(buffer, pos, j)
                 extract_from_bsc_line(line)
                 pos = j+1
                 nblines=nblines+1
@@ -732,20 +710,23 @@ print("File " .. filename_bsc .. " opened for reading !")
        end
     end
  end
- 
- --Now, download Messier catalog (110 objects)
+end --end function
+
+function dl_messcat() 
+ local buffer="" 
+ local nblines=0
+ local pos,j
+--download Messier catalog (110 objects)
  --source page=https://starlust.org/messier-catalog/Messier_Catalog_StarLust.html
  --file at https://docs.google.com/spreadsheets/d/11keXJH6XIeJh6N90yRQ-9X_Pdg9vpq34vWZY8RA9I5c/edit?usp=sharing
  if find(osName, "linux",1,true) then
-    --filename_mess="/home/terras/Téléchargements/AstroLua_docs/data/space/Messier_Catalog_110_List3.csv"
-    filename_mess=pathname .. "/Messier_Catalog_110_List3.csv"
+    filename_mess=pathname .. "/" .. filename_mess
  else
     --windows, i presume
-    filename_mess=pathname .. "\\Messier_Catalog_110_List3.csv"
+    filename_mess=pathname .. "\\" .. filename_mess
  end
 print(filename_mess)
-separator_mess=";"
-buffer=""
+
 nblines=0
  if filename_mess then
      f = io.open(filename_mess,"rb")
@@ -773,6 +754,34 @@ print("File " .. filename_mess .. " opened for reading !")
 print("Problem loading File " .. filename_mess .. " for reading !")
     end
  end
+end --end function
+
+ t00=0
+ t00 = os.time() --top chrono
+ --osName="OS=" .. murgaLua.getHostOsName()
+  --version FLTK
+ print("Fltk version "  .. fltk.FL_MAJOR_VERSION .. "." .. fltk.FL_MINOR_VERSION .. "." .. fltk.FL_PATCH_VERSION)
+ print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo() .. ", reported by collectgarbage()=" .. collectgarbage("count"))
+
+ print("W = " .. Fl:w() .. "\nH = " .. Fl:h())
+ if Fl:w() >= 1500 and Fl:h() >= 1024 then
+    --continue
+ else
+    st="Sorry, a minimal resolution (Width x Height) = 1500 x 1024 is required for this app displaying up to 9200+ celestial objects.\nChange your screen resolution or change host computer !"
+    fltk:fl_alert(st)
+    exit(0)
+ end
+ 
+ if search_path() == nil then
+    --first launch => ask for path => save path
+    path_finder()
+    save_path()
+ end
+ 
+ dl_constellations()
+ dl_bsc()
+ dl_messcat()
+ 
  if #comment_bsc == 0 or #comment_m == 0 or #constellation_name == 0 then
     st="At least a database is missing, please check your path for following 3 files :\nMessier_Catalog_110_List3.csv\nyalebsc.dat\nconstellation_abrev.csv"
     fltk:fl_alert(comment_m[i])
