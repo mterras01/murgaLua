@@ -4,12 +4,13 @@
 --goals=it gives a sky card, adjusting some parameters :
 -- -- max visible magnitudes for celestial objects (user defined)
 --planet's locations ???
--- either computed with some help here 
--- => https://cs108.epfl.ch/archive/20/p/05_sun-planets-model.html
--- or here => https://ssd.jpl.nasa.gov/planets/approx_pos.html
--- or here = https://stjarnhimlen.se/comp/tutorial.html
+-- https://celestialprogramming.com/planets_with_keplers_equation.html (code written entirely in js)
+-- /* by Greg Miller gmiller@gregmiller.net 2021
+-- http://www.celestialprogramming.com/
+-- Released as public domain */
 
 -- or retrieved from the internet
+-- ex https://github.com/csymlstd/visible-planets-api (unavailable)
 -- exemple here => http://pgj.astro.free.fr/position-planetes.htm (duration in time ???)
 -- other exemples (location Bourg-en-Bresse)
 -- => Mars  = https://www.planetscalc.org/#/46.2053,5.2256,13/2025.04.27/12:16/2/3
@@ -33,9 +34,16 @@ random = math.random
 floor = math.floor
 ceil = math.ceil
 format = string.format
+sin=math.sin
+cos=math.cos
+pi=math.pi
+sqrt=math.sqrt
+pow=math.pow
 
 osName="OS=" .. murgaLua.getHostOsName()
 size_eol = 0 -- varie selon Unix (+MacOs) ou Windows
+
+require "planetpositions" --module located in your (linux) home dir
 
 --constellations names and abrev
 filename_const="constellation_abrev.csv"
@@ -76,7 +84,7 @@ comment_m={}
 
 --GUI
 cwindow=object --command window 
-width_cwindow, height_cwindow = 1200, 60
+width_cwindow, height_cwindow = 1200, 75
 window=object
 width_twindow, height_twindow= 1500, 768
 u_quit,v_button=object,object
@@ -99,6 +107,20 @@ grid_decy=80
 
 --location for database files (ONE path for all files)
 pathname=""
+
+function get_date_time()
+  --local dd,mm,yyyy
+  --local hh,mn,ss
+  local t
+  t=os.time() --sec from epoch => *1000 to get approx millisec from epoch
+  dd=os.date("%d")
+  mm=os.date("%m")
+  yyyy=os.date("%Y")
+  hh=os.date("%H")
+  mn=os.date("%M")
+  ss=os.date("%S")
+  return dd,mm,yyyy,hh,mn,ss,t
+end --end function
 
 function define_textfile_origin(data)
   local i,st
@@ -317,7 +339,7 @@ function extract_from_mess_line(line)
                                   st=sub(line, s[10]+1,-1)
                                   table.insert(diff_m, st)
 --print("Viewing diff=" .. diff_m[#diff_m])
-                                  st = "Messier=" .. mess_cat[#mess_cat] .."\nNGC/Name=" ..mess_ngc_cat[#mess_ngc_cat] .."\nMessier Type=" ..mess_type[#mess_type] .."\nConstellation=" .. mess_cons[#mess_cons] .."\nRight Ascension=" .. ra_h_m[#ra_h_m] .. "h".. ra_m_m[#ra_m_m] .. "m\nDeclination=" .. dec1.."deg " .. dec2.. "s \nMagnitude="..magn_m[#magn_m] .."\nSize="..size_m[#size_m] .."\nDistance="..dist_m[#dist_m].." light year(s)\nViewing season=" ..season_m[#season_m] .. "\nViewing difficulty="..diff_m[#diff_m]
+                                  st = "Messier=" .. mess_cat[#mess_cat] .."\nNGC/Name=" ..mess_ngc_cat[#mess_ngc_cat] .."\nMessier Type=" ..mess_type[#mess_type] .."\nConstellation=" .. mess_cons[#mess_cons] .."\nRight Ascension=" .. ra_h_m[#ra_h_m] .. "h".. ra_m_m[#ra_m_m] .. "m\nDeclination=" .. dec1.."deg " .. dec2.. "s \nMagnitude="..magn_m[#magn_m] .."\nSize="..size_m[#size_m] .." arc mn\nDistance="..dist_m[#dist_m].." light year(s)\nViewing season=" ..season_m[#season_m] .. "\nViewing difficulty="..diff_m[#diff_m]
                                   table.insert(comment_m, st)
                                end
                             end
@@ -462,22 +484,58 @@ function cmd_display()
    cwindow = nil
   os.exit()
  end)
+ --date + time
+ dd,mm,yyyy,hh,mn,ss,t = get_date_time()
+ day_b = fltk:Fl_Int_Input(0, height_button, 24, height_button)
+ day_b:insert(dd)
+ day_b:tooltip("Day 1-31")
+--[[
+ day_b:callback(  function(inputday)
+   alta = alti:value()
+   day_b:redraw()
+  end)
+]]--
+ month_b = fltk:Fl_Int_Input(25, height_button, 24, height_button)
+ month_b:tooltip("Month 1-12")
+ month_b:insert(mm)
+ year_b= fltk:Fl_Int_Input(50, height_button, 48, height_button)
+ year_b:tooltip("Year 1-12")
+ year_b:insert(yyyy)
+ --time
+ hh_b = fltk:Fl_Int_Input(100, height_button, 24, height_button)
+ hh_b:insert(hh)
+ hh_b:tooltip("Hours 0-23")
+ mn_b = fltk:Fl_Int_Input(125, height_button, 24, height_button)
+ mn_b:tooltip("Minutes 0-59")
+ mn_b:insert(mn)
+ ss_b= fltk:Fl_Int_Input(150, height_button, 24, height_button)
+ ss_b:tooltip("Seconds 0-59")
+ ss_b:insert(ss)
+ 
+ --Julian date jd converted from previous date time buttons' contents
+ jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
+
+ jd_button = fltk:Fl_Button(0, 2*height_button, 175, height_button)
+ jd_button:label(jd)
+ jd_button:tooltip("Julian Date from the given date/time")
+ planetpositions.computeAll(jd)
+ 
  v_button = fltk:Fl_Button(width_button, 0, width_button, height_button, "Update")
  --v_button:color(fltk.FL_RED)
  v_button:tooltip("Update Skymap with current parameters")
  v_button:callback(show_objects)
  
- s_button = fltk:Fl_Light_Button((2*width_button), 0, width_button, height_button, "Stars")
+ s_button = fltk:Fl_Light_Button((3*width_button), 0, width_button, height_button, "Stars")
  s_button:tooltip("Display or not stars from Bright Stars catalog")
  s_button:selection_color(2) --green as default "ON"
  s_button:value(1) --default button as "ON"
 
- m_button = fltk:Fl_Light_Button((2*width_button), height_button, width_button, height_button, "Messier")
+ m_button = fltk:Fl_Light_Button((3*width_button), height_button, width_button, height_button, "Messier")
  m_button:tooltip("Display or not Messier Objects")
  m_button:selection_color(2) --green as default "ON"
  m_button:value(1) --default button as "ON"
   
- magn_slider_s=fltk:Fl_Value_Slider(3*width_button, 0, (4*width_button), 15, "Upper Magnitude for Stars")
+ magn_slider_s=fltk:Fl_Value_Slider(4*width_button, 0, (4*width_button), 15, "Upper Magnitude for Stars")
  magn_slider_s:type(fltk.FL_HOR_NICE_SLIDER)
  magn_slider_s:labelsize(8)
  magn_slider_s:textsize(8)
@@ -486,7 +544,7 @@ function cmd_display()
  magn_slider_s:minimum(-30)
  magn_slider_s:tooltip("Defines with this slider value an upper limit for Stars' Magnitude")
  
- magn_slider_m=fltk:Fl_Value_Slider(3*width_button, height_button, (4*width_button), 15, "Upper Magnitude for Messier Objects")
+ magn_slider_m=fltk:Fl_Value_Slider(4*width_button, height_button, (4*width_button), 15, "Upper Magnitude for Messier Objects")
  magn_slider_m:type(fltk.FL_HOR_NICE_SLIDER)
  magn_slider_m:labelsize(8)
  magn_slider_m:textsize(8)
@@ -681,7 +739,6 @@ function dl_bsc()
 --Bright Star Catalogue / dezipped file yalebsc.tar.bz2
 --source=https://ian.macky.net/pat/yalebsc/yalebsc.tar.bz2
  if find(osName, "linux",1,true) then
-    --filename_bsc=pathname .. "/yalebsc.dat"
     filename_bsc=pathname .. "/" .. filename_bsc
 else
     --windows, i presume
@@ -763,11 +820,19 @@ end --end function
  print("Fltk version "  .. fltk.FL_MAJOR_VERSION .. "." .. fltk.FL_MINOR_VERSION .. "." .. fltk.FL_PATCH_VERSION)
  print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo() .. ", reported by collectgarbage()=" .. collectgarbage("count"))
 
+ for i=1,#planetpositions.data1800to2050 do
+      for j=1,#planetpositions.data1800to2050[i] do
+            print(table.concat(planetpositions.data1800to2050[i][j],"//"))
+      end
+ end
+ t=os.time()*1000
+ print("Unix time " .. t .. ", JulianDateFromUnixTime = ".. planetpositions.JulianDateFromUnixTime(t))
+ 
  print("W = " .. Fl:w() .. "\nH = " .. Fl:h())
- if Fl:w() >= 1500 and Fl:h() >= 1024 then
+ if Fl:w() >= 1500 and Fl:h() >= 768 then
     --continue
  else
-    st="Sorry, a minimal resolution (Width x Height) = 1500 x 1024 is required for this app displaying up to 9200+ celestial objects.\nChange your screen resolution or change host computer !"
+    st="Sorry, a minimal resolution (Width x Height) = 1500 x 768 is required for this app displaying up to 9200+ celestial objects.\nChange your screen resolution or change host computer !"
     fltk:fl_alert(st)
     exit(0)
  end
