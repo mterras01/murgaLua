@@ -3,28 +3,11 @@
 --this murgaLua script has been tested with version 0750 https://github.com/igame3dbill/MurgaLua_0.7.5
 --goals=it gives a sky card, adjusting some parameters :
 -- -- max visible magnitudes for celestial objects (user defined)
---planet's locations ???
+--planet's locations
 -- https://celestialprogramming.com/planets_with_keplers_equation.html (code written entirely in js)
 -- /* by Greg Miller gmiller@gregmiller.net 2021
 -- http://www.celestialprogramming.com/
 -- Released as public domain */
-
--- or retrieved from the internet
--- ex https://github.com/csymlstd/visible-planets-api (unavailable)
--- exemple here => http://pgj.astro.free.fr/position-planetes.htm (duration in time ???)
--- other exemples (location Bourg-en-Bresse)
--- => Mars  = https://www.planetscalc.org/#/46.2053,5.2256,13/2025.04.27/12:16/2/3
--- => Jupiter = https://www.planetscalc.org/#/46.2053,5.2256,13/2025.04.27/12:16/3/3
--- => Saturn = https://www.planetscalc.org/#/46.2053,5.2256,13/2025.04.30/10:20/4/3
--- => Venus = https://www.planetscalc.org/#/46.2053,5.2256,13/2025.04.30/10:20/1/3
--- => Mercury = https://www.planetscalc.org/#/46.2053,5.2256,13/2025.04.30/10:20/0/3
--- other website = https://ssd.jpl.nasa.gov/horizons/
--- help on api here https://ssd-api.jpl.nasa.gov/doc/horizons.html
--- --sun and moon locations at current date/time or given date/time
-
-
---this script has a (local) database 
--- url=https://www.datastro.eu/api/explore/v2.1/catalog/datasets/catalogue-de-messier/exports/csv?lang=fr&timezone=Europe%2FBerlin&use_labels=true&delimiter=%3B
 
 find = string.find
 sub = string.sub
@@ -43,7 +26,7 @@ pow=math.pow
 osName="OS=" .. murgaLua.getHostOsName()
 size_eol = 0 -- varie selon Unix (+MacOs) ou Windows
 
-require "planetpositions" --module located in your (linux) home dir
+require "planetpositions" --module located in your (linux) home dir: guess what it does?
 
 --constellations names and abrev
 filename_const="constellation_abrev.csv"
@@ -82,6 +65,13 @@ season_m={}
 diff_m={}
 comment_m={}
 
+--database / tables : tables for planets & Sun info data
+ra_h_p={0,0,0,0,0,0,0,0,0,0}
+ra_m_p={0,0,0,0,0,0,0,0,0,0}
+ra_s_p={0,0,0,0,0,0,0,0,0,0}
+decl_p={0,0,0,0,0,0,0,0,0,0}
+comment_p={"","","","","","","","","",""}
+
 --GUI
 cwindow=object --command window 
 width_cwindow, height_cwindow = 1200, 75
@@ -97,7 +87,7 @@ co_reset=object--constellation reset button
 gridb={} --grid (skymap)
 starsb={} --stars'buttons (skymap)
 messiersb={} --Messiers objects' buttons (skymap)
-planetsb={} --planets & moon s' buttons (skymap)
+planetsb={} --planets & suns' buttons (skymap)
 
 -- sky objects plotting:grid parameters
 grid_hor_width=60
@@ -354,6 +344,59 @@ function extract_from_mess_line(line)
 
 end --end function
 
+function extract_from_planets()
+  local i,st,sign,j
+  local ra_planet,decl_planet
+  local rahh,ramn,rass
+  local decdeg,decmn,decss
+  
+  --init global table, in case of update
+  ra_h_p={0,0,0,0,0,0,0,0,0,0}
+  ra_m_p={0,0,0,0,0,0,0,0,0,0}
+  ra_s_p={0,0,0,0,0,0,0,0,0,0}
+  decl_p={0,0,0,0,0,0,0,0,0,0}
+  comment_p={"","","","","","","","","",""}
+  
+  numplanet=1
+  for i=1,#planetpositions.results do
+       --Pay Attention! 9 results for 10 objects, Earth/Moon Barycenter is part of Planets'names table but not part of positions' results table
+       if planetpositions.results[i][2] == "Long" then --best accuracy
+print(table.concat(planetpositions.results[i],"\t") ) --text legends
+          ra_planet = planetpositions.results[i][3]
+          --RA exemple      +01h 42mn 32s (sign always "+")
+          rahh=tonumber(sub(ra_planet, 2, 3))
+          ramn=tonumber(sub(ra_planet, 6, 7))
+          rass=tonumber(sub(ra_planet, 11, 12))
+          ra_h_p[numplanet] = rahh
+          ra_m_p[numplanet] = ramn
+          ra_s_p[numplanet] = rass
+          decl_planet = planetpositions.results[i][4]
+          if sub(decl_planet,1,1) == "+" then
+             sign=1
+          elseif sub(decl_planet,1,1) == "-" then
+             sign=-1
+          else
+print("Sign problem in planets' table (declination) --> Fix Needed, aborting!")
+exit(0)
+          end
+          
+          --DECL exemple  -00deg 48' 08"  (sign + or -)
+          decdeg=tonumber(sub(decl_planet, 2, 3))
+          decmn=tonumber(sub(decl_planet, 8, 9))
+          decss=tonumber(sub(decl_planet, 12,13))
+          j = sign*(decdeg+(decmn/60)+(decss/3600))
+          decl_p[numplanet] = j
+          --global comments table
+          st = "Celestial Object= " .. planetpositions.results[i][1] .."\nRA=".. planetpositions.results[i][3] .."\nDECL="..planetpositions.results[i][4] .."\nDIST="..planetpositions.results[i][5]
+          comment_p[numplanet] = st
+          numplanet=numplanet+1
+          if numplanet == 3 then
+             numplanet = 4 --Earth/Moon Barycenter is part of Planets'names table but not part of positions' results table 
+          end
+       end
+  end
+end --end function
+
 function grid()
 local i,j,k,b,c,st,st2
 --local grid_hor_width,grid_vert_height=40,40
@@ -426,12 +469,30 @@ if magn[i] < magn_slider_s:value() then
 
              --fltk.fl_point((posx+37), (posy+40))
 end
---          end
        end
   end
 end --end function
 
 function plot_planets()
+  --module planetpositions.lua required
+  --best accuracy, ie LongTerm table
+  local i
+  local posx,oldrposx,rposx,posy,f,decx
+  local c,d
+  
+  for i=1,#planetsb do
+       --filter to display or not planets/Sun to come
+       posx= floor(((24-(ra_h_p[i]+(ra_m_p[i]/60)+(ra_s_p[i]/3600)))*grid_hor_width)+grid_decx)      
+       if decl_p[i]>0 then
+           posy=floor((80-decl_p[i])*4)+grid_decy
+       else
+           posy=floor(-1*decl_p[i]*4)+320+grid_decy
+       end             
+       planetsb[i]:position(posx, posy)
+       planetsb[i]:labelsize(12)
+       planetsb[i]:labelcolor(256)
+       planetsb[i]:redraw_label()
+  end
 end --end function
 
 function show_objects()  
@@ -514,11 +575,11 @@ function cmd_display()
  
  --Julian date jd converted from previous date time buttons' contents
  jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
-
  jd_button = fltk:Fl_Button(0, 2*height_button, 175, height_button)
  jd_button:label(jd)
  jd_button:tooltip("Julian Date from the given date/time")
  planetpositions.computeAll(jd)
+ extract_from_planets() --for first displaying of skymap
  
  v_button = fltk:Fl_Button(width_button, 0, width_button, height_button, "Update")
  --v_button:color(fltk.FL_RED)
@@ -558,7 +619,12 @@ function cmd_display()
 end --end function
 
 function info_p()
- --display info about mouse-pointed planet (or moon)
+ --display info about mouse-pointed planet (or sun, moon to come) 
+ for i=1,#planetsb do
+       if Fl.event_inside(planetsb[i]) == 1 then
+fltk:fl_alert(comment_p[i])
+       end
+ end
 end --end function
 
 function info_m()
@@ -581,7 +647,7 @@ end --end function
 
 function main_display()
  local i,j,k,l,st,b,c,st2,x,y
- --window = fltk:Fl_Double_Window(width_twindow, height_twindow, "Global skymap")
+ local planetcolors={51,54,221,93,84,215,247,247,215,3} --ordered from Mercury to Pluto (last old planet, now small body), and last=Sun (not planet)
  window = fltk:Fl_Window(0,130, width_twindow, height_twindow, "Global skymap")
  --text for grid
  for i=24,0,-1 do
@@ -643,6 +709,15 @@ function main_display()
        --messiersb[#messiersb]:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_CENTER)
        messiersb[#messiersb]:align(fltk.FL_ALIGN_BOTTOM+fltk.FL_ALIGN_CENTER)
        messiersb[#messiersb]:callback(info_m)
+  end
+   for i=1,#planetpositions.planetNames do
+       --Pay Attention!! #3 is Earth/Moon's barycenter, used for computing other positions, BUT NOT TO PLOT !!!
+       table.insert(planetsb, fltk:Fl_Button(-30, -30, 8, 8,planetpositions.planetNames[i]) )
+       planetsb[#planetsb]:box(fltk.FL_FLAT_BOX)
+       planetsb[#planetsb]:color(planetcolors[i])
+       planetsb[#planetsb]:align(fltk.FL_ALIGN_BOTTOM+fltk.FL_ALIGN_CENTER)
+       planetsb[#planetsb]:tooltip(comment_p[i])
+       planetsb[#planetsb]:callback(info_p)
   end
   
   window:show()
@@ -820,11 +895,6 @@ end --end function
  print("Fltk version "  .. fltk.FL_MAJOR_VERSION .. "." .. fltk.FL_MINOR_VERSION .. "." .. fltk.FL_PATCH_VERSION)
  print("RAM used BEFORE opData by  gcinfo() = " .. gcinfo() .. ", reported by collectgarbage()=" .. collectgarbage("count"))
 
- for i=1,#planetpositions.data1800to2050 do
-      for j=1,#planetpositions.data1800to2050[i] do
-            print(table.concat(planetpositions.data1800to2050[i][j],"//"))
-      end
- end
  t=os.time()*1000
  print("Unix time " .. t .. ", JulianDateFromUnixTime = ".. planetpositions.JulianDateFromUnixTime(t))
  
