@@ -241,7 +241,7 @@ function addPlanet(a,planet,longTerm)
    str=b[3].." AU"
    table.insert(temp, str) --DIST
    table.insert(results,temp)
-   
+   --[[
    --debug only --------------------------------------------------------------------------------
    if planet == 1 and longTerm== false then
 --text legend for cols
@@ -249,6 +249,7 @@ print(table.concat(results[1],"\t") ) --text legends
    end
 print(table.concat(temp,"\t") ) --data
    --debug only --------------------------------------------------------------------------------
+   ]]--
 end -- end function
 
 function degreesToDMS(d)
