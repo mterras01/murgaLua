@@ -84,10 +84,17 @@ height_button=25
 width_button=80
 co={} --constellation buttons
 co_reset=object--constellation reset button
+gridtextdecb={} --grid legend text for declination (skymap)
+gridtextrab={} --grid legend text for right ascension (skymap)
 gridb={} --grid (skymap)
 starsb={} --stars'buttons (skymap)
 messiersb={} --Messiers objects' buttons (skymap)
 planetsb={} --planets & suns' buttons (skymap)
+
+--night vision parameters, default mode=day
+windowbg=fltk.FL_BACKGROUND_COLOR --skymap background
+labelcol=fltk.FL_BLACK --labelcolors for stars, messier, planets and grid
+gridcol=4 --grid color
 
 -- sky objects plotting:grid parameters
 grid_hor_width=60
@@ -397,47 +404,32 @@ exit(0)
   end
 end --end function
 
-function grid()
-local i,j,k,b,c,st,st2
---local grid_hor_width,grid_vert_height=40,40
---local grid_decx,grid_decy=37,80
-
-  fltk.fl_color(256) --black is 256
-  --for i=23,-1,-1 do
-  for i=24,0,-1 do
-       k=0
-       for j=80,-80,-10 do
-            --fltk:fl_line(37+((23-i)*40), 80,37+((23-i)*40), 80+(16*40)) --vertical grid
-            --fltk:fl_line(grid_decx+((23-i)*grid_hor_width), grid_decy,grid_decx+((23-i)*grid_hor_width), grid_decy+(16*grid_vert_height)) --vertical grid
-            fltk:fl_line(grid_decx+((24-i)*grid_hor_width), grid_decy,grid_decx+((24-i)*grid_hor_width), grid_decy+(16*grid_vert_height)) --vertical grid
-            --fltk:fl_line(37, 80+(k*40),37+(24*40), 80+(k*40)) --horizontal grid
-            fltk:fl_line(grid_decx, grid_decy+(k*grid_vert_height),grid_decx+(24*grid_hor_width), grid_decy+(k*grid_vert_height)) --horizontal grid
-            k=k+1
-       end
-  end
-end --end function
-
 function plot_messier()  
   local i
   local posx,oldrposx,rposx,posy,f,decx
   local c,d
   
   for i=1,#mess_cat do
-        if magn_m[i] < magn_slider_m:value() then
-             posx= floor(((24-(ra_h_m[i]+(ra_m_m[i]/60)))*grid_hor_width)+grid_decx)
-             if decl_m[i]>0 then
-                posy=floor((80-decl_m[i])*4)+grid_decy
-             else
-                posy=floor(-1*decl_m[i]*4)+320+grid_decy
-             end
---print("Messier " .. mess_cat[i] .. " plotting with x= " .. posx .. ", y=" .. posy )
-             --fltk.fl_color(3)
-             --fltk.fl_rectf(posx, posy, 4, 4)
-             
+       if m_button:value() == 0 then
+          messiersb[i]:hide()
+       else
+          posx= floor(((24-(ra_h_m[i]+(ra_m_m[i]/60)))*grid_hor_width)+grid_decx)
+          if decl_m[i]>0 then
+              posy=floor((80-decl_m[i])*4)+grid_decy
+          else
+              posy=floor(-1*decl_m[i]*4)+320+grid_decy
+          end
+          if magn_m[i] < magn_slider_m:value() then                
              messiersb[i]:position(posx, posy)
              messiersb[i]:labelsize(8)
-             messiersb[i]:labelcolor(256)
+             --messiersb[i]:labelcolor(256)
+             messiersb[i]:labelcolor(labelcol)
              messiersb[i]:redraw_label()
+             messiersb[i]:redraw()
+             messiersb[i]:show()
+          else
+             messiersb[i]:hide()
+          end
        end
   end
 end --end function
@@ -447,30 +439,31 @@ function plot_stars()
   local posx,oldrposx,rposx,posy,f,decx
   local c,d
   
-  print("New plotting")
   for i=1,#star do
-       if star[i] then
-if magn[i] < magn_slider_s:value() then
+       if s_button:value() == 1 then
+       --if star[i] then --unnecessary ?
+          if magn[i] < magn_slider_s:value() then --magnitude limit condition
              posx= floor(((24-(ra_h[i]+(ra_m[i]/60)+(ra_s[i]/3600)))*grid_hor_width)+grid_decx)
-             
              if decl[i]>0 then
                 posy=floor((80-decl[i])*4)+grid_decy
              else
                 posy=floor(-1*decl[i]*4)+320+grid_decy
              end
---print("Star " .. star[i] .. " plotting with x= " .. posx .. ", y=" .. posy )
-             --fltk.fl_color(1)
-             --fltk.fl_rectf(posx, posy, 4, 4)
-             
              starsb[i]:position(posx, posy)
              starsb[i]:labelsize(8)
-             starsb[i]:labelcolor(256)
+             --starsb[i]:labelcolor(256)
+             starsb[i]:labelcolor(labelcol)
              starsb[i]:redraw_label()
-
-             --fltk.fl_point((posx+37), (posy+40))
-end
+             starsb[i]:redraw()
+             starsb[i]:show()
+          else 
+             starsb[i]:hide() --magnitudes not selected to be visible
+          end --end magnitude condition
+       else
+          starsb[i]:hide()
        end
-  end
+ end
+
 end --end function
 
 function plot_planets()
@@ -481,26 +474,53 @@ function plot_planets()
   local c,d
   
   for i=1,#planetsb do
-       --filter to display or not planets/Sun to come
+       --for earth/moon barycenter no change of pos: keep out of view
        posx= floor(((24-(ra_h_p[i]+(ra_m_p[i]/60)+(ra_s_p[i]/3600)))*grid_hor_width)+grid_decx)      
        if decl_p[i]>0 then
            posy=floor((80-decl_p[i])*4)+grid_decy
        else
            posy=floor(-1*decl_p[i]*4)+320+grid_decy
-       end             
-       planetsb[i]:position(posx, posy)
-       planetsb[i]:labelsize(12)
-       planetsb[i]:labelcolor(256)
-       planetsb[i]:redraw_label()
+       end
+       if p_button:value() == 1 then
+          if i ~= 3 then
+             --all planets except barycenter earth/moon
+             planetsb[i]:position(posx, posy)
+             planetsb[i]:labelsize(12)
+             --planetsb[i]:labelcolor(256)
+             planetsb[i]:labelcolor(labelcol)
+             planetsb[i]:redraw_label()
+             planetsb[i]:redraw()
+             planetsb[i]:show()
+          end
+       else
+          planetsb[i]:hide()
+       end
+  end
+end --end function
+
+function ask_night()
+ --scan this command button
+  if night_button:labelcolor() == fltk.FL_YELLOW then
+     --day vision
+     windowbg=fltk.FL_BACKGROUND_COLOR
+     labelcol=fltk.FL_BLACK
+     gridcol=4
+  else
+     --night vision
+     windowbg=fltk.FL_BLACK
+     labelcol=fltk.FL_WHITE
+     gridcol=48
   end
 end --end function
 
 function show_objects()  
  window:make_current()
-    grid()
+    --ask for parameter night or day vision? windowbg / gridcol / labelcol
+    ask_night()
     plot_stars()
     plot_messier()
     plot_planets()
+    window:redraw()
     window:show()
 end --end function
 
@@ -515,15 +535,18 @@ end --end function
 
 function const_buttons()
  local i,x,y
+ --local width_b_const=25
+ local width_b_const=19
+ 
  x=8*width_button
  y=0
  for i=1,#constellation_abrev do
-      table.insert(co, fltk:Fl_Button(x, y, 25, 11, constellation_abrev[i]) )
+      table.insert(co, fltk:Fl_Button(x, y, width_b_const, 11, constellation_abrev[i]) )
       co[#co]:tooltip(constellation_name[i])
       co[#co]:labelsize(8)
       co[#co]:callback( select_const )
-      x=x+25
-      if x>=1175 then
+      x=x+width_b_const
+      if x>=(47*width_b_const) then
          x=8*width_button
          y=y+11
       end
@@ -533,8 +556,55 @@ function const_buttons()
  co_reset:labelsize(8)
 end --end function
 
+function night_vision()
+  local i,j
+  local night
+  
+  --cmd window + color variables update
+  if night_button:labelcolor() == fltk.FL_YELLOW then
+     --toggle in night mode
+     night=1 --night!
+     night_button:labelcolor(fltk.FL_BLACK)
+     night_button:redraw()
+     windowbg=fltk.FL_BLACK
+     labelcol=fltk.FL_WHITE
+     gridcol=48
+  else
+     night=0 --day!
+     night_button:labelcolor(fltk.FL_YELLOW)
+     night_button:redraw()
+     windowbg=fltk.FL_BACKGROUND_COLOR
+     labelcol=fltk.FL_BLACK
+     gridcol=4
+  end
+  
+  --toggle mode
+  window:color(windowbg)
+  --grid 
+  for i=1,#gridb do
+       gridb[i]:color(gridcol)
+  end
+  for i=1,#gridtextdecb do
+       gridtextdecb[i]:labelcolor(labelcol)
+  end
+  for i=1,#gridtextrab do
+       gridtextrab[i]:labelcolor(labelcol)
+  end
+  for i=1,#starsb do
+       starsb[i]:labelcolor(labelcol)
+  end
+  for i=1,#messiersb do
+       messiersb[i]:labelcolor(labelcol)
+  end
+  for i=1,#planetsb do
+       planetsb[i]:labelcolor(labelcol)
+  end
+  window:redraw()
+end --end function
+
 function cmd_display()
  local i,j,k,l,st,b,c,st2
+ local time_cell_width=20
  cwindow = fltk:Fl_Window(0,0, width_cwindow, height_cwindow, "Skymap Commander")   
  u_quit = fltk:Fl_Button(0, 0, width_button, height_button, "Quit")
  u_quit:color(fltk.FL_RED)
@@ -547,8 +617,10 @@ function cmd_display()
  end)
  --date + time
  dd,mm,yyyy,hh,mn,ss,t = get_date_time()
- day_b = fltk:Fl_Int_Input(0, height_button, 24, height_button)
+ --day_b = fltk:Fl_Int_Input(0, height_button, 24, height_button)
+ day_b = fltk:Fl_Int_Input(0, height_button, time_cell_width, height_button)
  day_b:insert(dd)
+ day_b:textsize(10)
  day_b:tooltip("Day 1-31")
 --[[
  day_b:callback(  function(inputday)
@@ -556,26 +628,31 @@ function cmd_display()
    day_b:redraw()
   end)
 ]]--
- month_b = fltk:Fl_Int_Input(25, height_button, 24, height_button)
+ month_b = fltk:Fl_Int_Input(time_cell_width+1, height_button, time_cell_width, height_button)
  month_b:tooltip("Month 1-12")
  month_b:insert(mm)
- year_b= fltk:Fl_Int_Input(50, height_button, 48, height_button)
- year_b:tooltip("Year 1-12")
+ month_b:textsize(10)
+ year_b= fltk:Fl_Int_Input((2*time_cell_width)+2, height_button, 2*time_cell_width, height_button)
+ year_b:tooltip("Year")
  year_b:insert(yyyy)
+ year_b:textsize(10)
  --time
- hh_b = fltk:Fl_Int_Input(100, height_button, 24, height_button)
+ hh_b = fltk:Fl_Int_Input((4*time_cell_width)+16, height_button, time_cell_width, height_button)
  hh_b:insert(hh)
+ hh_b:textsize(10)
  hh_b:tooltip("Hours 0-23")
- mn_b = fltk:Fl_Int_Input(125, height_button, 24, height_button)
+ mn_b = fltk:Fl_Int_Input((5*time_cell_width)+17, height_button, time_cell_width, height_button)
  mn_b:tooltip("Minutes 0-59")
  mn_b:insert(mn)
- ss_b= fltk:Fl_Int_Input(150, height_button, 24, height_button)
+ mn_b:textsize(10)
+ ss_b= fltk:Fl_Int_Input((6*time_cell_width)+18, height_button, time_cell_width, height_button)
  ss_b:tooltip("Seconds 0-59")
  ss_b:insert(ss)
+ ss_b:textsize(10)
  
  --Julian date jd converted from previous date time buttons' contents
  jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
- jd_button = fltk:Fl_Button(0, 2*height_button, 175, height_button)
+ jd_button = fltk:Fl_Button(0, 2*height_button, (2*width_button), height_button)
  jd_button:label(jd)
  jd_button:tooltip("Julian Date from the given date/time")
  planetpositions.computeAll(jd)
@@ -586,6 +663,12 @@ function cmd_display()
  v_button:tooltip("Update Skymap with current parameters")
  v_button:callback(show_objects)
  
+ night_button = fltk:Fl_Button(2*width_button, 0, height_button, height_button, "@circle")
+ --night_button:label("@circle")
+ night_button:labelcolor(fltk.FL_YELLOW) --default=day=yellow, night=BLACK
+ night_button:tooltip("Toggles between day and night vision")
+ night_button:callback(night_vision)
+ 
  s_button = fltk:Fl_Light_Button((3*width_button), 0, width_button, height_button, "Stars")
  s_button:tooltip("Display or not stars from Bright Stars catalog")
  s_button:selection_color(2) --green as default "ON"
@@ -595,8 +678,23 @@ function cmd_display()
  m_button:tooltip("Display or not Messier Objects")
  m_button:selection_color(2) --green as default "ON"
  m_button:value(1) --default button as "ON"
+ 
+ p_button = fltk:Fl_Light_Button((3*width_button), 2*height_button, width_button, height_button, "Planets")
+ p_button:tooltip("Display or not Planets & Sun")
+ p_button:selection_color(2) --green as default "ON"
+ p_button:value(1) --default button as "ON"
+ --planets animation buttons
+ i = (4*width_button)
+ fbackward_b = fltk:Fl_Button(i, 2*height_button, height_button, height_button, "@<<")
+ backward_b = fltk:Fl_Button(i+height_button, 2*height_button, height_button, height_button, "@<")
+ pause_b = fltk:Fl_Button(i+(2*height_button), 2*height_button, height_button, height_button, "@||")
+ reinit_b = fltk:Fl_Button(i+(3*height_button), 2*height_button, height_button, height_button, "@returnarrow")
+ forward_b = fltk:Fl_Button(i+(4*height_button), 2*height_button, height_button, height_button, "@>")
+ fforward_b = fltk:Fl_Button(i+(5*height_button), 2*height_button, height_button, height_button, "@>>")
+ 
   
- magn_slider_s=fltk:Fl_Value_Slider(4*width_button, 0, (4*width_button), 15, "Upper Magnitude for Stars")
+ --magn_slider_s=fltk:Fl_Value_Slider(4*width_button, 0, (4*width_button), 15, "Upper Magnitude for Stars")
+ magn_slider_s=fltk:Fl_Value_Slider(4*width_button, 0, (4*width_button), height_button, nil)
  magn_slider_s:type(fltk.FL_HOR_NICE_SLIDER)
  magn_slider_s:labelsize(8)
  magn_slider_s:textsize(8)
@@ -605,7 +703,8 @@ function cmd_display()
  magn_slider_s:minimum(-30)
  magn_slider_s:tooltip("Defines with this slider value an upper limit for Stars' Magnitude")
  
- magn_slider_m=fltk:Fl_Value_Slider(4*width_button, height_button, (4*width_button), 15, "Upper Magnitude for Messier Objects")
+ --magn_slider_m=fltk:Fl_Value_Slider(4*width_button, height_button, (4*width_button), 15, "Upper Magnitude for Messier Objects")
+ magn_slider_m=fltk:Fl_Value_Slider(4*width_button, height_button, (4*width_button), height_button, nil)
  magn_slider_m:type(fltk.FL_HOR_NICE_SLIDER)
  magn_slider_m:labelsize(8)
  magn_slider_m:textsize(8)
@@ -657,20 +756,32 @@ function main_display()
             if i==24 then
                --vertical declination labels tracing
                st2=j.."deg"
-               c=fltk:Fl_Box(35, 65+(k*grid_vert_height),30, 30)
+               --[[c=fltk:Fl_Box(35, 65+(k*grid_vert_height),30, 30)
+               st2=j.."deg"
                c:label(st2)
                c:align(fltk.FL_ALIGN_LEFT)
                c:labelsize(8)
+               ]]--
+               table.insert(gridtextdecb, fltk:Fl_Box(35, 65+(k*grid_vert_height),30, 30))
+               gridtextdecb[#gridtextdecb]:label(st2)
+               gridtextdecb[#gridtextdecb]:align(fltk.FL_ALIGN_LEFT)
+               gridtextdecb[#gridtextdecb]:labelsize(8)
                --text box with no box
             end
             if j==80 then
                --horizontal "right ascension" labels tracing
-               b=fltk:Fl_Box(grid_decx+((24-i)*grid_hor_width), grid_decy,40, 40)
-               --b:box(fltk.FL_BORDER_BOX)
+               st=i.."h"
+               --[[b=fltk:Fl_Box(grid_decx+((24-i)*grid_hor_width), grid_decy,40, 40)
                st=i.."h"
                b:label(st)
+               b:box(fltk.FL_BORDER_BOX)
                b:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_LEFT)
                b:labelsize(10)
+               ]]--
+               table.insert(gridtextrab, fltk:Fl_Box(grid_decx+((24-i)*grid_hor_width), grid_decy,40, 40))
+               gridtextrab[#gridtextrab]:label(st)
+               gridtextrab[#gridtextrab]:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_LEFT)
+               gridtextrab[#gridtextrab]:labelsize(10)
             end
             k=k+1
        end
@@ -687,9 +798,6 @@ function main_display()
             table.insert(gridb, fltk:Fl_Box(grid_decx, y, 24*grid_hor_width, 1) )
             gridb[#gridb]:box(fltk.FL_FLAT_BOX)
             gridb[#gridb]:color(4)
-            --(bad) old method with low level drawing functions
-            --fltk:fl_line(grid_decx+((24-i)*grid_hor_width), grid_decy,grid_decx+((24-i)*grid_hor_width), grid_decy+(16*grid_vert_height)) --vertical grid
-            --fltk:fl_line(grid_decx, grid_decy+(k*grid_vert_height),grid_decx+(24*grid_hor_width), grid_decy+(k*grid_vert_height)) --horizontal grid
             k=k+1
        end
   end
@@ -717,7 +825,11 @@ function main_display()
        planetsb[#planetsb]:color(planetcolors[i])
        planetsb[#planetsb]:align(fltk.FL_ALIGN_BOTTOM+fltk.FL_ALIGN_CENTER)
        planetsb[#planetsb]:tooltip(comment_p[i])
-       planetsb[#planetsb]:callback(info_p)
+       if #planetsb == 3 then
+          --earth/moon barycenter : no display, no callback
+       else
+          planetsb[#planetsb]:callback(info_p)
+       end
   end
   
   window:show()
