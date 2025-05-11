@@ -84,7 +84,6 @@ magn_slider_m=object
 height_button=25
 width_button=80
 co={} --constellation buttons
-co_reset=object--constellation reset button
 gridtextdecb={} --grid legend text for declination (skymap)
 gridtextrab={} --grid legend text for right ascension (skymap)
 gridb={} --grid (skymap)
@@ -102,6 +101,11 @@ grid_hor_width=60
 grid_vert_height=40
 grid_decx=37
 grid_decy=80
+
+--time vars
+jd=0 --julian date
+timestep=0 --unit of time between two plotting (julian date format, nb of millisec)
+timebeg=0 --beginning in time of the current animation (julian date format, nb of millisec)
 
 --location for database files (ONE path for all files)
 pathname=""
@@ -405,6 +409,50 @@ exit(0)
   end
 end --end function
 
+function planet_animation()  
+ --planets & Sun animation with time-compression
+ --which button called ?
+ --forward_b, fforward_b
+ local dd,mm,yyyy,hh,mn,ss,t
+ 
+ dd,mm,yyyy,hh,mn,ss,t = get_date_time()
+ if Fl.event_inside(forward_b) == 1 then
+    --step of one week
+    --jd=planetpositions.JulianDateFromUnixTime(t*1000)
+    timebeg=t
+    timestep=7*24*60*60*1000
+ elseif Fl.event_inside(fforward_b) == 1 then
+    --step of one month, 30 days
+    timebeg=t
+    timestep=30*24*60*60*1000
+ else
+    --stop animation
+    timestep=0
+ end
+ t=timebeg
+ --window:make_current()
+ while 1 do
+    if Fl.event_inside(stop_b) == 1 then
+       timestep=0
+       show_objects(nil)
+       break
+    else
+      t=t+timestep
+      jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
+      cwindow:make_current()
+      jd_button:label(jd)
+      jd_button:redraw()
+      --lacks update of gregorian date
+      planetpositions.computeAll(jd)
+      os.execute("sleep ".. 0.5) --adapted for Linux/Unix OS
+      show_objects(t)
+      os.execute("sleep ".. 0.5) --adapted for Linux/Unix OS
+print("jd=" .. jd)
+    end
+ end
+ 
+end --end function
+
 function plot_messier()  
   local i
   local posx,oldrposx,rposx,posy,f,decx
@@ -482,9 +530,20 @@ function plot_planets()
   local i
   local posx,oldrposx,rposx,posy,f,decx
   local c,d
-  
+  --[[
+  if time  then
+     --animation context
+     cwindow:make_current()
+     jd=planetpositions.JulianDateFromUnixTime(time*1000) --module planetpositions is required
+     jd_button:label(jd)
+     jd_button:redraw()
+     --lacks update of gregorian date
+     planetpositions.computeAll(jd)
+  end
+  window:make_current()
+  ]]--
   for i=1,#planetsb do
-       --for earth/moon barycenter no change of pos: keep out of view
+       --for earth/moon barycenter "EM", no change of pos: keep out of view (Attention: EM pos is needed for other planets computations
        posx= floor(((24-(ra_h_p[i]+(ra_m_p[i]/60)+(ra_s_p[i]/3600)))*grid_hor_width)+grid_decx)      
        if decl_p[i]>0 then
            posy=floor((80-decl_p[i])*4)+grid_decy
@@ -538,8 +597,10 @@ function update_time()
  cwindow:redraw()
 end --end function
 
-function show_objects()  
- update_time()
+function show_objects(time)  
+ if timestep == 0 and time == nil then 
+    update_time() --set date/time to current = NOT in animation context
+ end
  window:make_current()
  ask_night() --look for parameter night or day vision? windowbg / gridcol / labelcol
  plot_stars()
@@ -576,7 +637,7 @@ function select_const()
        end
  end
  cwindow:redraw()
- show_objects()
+ show_objects(nil)
 end --end function
 
 function night_vision()
@@ -629,18 +690,18 @@ function reset_mag_mess()
   magn_slider_m:value(6)
   cwindow:redraw()
   --magn_slider_m:redraw()
-  show_objects()
+  show_objects(nil)
 end --end function
 
 function reset_mag_star()
   magn_slider_s:value(4)
   cwindow:redraw()
   --magn_slider_s:redraw()
-  show_objects()
+  show_objects(nil)
 end --end function
 
 function reset_planets_anim()
-  show_objects()
+  show_objects(nil)
 end --end function
 
 function cmd_display()
@@ -691,12 +752,12 @@ function cmd_display()
  ss_b:textsize(10)
  
  --Julian date jd converted from previous date time buttons' contents
- jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
+ --jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
  jd_button = fltk:Fl_Button(0, 2*height_button, (2*width_button), height_button)
  jd_button:label(jd)
  jd_button:tooltip("Julian Date from the given date/time")
- planetpositions.computeAll(jd)
- extract_from_planets() --for first displaying of skymap
+ --planetpositions.computeAll(jd)
+ --extract_from_planets() --for first displaying of skymap
  
  v_button = fltk:Fl_Button(width_button, 0, width_button, height_button, "Update")
  --v_button:color(fltk.FL_RED)
@@ -734,8 +795,14 @@ function cmd_display()
  backward_b = fltk:Fl_Button(i+height_button, 2*height_button, height_button, height_button, "@<")
  pause_b = fltk:Fl_Button(i+(2*height_button), 2*height_button, height_button, height_button, "@||")
  stop_b = fltk:Fl_Button(i+(3*height_button), 2*height_button, height_button, height_button, "@square")
+ stop_b:tooltip("STOP Planets & Sun animation")
+ stop_b:callback(planet_animation)
  forward_b = fltk:Fl_Button(i+(4*height_button), 2*height_button, height_button, height_button, "@>")
+ forward_b:tooltip("Planets & Sun slow animation from current date : one week between two plotting")
+ forward_b:callback(planet_animation)
  fforward_b = fltk:Fl_Button(i+(5*height_button), 2*height_button, height_button, height_button, "@>>")
+ fforward_b:callback(planet_animation)
+ 
  reinit_b = fltk:Fl_Button(i+(6*height_button), 2*height_button, height_button, height_button, "@reload")
  reinit_b:tooltip("Reset Date/Time to current and end animation")
  reinit_b:callback(reset_planets_anim)
@@ -764,10 +831,8 @@ function cmd_display()
  reinit_m:tooltip("Reset upper limit Magnitude to 6 for Messier")
  reinit_m:callback(reset_mag_mess)
  --display constellations buttons
-  local width_b_const=19 
-  local height_b_const=12 --11, before 
- --x=8*width_button
- --x=6*width_button
+ local width_b_const=21 --19 before
+ local height_b_const=15 --11, then 12, before 
  j=(2*width_button)+(2*height_button)+width_button+(7*height_button)
  x=j
  y=0
@@ -777,15 +842,12 @@ function cmd_display()
       co[#co]:labelsize(8)
       co[#co]:callback( select_const )
       x=x+width_b_const
-      if x>=(j+(22*width_b_const)) then
+      if x>=(j+(20*width_b_const)) then
          x=j
          y=y+height_b_const
       end
  end
- co_reset = fltk:Fl_Button(j, y, (22*width_b_const), height_b_const, "Reset constellations filter")
- co_reset:tooltip("Select all constellations for displaying")
- co_reset:labelsize(8)
- --print("right limit of constellation reset's button  is " .. (j+(22*width_b_const)))
+ y=y+height_b_const
  
  cwindow:show()
 end --end function
@@ -1088,6 +1150,7 @@ end --end function
  dl_constellations()
  dl_bsc()
  dl_messcat()
+
  
  if #comment_bsc == 0 or #comment_m == 0 or #constellation_name == 0 then
     st="At least a database is missing, please check your path for following 3 files :\nMessier_Catalog_110_List3.csv\nyalebsc.dat\nconstellation_abrev.csv"
@@ -1095,8 +1158,13 @@ end --end function
     exit(0)
  end
  cmd_display()
+ 
+  jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
+ planetpositions.computeAll(jd)
+ extract_from_planets()  --for 1st display
+ 
  main_display()
- show_objects()
+ show_objects(nil)
 
  print("RAM used AFTER pre_report() -and freeing some huge tables- by  gcinfo() = " .. gcinfo() .. ", reported by collectgarbage()=" .. collectgarbage("count"))
  
