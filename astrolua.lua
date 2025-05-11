@@ -33,6 +33,7 @@ filename_const="constellation_abrev.csv"
 separator_const=";"
 constellation_name={}
 constellation_abrev={}
+selconst=0 --index of selected constellation
 
 --database / tables : tables for bright star catalog data
 filename_bsc="yalebsc.dat"
@@ -74,7 +75,7 @@ comment_p={"","","","","","","","","",""}
 
 --GUI
 cwindow=object --command window 
-width_cwindow, height_cwindow = 1200, 75
+width_cwindow, height_cwindow = 900, 75
 window=object
 width_twindow, height_twindow= 1500, 768
 u_quit,v_button=object,object
@@ -441,7 +442,6 @@ function plot_stars()
   
   for i=1,#star do
        if s_button:value() == 1 then
-       --if star[i] then --unnecessary ?
           if magn[i] < magn_slider_s:value() then --magnitude limit condition
              posx= floor(((24-(ra_h[i]+(ra_m[i]/60)+(ra_s[i]/3600)))*grid_hor_width)+grid_decx)
              if decl[i]>0 then
@@ -451,19 +451,29 @@ function plot_stars()
              end
              starsb[i]:position(posx, posy)
              starsb[i]:labelsize(8)
-             --starsb[i]:labelcolor(256)
              starsb[i]:labelcolor(labelcol)
              starsb[i]:redraw_label()
              starsb[i]:redraw()
              starsb[i]:show()
           else 
-             starsb[i]:hide() --magnitudes not selected to be visible
+             starsb[i]:hide() --stars with these magnitudes are not selected to be visible
           end --end magnitude condition
+          --special colors for selected constellation
+          if selconst then 
+             if selconst>0 and selconst<=#co then
+                if const[i] == constellation_abrev[selconst] then
+                   starsb[i]:color(2) --special display
+                else
+                   starsb[i]:color(1) --usual display
+                end
+             else
+                 starsb[i]:color(1) --usual display --no constellation was selected
+             end
+          end
        else
           starsb[i]:hide()
        end
  end
-
 end --end function
 
 function plot_planets()
@@ -513,47 +523,60 @@ function ask_night()
   end
 end --end function
 
+function update_time()
+ local dd,mm,yyyy,hh,mn,ss,t
+ --get current time & update date/time fileds in GUI
+ dd,mm,yyyy,hh,mn,ss,t = get_date_time()
+ day_b:value(dd)
+ month_b:value(mm)
+ year_b:value(yyyy)
+ hh_b:value(hh)
+ mn_b:value(mn)
+ ss_b:value(ss)
+ jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
+ jd_button:label(jd)
+ cwindow:redraw()
+end --end function
+
 function show_objects()  
+ update_time()
  window:make_current()
-    --ask for parameter night or day vision? windowbg / gridcol / labelcol
-    ask_night()
-    plot_stars()
-    plot_messier()
-    plot_planets()
-    window:redraw()
-    window:show()
+ ask_night() --look for parameter night or day vision? windowbg / gridcol / labelcol
+ plot_stars()
+ plot_messier()
+ plot_planets()
+ window:redraw()
+ window:show()
 end --end function
 
 function select_const()
+ local previous_selconst,i
+ selconst=0
+ --find prev selconst (if any)
+ for i=1,#co do
+      if co[i]:color() == fltk.FL_RED then
+         previous_selconst=i
+         break
+      end
+ end
  --select a unique constellation for separate display
  for i=1,#co do
        if Fl.event_inside(co[i]) == 1 then
-print(constellation_name[i] .. " has been selected !")
+--print(constellation_name[i] .. " has been selected !")
+          co[i]:color(fltk.FL_RED)
+          if previous_selconst then
+             co[previous_selconst]:color(fltk.FL_BACKGROUND_COLOR)
+          end
+          if previous_selconst == i then
+             selconst=0
+          else
+             selconst=i
+          end
+          break
        end
  end
-end --end function
-
-function const_buttons()
- local i,x,y
- --local width_b_const=25
- local width_b_const=19
- 
- x=8*width_button
- y=0
- for i=1,#constellation_abrev do
-      table.insert(co, fltk:Fl_Button(x, y, width_b_const, 11, constellation_abrev[i]) )
-      co[#co]:tooltip(constellation_name[i])
-      co[#co]:labelsize(8)
-      co[#co]:callback( select_const )
-      x=x+width_b_const
-      if x>=(47*width_b_const) then
-         x=8*width_button
-         y=y+11
-      end
- end
- co_reset = fltk:Fl_Button(x, y, 7*width_button, 11, "Reset constellations filter")
- co_reset:tooltip("Select all constellations for displaying")
- co_reset:labelsize(8)
+ cwindow:redraw()
+ show_objects()
 end --end function
 
 function night_vision()
@@ -602,6 +625,24 @@ function night_vision()
   window:redraw()
 end --end function
 
+function reset_mag_mess()
+  magn_slider_m:value(6)
+  cwindow:redraw()
+  --magn_slider_m:redraw()
+  show_objects()
+end --end function
+
+function reset_mag_star()
+  magn_slider_s:value(4)
+  cwindow:redraw()
+  --magn_slider_s:redraw()
+  show_objects()
+end --end function
+
+function reset_planets_anim()
+  show_objects()
+end --end function
+
 function cmd_display()
  local i,j,k,l,st,b,c,st2
  local time_cell_width=20
@@ -617,7 +658,6 @@ function cmd_display()
  end)
  --date + time
  dd,mm,yyyy,hh,mn,ss,t = get_date_time()
- --day_b = fltk:Fl_Int_Input(0, height_button, 24, height_button)
  day_b = fltk:Fl_Int_Input(0, height_button, time_cell_width, height_button)
  day_b:insert(dd)
  day_b:textsize(10)
@@ -668,52 +708,85 @@ function cmd_display()
  night_button:labelcolor(fltk.FL_YELLOW) --default=day=yellow, night=BLACK
  night_button:tooltip("Toggles between day and night vision")
  night_button:callback(night_vision)
- 
- s_button = fltk:Fl_Light_Button((3*width_button), 0, width_button, height_button, "Stars")
+ s1_button = fltk:Fl_Button((2*width_button)+height_button, 0, height_button, height_button, "S1")
+ s2_button = fltk:Fl_Button((2*width_button), height_button, height_button, height_button, "S2")
+ s3_button = fltk:Fl_Button((2*width_button)+height_button, height_button, height_button, height_button, "S3")
+ s4_button = fltk:Fl_Button((2*width_button), (2*height_button), height_button, height_button, "S4")
+ s5_button = fltk:Fl_Button((2*width_button)+height_button, (2*height_button), height_button, height_button, "S5")
+ k=(2*width_button)+(2*height_button)
+ s_button = fltk:Fl_Light_Button(k, 0, width_button, height_button, "Stars")
  s_button:tooltip("Display or not stars from Bright Stars catalog")
  s_button:selection_color(2) --green as default "ON"
  s_button:value(1) --default button as "ON"
 
- m_button = fltk:Fl_Light_Button((3*width_button), height_button, width_button, height_button, "Messier")
+ m_button = fltk:Fl_Light_Button(k, height_button, width_button, height_button, "Messier")
  m_button:tooltip("Display or not Messier Objects")
  m_button:selection_color(2) --green as default "ON"
  m_button:value(1) --default button as "ON"
  
- p_button = fltk:Fl_Light_Button((3*width_button), 2*height_button, width_button, height_button, "Planets")
+ p_button = fltk:Fl_Light_Button(k, 2*height_button, width_button, height_button, "Planets")
  p_button:tooltip("Display or not Planets & Sun")
  p_button:selection_color(2) --green as default "ON"
  p_button:value(1) --default button as "ON"
  --planets animation buttons
- i = (4*width_button)
+ i=(2*width_button)+(2*height_button)+width_button
  fbackward_b = fltk:Fl_Button(i, 2*height_button, height_button, height_button, "@<<")
  backward_b = fltk:Fl_Button(i+height_button, 2*height_button, height_button, height_button, "@<")
  pause_b = fltk:Fl_Button(i+(2*height_button), 2*height_button, height_button, height_button, "@||")
- reinit_b = fltk:Fl_Button(i+(3*height_button), 2*height_button, height_button, height_button, "@returnarrow")
+ stop_b = fltk:Fl_Button(i+(3*height_button), 2*height_button, height_button, height_button, "@square")
  forward_b = fltk:Fl_Button(i+(4*height_button), 2*height_button, height_button, height_button, "@>")
  fforward_b = fltk:Fl_Button(i+(5*height_button), 2*height_button, height_button, height_button, "@>>")
+ reinit_b = fltk:Fl_Button(i+(6*height_button), 2*height_button, height_button, height_button, "@reload")
+ reinit_b:tooltip("Reset Date/Time to current and end animation")
+ reinit_b:callback(reset_planets_anim)
  
-  
- --magn_slider_s=fltk:Fl_Value_Slider(4*width_button, 0, (4*width_button), 15, "Upper Magnitude for Stars")
- magn_slider_s=fltk:Fl_Value_Slider(4*width_button, 0, (4*width_button), height_button, nil)
+ magn_slider_s=fltk:Fl_Value_Slider(i, 0, (6*height_button), height_button, nil)
  magn_slider_s:type(fltk.FL_HOR_NICE_SLIDER)
  magn_slider_s:labelsize(8)
  magn_slider_s:textsize(8)
  magn_slider_s:value(4)
  magn_slider_s:maximum(30)
  magn_slider_s:minimum(-30)
- magn_slider_s:tooltip("Defines with this slider value an upper limit for Stars' Magnitude")
+ magn_slider_s:tooltip("All Stars below this Magnitude will be displayed")
+ reinit_s = fltk:Fl_Button(i+(6*height_button), 0, height_button, height_button, "@reload")
+ reinit_s:tooltip("Reset upper limit Magnitude to 4 for Stars")
+ reinit_s:callback(reset_mag_star)
  
- --magn_slider_m=fltk:Fl_Value_Slider(4*width_button, height_button, (4*width_button), 15, "Upper Magnitude for Messier Objects")
- magn_slider_m=fltk:Fl_Value_Slider(4*width_button, height_button, (4*width_button), height_button, nil)
+ magn_slider_m=fltk:Fl_Value_Slider(i, height_button, (6*height_button), height_button, nil)
  magn_slider_m:type(fltk.FL_HOR_NICE_SLIDER)
  magn_slider_m:labelsize(8)
  magn_slider_m:textsize(8)
  magn_slider_m:value(6)
  magn_slider_m:maximum(30)
  magn_slider_m:minimum(-30)
- magn_slider_m:tooltip("Defines with this slider value an upper limit for Messier Objects' Magnitude")
+ magn_slider_m:tooltip("All Messier Objects below this Magnitude will be displayed")
+ reinit_m = fltk:Fl_Button(i+(6*height_button), height_button, height_button, height_button, "@reload")
+ reinit_m:tooltip("Reset upper limit Magnitude to 6 for Messier")
+ reinit_m:callback(reset_mag_mess)
  --display constellations buttons
- const_buttons()
+  local width_b_const=19 
+  local height_b_const=12 --11, before 
+ --x=8*width_button
+ --x=6*width_button
+ j=(2*width_button)+(2*height_button)+width_button+(7*height_button)
+ x=j
+ y=0
+ for i=1,#constellation_abrev do
+      table.insert(co, fltk:Fl_Button(x, y, width_b_const, height_b_const, constellation_abrev[i]) )
+      co[#co]:tooltip(constellation_name[i])
+      co[#co]:labelsize(8)
+      co[#co]:callback( select_const )
+      x=x+width_b_const
+      if x>=(j+(22*width_b_const)) then
+         x=j
+         y=y+height_b_const
+      end
+ end
+ co_reset = fltk:Fl_Button(j, y, (22*width_b_const), height_b_const, "Reset constellations filter")
+ co_reset:tooltip("Select all constellations for displaying")
+ co_reset:labelsize(8)
+ --print("right limit of constellation reset's button  is " .. (j+(22*width_b_const)))
+ 
  cwindow:show()
 end --end function
 
@@ -756,12 +829,6 @@ function main_display()
             if i==24 then
                --vertical declination labels tracing
                st2=j.."deg"
-               --[[c=fltk:Fl_Box(35, 65+(k*grid_vert_height),30, 30)
-               st2=j.."deg"
-               c:label(st2)
-               c:align(fltk.FL_ALIGN_LEFT)
-               c:labelsize(8)
-               ]]--
                table.insert(gridtextdecb, fltk:Fl_Box(35, 65+(k*grid_vert_height),30, 30))
                gridtextdecb[#gridtextdecb]:label(st2)
                gridtextdecb[#gridtextdecb]:align(fltk.FL_ALIGN_LEFT)
@@ -771,13 +838,6 @@ function main_display()
             if j==80 then
                --horizontal "right ascension" labels tracing
                st=i.."h"
-               --[[b=fltk:Fl_Box(grid_decx+((24-i)*grid_hor_width), grid_decy,40, 40)
-               st=i.."h"
-               b:label(st)
-               b:box(fltk.FL_BORDER_BOX)
-               b:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_LEFT)
-               b:labelsize(10)
-               ]]--
                table.insert(gridtextrab, fltk:Fl_Box(grid_decx+((24-i)*grid_hor_width), grid_decy,40, 40))
                gridtextrab[#gridtextrab]:label(st)
                gridtextrab[#gridtextrab]:align(fltk.FL_ALIGN_TOP+fltk.FL_ALIGN_LEFT)
