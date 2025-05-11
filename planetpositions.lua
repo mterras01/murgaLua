@@ -7,6 +7,10 @@ http://www.celestialprogramming.com/
 https://celestialprogramming.com/planets_with_keplers_equation.html
 Released as public domain in javascript
 --
+some calendar conversion functions are adapted to Lua from 
+Fliegel and van Flandern (1968) and 
+FORTRAN code at https://aa.usno.navy.mil/faq/JD_formula
+--
 adapted by Dr M.TERRAS May, 2025
 to a Lua Module
 ]]--
@@ -176,7 +180,7 @@ end --end function
 
 function clearResultsTable()
 local count = #results
- for i=0, count do 
+ for i=1, count do 
       results[i]=nil 
  end
  table.insert(results,{"Planet","Series","RA (J2000)","DEC (J2000)","Distance AU"}) --text legend
@@ -336,4 +340,30 @@ function UnixTimeFromJulianDate(jd)
    --Not valid for dates before Oct 15, 1582
    return ((jd-2440587.5)*86400000)
 end --end function
+ 
+--FORTRAN CODE adapted to Lua by Dr M.TERRAS from
+--https://aa.usno.navy.mil/faq/JD_formula
+function GregorianTojd(year, month, day)
+ local jd
+ jd= day-32075+1461*(year+4800+(month-14)/12)/4+367*(month-2-(month-14)/12*12)/12-3*((year+4900+(month-14)/12)/100)/4
+ return(jd)
+end --end function
 
+function jdToGregorian(jd)
+local I,J,K,L,N
+
+ L= jd+68569
+ N= 4*L/146097
+ L= L-(146097*N+3)/4
+ I= 4000*(L+1)/1461001
+ L= L-1461*I/4+31
+ J= 80*L/2447
+ K= L-2447*J/80
+ L= J/11
+ J= J+2-12*L
+ I= 100*(N-49)+I+L
+ --year= I
+ --month= J
+ --day= K
+ return I, J, K
+end --en function
