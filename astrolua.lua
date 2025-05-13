@@ -415,42 +415,48 @@ function planet_animation()
  --forward_b, fforward_b
  local dd,mm,yyyy,hh,mn,ss,t
  
- dd,mm,yyyy,hh,mn,ss,t = get_date_time()
+ --dd,mm,yyyy,hh,mn,ss,t = get_date_time()
+ jd=tonumber(jd_button:label()) --displayed jd
+ t = planetpositions.UnixTimeFromJulianDate(jd)
+ 
  if Fl.event_inside(forward_b) == 1 then
     --step of one week
     --jd=planetpositions.JulianDateFromUnixTime(t*1000)
     timebeg=t
-    timestep=7*24*60*60*1000
+    timestep=7*24*60*60
  elseif Fl.event_inside(fforward_b) == 1 then
     --step of one month, 30 days
     timebeg=t
-    timestep=30*24*60*60*1000
+    timestep=30*24*60*60
+ elseif Fl.event_inside(stop_b) == 1 then
+    --stop animation
+    timestep=0
+    time=0
  else
     --stop animation
     timestep=0
+    time=0
  end
- t=timebeg
- --window:make_current()
- while 1 do
-    if Fl.event_inside(stop_b) == 1 then
-       timestep=0
-       show_objects(nil)
-       break
-    else
-      t=t+timestep
-      jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
-      cwindow:make_current()
-      jd_button:label(jd)
-      jd_button:redraw()
-      --lacks update of gregorian date
-      planetpositions.computeAll(jd)
-      os.execute("sleep ".. 0.5) --adapted for Linux/Unix OS
-      show_objects(t)
-      os.execute("sleep ".. 0.5) --adapted for Linux/Unix OS
-print("jd=" .. jd)
-    end
- end
+
+ planetpositions.clearResultsTable()
  
+ t=timebeg+timestep
+ jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
+ cwindow:make_current()
+ jd_button:label(jd)
+ jd_button:redraw()
+ 
+ --updating gregorian date in cmd window
+ yyyy, mm, dd = planetpositions.julianDateToGregorian(jd)
+ day_b:value(dd)
+ month_b:value(mm)
+ year_b:value(yyyy)
+ 
+ --update planets positions' table AFTER clearing previous positions
+ planetpositions.clearResultsTable()
+ planetpositions.computeAll(jd)
+ --os.execute("sleep ".. 0.5) --adapted for Linux/Unix OS
+ show_objects(t)
 end --end function
 
 function plot_messier()  
@@ -598,7 +604,7 @@ function update_time()
 end --end function
 
 function show_objects(time)  
- if timestep == 0 and time == nil then 
+ if timestep == 0 then 
     update_time() --set date/time to current = NOT in animation context
  end
  window:make_current()
