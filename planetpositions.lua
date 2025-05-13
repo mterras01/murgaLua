@@ -341,29 +341,39 @@ function UnixTimeFromJulianDate(jd)
    return ((jd-2440587.5)*86400000)
 end --end function
  
---FORTRAN CODE adapted to Lua by Dr M.TERRAS from
---https://aa.usno.navy.mil/faq/JD_formula
-function GregorianTojd(year, month, day)
- local jd
- jd= day-32075+1461*(year+4800+(month-14)/12)/4+367*(month-2-(month-14)/12*12)/12-3*((year+4900+(month-14)/12)/100)/4
- return(jd)
-end --end function
+--Lua code adapted from Javascript
+--https://ix23.com/2016/05/29/converting-between-julian-dates-and-gregorian-calendar-dates-in-fortran-and-javascript/
+function julianDateToGregorian(jd)
+ local year, month, day, l, n, i, j, k
+ l = jd + 68569
+ n = floor(floor(4 * l) / 146097)
+ l = l - floor((146097 * n + 3) / 4)
+ i = floor(4000 * (l + 1) / 1461001)
+ l = l - floor(1461 * i / 4) + 31
+ j = floor(80 * l / 2447)
+ k = floor(l - floor(2447 * j / 80))
+ l = floor(j / 11)
+ j = j + 2 - 12 * l
+ i = 100 * (n - 49) + i + l
+ year = i
+ month = j
+ day = k
+ return year, month, day
+end  --end function
 
-function jdToGregorian(jd)
-local I,J,K,L,N
+--[[
+javascript function GregorianTojulianDate() to convert to Lua if needed
+    var jd, year, month, day, i, j, k;
 
- L= jd+68569
- N= 4*L/146097
- L= L-(146097*N+3)/4
- I= 4000*(L+1)/1461001
- L= L-1461*I/4+31
- J= 80*L/2447
- K= L-2447*J/80
- L= J/11
- J= J+2-12*L
- I= 100*(N-49)+I+L
- --year= I
- --month= J
- --day= K
- return I, J, K
-end --en function
+    year = 1970;
+    month = 1;
+    day = 1;
+
+    i = year;
+    j = month;
+    k = day;
+
+    jd = Math.floor(k - 32075 + 1461 * (i + 4800 + (j - 14) / 12) / 4 + 367 * (j - 2 - (j - 14) / 12 * 12) / 12 - 3 * ((i + 4900 + (j - 14) / 12) / 100) / 4);
+
+    document.write("julian date = " + jd);
+]]--
