@@ -417,7 +417,7 @@ function planet_animation()
  
  --dd,mm,yyyy,hh,mn,ss,t = get_date_time()
  jd=tonumber(jd_button:label()) --displayed jd
- t = planetpositions.UnixTimeFromJulianDate(jd)
+ t = planetpositions.UnixTimeFromJulianDate(jd)/1000
  
  if Fl.event_inside(forward_b) == 1 then
     --step of one week
