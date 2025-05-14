@@ -106,6 +106,7 @@ grid_decy=80
 jd=0 --julian date
 timestep=0 --unit of time between two plotting (julian date format, nb of millisec)
 timebeg=0 --beginning in time of the current animation (julian date format, nb of millisec)
+timelapsefactor=10000 --time scale = increasing => lower animation speed, decreasing => higher animation speed
 
 --location for database files (ONE path for all files)
 pathname=""
@@ -356,6 +357,18 @@ function extract_from_mess_line(line)
 
 end --end function
 
+function print_planetpositions()
+ local i
+ if planetspositions.results then
+print(table.concat(planetpositions.results[1],"\t") ) --text legends
+    for i=1,#planetpositions.results do
+       if planetpositions.results[i][2] == "Long" then --best accuracy
+print(table.concat(planetpositions.results[i],"\t") )
+       end
+    end
+ end
+end --end function
+
 function extract_from_planets()
   local i,st,sign,j
   local ra_planet,decl_planet
@@ -373,7 +386,7 @@ function extract_from_planets()
   for i=1,#planetpositions.results do
        --Pay Attention! 9 results for 10 objects, Earth/Moon Barycenter is part of Planets'names table but not part of positions' results table
        if planetpositions.results[i][2] == "Long" then --best accuracy
-print(table.concat(planetpositions.results[i],"\t") ) --text legends
+--print(table.concat(planetpositions.results[i],"\t") ) --text legends
           ra_planet = planetpositions.results[i][3]
           --RA exemple      +01h 42mn 32s (sign always "+")
           rahh=tonumber(sub(ra_planet, 2, 3))
@@ -409,6 +422,19 @@ exit(0)
   end
 end --end function
 
+function sleep()
+  if window then
+     --continue
+  else
+     os.exit(0)
+  end
+  local i=0
+  local c=0
+  for i=0, timelapsefactor do 
+      c = cos(i)
+  end
+end
+
 function planet_animation()  
  --planets & Sun animation with time-compression
  --which button called ?
@@ -423,24 +449,24 @@ function planet_animation()
     --step of one week
     --jd=planetpositions.JulianDateFromUnixTime(t*1000)
     timebeg=t
-    timestep=7*24*60*60
+    timestep=30*24*60*60
+    t=timebeg+timestep
  elseif Fl.event_inside(fforward_b) == 1 then
     --step of one month, 30 days
     timebeg=t
-    timestep=30*24*60*60
+    timestep=365*24*60*60
+    t=timebeg+timestep
  elseif Fl.event_inside(stop_b) == 1 then
     --stop animation
     timestep=0
-    time=0
  else
     --stop animation
     timestep=0
-    time=0
  end
 
  planetpositions.clearResultsTable()
  
- t=timebeg+timestep
+ --t=timebeg+timestep
  jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
  cwindow:make_current()
  jd_button:label(jd)
@@ -455,8 +481,10 @@ function planet_animation()
  --update planets positions' table AFTER clearing previous positions
  planetpositions.clearResultsTable()
  planetpositions.computeAll(jd)
- --os.execute("sleep ".. 0.5) --adapted for Linux/Unix OS
- show_objects(t)
+ extract_from_planets()
+ sleep()
+ show_objects()
+ sleep()
 end --end function
 
 function plot_messier()  
@@ -603,9 +631,12 @@ function update_time()
  cwindow:redraw()
 end --end function
 
-function show_objects(time)  
+function show_objects()  
+--print("Appel show_objects() avec timestep = " .. timestep)
  if timestep == 0 then 
     update_time() --set date/time to current = NOT in animation context
+ else
+--print("jd=" .. jd)
  end
  window:make_current()
  ask_night() --look for parameter night or day vision? windowbg / gridcol / labelcol
@@ -643,7 +674,7 @@ function select_const()
        end
  end
  cwindow:redraw()
- show_objects(nil)
+ show_objects()
 end --end function
 
 function night_vision()
@@ -696,18 +727,19 @@ function reset_mag_mess()
   magn_slider_m:value(6)
   cwindow:redraw()
   --magn_slider_m:redraw()
-  show_objects(nil)
+  show_objects()
 end --end function
 
 function reset_mag_star()
   magn_slider_s:value(4)
   cwindow:redraw()
   --magn_slider_s:redraw()
-  show_objects(nil)
+  show_objects()
 end --end function
 
 function reset_planets_anim()
-  show_objects(nil)
+ timestep=0
+ show_objects()
 end --end function
 
 function cmd_display()
@@ -1170,7 +1202,7 @@ end --end function
  extract_from_planets()  --for 1st display
  
  main_display()
- show_objects(nil)
+ show_objects()
 
  print("RAM used AFTER pre_report() -and freeing some huge tables- by  gcinfo() = " .. gcinfo() .. ", reported by collectgarbage()=" .. collectgarbage("count"))
  
