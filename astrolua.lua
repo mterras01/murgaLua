@@ -440,7 +440,7 @@ function planet_animation()
  --which button called ?
  --forward_b, fforward_b
  local dd,mm,yyyy,hh,mn,ss,t
- 
+ while 1 do
  --dd,mm,yyyy,hh,mn,ss,t = get_date_time()
  jd=tonumber(jd_button:label()) --displayed jd
  t = planetpositions.UnixTimeFromJulianDate(jd)/1000
@@ -482,9 +482,10 @@ function planet_animation()
  planetpositions.clearResultsTable()
  planetpositions.computeAll(jd)
  extract_from_planets()
- sleep()
+ 
  show_objects()
  sleep()
+ end
 end --end function
 
 function plot_messier()  
@@ -919,8 +920,114 @@ end --end function
 
 function main_display()
  local i,j,k,l,st,b,c,st2,x,y
+ local time_cell_width=20
+ local width_button,height_button=80,15
+ local labelsize=10
+ 
  local planetcolors={51,54,221,93,84,215,247,247,215,3} --ordered from Mercury to Pluto (last old planet, now small body), and last=Sun (not planet)
  window = fltk:Fl_Window(0,130, width_twindow, height_twindow, "Global skymap")
+--GUI commands & parameters
+ u_quit = fltk:Fl_Button(0, 0, width_button, height_button, "Quit")
+ u_quit:color(fltk.FL_RED)
+ u_quit:labelsize(labelsize)
+ u_quit:tooltip("Quit this application")
+ u_quit:callback(function (quit_u)
+   cwindow:hide()
+   cwindow:clear()
+   cwindow = nil
+  os.exit()
+ end)
+ --
+ dd,mm,yyyy,hh,mn,ss,t = get_date_time()
+ day_b = fltk:Fl_Int_Input(0, height_button, time_cell_width, height_button)
+ day_b:insert(dd)
+ day_b:textsize(10)
+ day_b:tooltip("Day 1-31")
+ month_b = fltk:Fl_Int_Input(time_cell_width+1, height_button, time_cell_width, height_button)
+ month_b:tooltip("Month 1-12")
+ month_b:insert(mm)
+ month_b:textsize(10)
+ year_b= fltk:Fl_Int_Input((2*time_cell_width)+2, height_button, 2*time_cell_width, height_button)
+ year_b:tooltip("Year")
+ year_b:insert(yyyy)
+ year_b:textsize(10)
+ --time
+ hh_b = fltk:Fl_Int_Input((4*time_cell_width)+16, height_button, time_cell_width, height_button)
+ hh_b:insert(hh)
+ hh_b:textsize(10)
+ hh_b:tooltip("Hours 0-23")
+ mn_b = fltk:Fl_Int_Input((5*time_cell_width)+17, height_button, time_cell_width, height_button)
+ mn_b:tooltip("Minutes 0-59")
+ mn_b:insert(mn)
+ mn_b:textsize(10)
+ ss_b= fltk:Fl_Int_Input((6*time_cell_width)+18, height_button, time_cell_width, height_button)
+ ss_b:tooltip("Seconds 0-59")
+ ss_b:insert(ss)
+ ss_b:textsize(10)
+ --
+ --Julian date jd converted from previous date time buttons' contents
+ jd_button = fltk:Fl_Button(0, 2*height_button, (2*width_button), height_button)
+ jd_button:label(jd)
+ jd_button:tooltip("Julian Date from the given date/time")
+ jd_button:labelsize(labelsize)
+ 
+ v_button = fltk:Fl_Button(width_button, 0, width_button, height_button, "Update")
+ v_button:tooltip("Update Skymap with current parameters")
+ v_button:labelsize(labelsize)
+ v_button:callback(show_objects)
+ --
+ night_button = fltk:Fl_Button(2*width_button, 0, height_button, height_button, "@-2circle")
+ --night_button:label("@circle")
+ night_button:labelcolor(fltk.FL_YELLOW) --default=day=yellow, night=BLACK
+ night_button:tooltip("Toggles between day and night vision")
+ night_button:labelsize(labelsize)
+ night_button:callback(night_vision)
+ s1_button = fltk:Fl_Button((2*width_button)+height_button, 0, height_button, height_button, "S1")
+ s1_button:labelsize(labelsize)
+ s2_button = fltk:Fl_Button((2*width_button), height_button, height_button, height_button, "S2")
+ s2_button:labelsize(labelsize)
+ s3_button = fltk:Fl_Button((2*width_button)+height_button, height_button, height_button, height_button, "S3")
+ s3_button:labelsize(labelsize)
+ s4_button = fltk:Fl_Button((2*width_button), (2*height_button), height_button, height_button, "S4")
+ s4_button:labelsize(labelsize)
+ s5_button = fltk:Fl_Button((2*width_button)+height_button, (2*height_button), height_button, height_button, "S5")
+ s5_button:labelsize(labelsize)
+ k=(2*width_button)+(2*height_button)
+ s_button = fltk:Fl_Light_Button(k, 0, width_button, height_button, "Stars")
+ s_button:tooltip("Display or not stars from Bright Stars catalog")
+ s_button:selection_color(2) --green as default "ON"
+ s_button:value(1) --default button as "ON"
+ s_button:labelsize(labelsize)
+
+ m_button = fltk:Fl_Light_Button(k, height_button, width_button, height_button, "Messier")
+ m_button:tooltip("Display or not Messier Objects")
+ m_button:selection_color(2) --green as default "ON"
+ m_button:value(1) --default button as "ON"
+ m_button:labelsize(labelsize)
+ 
+ p_button = fltk:Fl_Light_Button(k, 2*height_button, width_button, height_button, "Planets")
+ p_button:tooltip("Display or not Planets & Sun")
+ p_button:selection_color(2) --green as default "ON"
+ p_button:value(1) --default button as "ON"
+ p_button:labelsize(labelsize)
+ --
+ --planets animation buttons
+ i=(2*width_button)+(2*height_button)+width_button
+ fbackward_b = fltk:Fl_Button(i, 2*height_button, height_button, height_button, "@-4<<")
+ backward_b = fltk:Fl_Button(i+height_button, 2*height_button, height_button, height_button, "@-4<")
+ pause_b = fltk:Fl_Button(i+(2*height_button), 2*height_button, height_button, height_button, "@-4||")
+ stop_b = fltk:Fl_Button(i+(3*height_button), 2*height_button, height_button, height_button, "@-4square")
+ stop_b:tooltip("STOP Planets & Sun animation")
+ stop_b:callback(planet_animation)
+ forward_b = fltk:Fl_Button(i+(4*height_button), 2*height_button, height_button, height_button, "@-4>")
+ forward_b:tooltip("Planets & Sun slow animation from current date : one week between two plotting")
+ forward_b:callback(planet_animation)
+ fforward_b = fltk:Fl_Button(i+(5*height_button), 2*height_button, height_button, height_button, "@-4>>")
+ fforward_b:callback(planet_animation)
+ 
+ reinit_b = fltk:Fl_Button(i+(6*height_button), 2*height_button, height_button, height_button, "@-4reload")
+ reinit_b:tooltip("Reset Date/Time to current and end animation")
+ reinit_b:callback(reset_planets_anim)
  --text for grid
  for i=24,0,-1 do
        k=0
@@ -1171,7 +1278,7 @@ end --end function
  print("Unix time " .. t .. ", JulianDateFromUnixTime = ".. planetpositions.JulianDateFromUnixTime(t))
  
  print("W = " .. Fl:w() .. "\nH = " .. Fl:h())
- if Fl:w() >= 1500 and Fl:h() >= 768 then
+ if Fl:w() >= 1200 and Fl:h() >= 768 then
     --continue
  else
     st="Sorry, a minimal resolution (Width x Height) = 1500 x 768 is required for this app displaying up to 9200+ celestial objects.\nChange your screen resolution or change host computer !"
