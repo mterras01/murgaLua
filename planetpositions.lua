@@ -166,7 +166,7 @@ function computePlanetPosition(jd,elements,rates,extraTerms)
     y=(cos(eps)*yecl) - (sin(eps)*zecl)
     z=(sin(eps)*yecl) + (cos(eps)*zecl)
     
-    local temp={x,y,z}
+    temp={x,y,z}
     return temp
 end --end function
 
