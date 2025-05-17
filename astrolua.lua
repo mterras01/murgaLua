@@ -74,8 +74,6 @@ decl_p={0,0,0,0,0,0,0,0,0,0}
 comment_p={"","","","","","","","","",""}
 
 --GUI
-cwindow=object --command window 
-width_cwindow, height_cwindow = 900, 75
 window=object
 width_twindow, height_twindow= 1500, 768
 u_quit,v_button=object,object
@@ -110,6 +108,24 @@ timelapsefactor=10000 --time scale = increasing => lower animation speed, decrea
 
 --location for database files (ONE path for all files)
 pathname=""
+
+--timers needed for planets animation
+ timer = murgaLua.createFltkTimer()
+function start_timer()
+    timer:doWait(4)
+end --end function
+function stop_timer()
+    if (timer:isActive() == 1) then
+       timer:doWait(0)
+    else
+	   timer:doWait(0)
+     end
+end --end function
+function renew_timer()
+       Fl:check()
+       timer:doWait(1)
+end --end function
+timer:callback(renew_timer)
 
 function get_date_time()
   --local dd,mm,yyyy
@@ -422,53 +438,71 @@ exit(0)
   end
 end --end function
 
-function sleep()
-  if window then
-     --continue
-  else
-     os.exit(0)
-  end
-  local i=0
-  local c=0
-  for i=0, timelapsefactor do 
-      c = cos(i)
-  end
+function draw_planet_animation()
+  planet_animation()
+  Fl:check()
+  timer:doWait(0.2)
 end
+
+function timer_planet_animation()  
+ if timestep == 0 then
+    st="Before launching Planets' animation, set timestep first, to 1, 7 or 30 days !"
+    fltk:fl_alert(st)
+print(st)
+ else
+    timer:callback(draw_planet_animation)
+    timer:do_callback()
+ end
+end --end function
+
+function get_timestep()
+ --this function is called once BEFORE animation
+ if Fl.event_inside(forward_b) == 1 then
+    --step of one day
+    timestep=24*60*60
+    forward_b:labelcolor(1)
+    fforward_b:labelcolor(256)
+    vfforward_b:labelcolor(256)
+    forward_b:redraw()
+    fforward_b:redraw()
+    vfforward_b:redraw()
+print("Timestep is set to one day")
+ elseif Fl.event_inside(fforward_b) == 1 then
+    --step of one week, 7 days
+    timestep=7*24*60*60
+    forward_b:labelcolor(256)
+    fforward_b:labelcolor(1)
+    vfforward_b:labelcolor(256)
+    forward_b:redraw()
+    fforward_b:redraw()
+    vfforward_b:redraw()
+print("Timestep is set to seven days")
+ elseif Fl.event_inside(vfforward_b) == 1 then
+    --step of one month, 30 days
+    timestep=30*24*60*60
+    forward_b:labelcolor(256)
+    fforward_b:labelcolor(256)
+    vfforward_b:labelcolor(1)
+    forward_b:redraw()
+    fforward_b:redraw()
+    vfforward_b:redraw()
+print("Timestep is set to thirty days")
+ else
+    --nothing
+ end
+end --end function
 
 function planet_animation()  
  --planets & Sun animation with time-compression
- --which button called ?
- --forward_b, fforward_b
  local dd,mm,yyyy,hh,mn,ss,t
- while 1 do
- --dd,mm,yyyy,hh,mn,ss,t = get_date_time()
+ 
  jd=tonumber(jd_button:label()) --displayed jd
  t = planetpositions.UnixTimeFromJulianDate(jd)/1000
- 
- if Fl.event_inside(forward_b) == 1 then
-    --step of one week
-    --jd=planetpositions.JulianDateFromUnixTime(t*1000)
-    timebeg=t
-    timestep=30*24*60*60
-    t=timebeg+timestep
- elseif Fl.event_inside(fforward_b) == 1 then
-    --step of one month, 30 days
-    timebeg=t
-    timestep=365*24*60*60
-    t=timebeg+timestep
- elseif Fl.event_inside(stop_b) == 1 then
-    --stop animation
-    timestep=0
- else
-    --stop animation
-    timestep=0
- end
-
+ timebeg=t
+ t=timebeg+timestep
  planetpositions.clearResultsTable()
- 
- --t=timebeg+timestep
  jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
- cwindow:make_current()
+ window:make_current()
  jd_button:label(jd)
  jd_button:redraw()
  
@@ -484,8 +518,6 @@ function planet_animation()
  extract_from_planets()
  
  show_objects()
- sleep()
- end
 end --end function
 
 function plot_messier()  
@@ -565,18 +597,7 @@ function plot_planets()
   local i
   local posx,oldrposx,rposx,posy,f,decx
   local c,d
-  --[[
-  if time  then
-     --animation context
-     cwindow:make_current()
-     jd=planetpositions.JulianDateFromUnixTime(time*1000) --module planetpositions is required
-     jd_button:label(jd)
-     jd_button:redraw()
-     --lacks update of gregorian date
-     planetpositions.computeAll(jd)
-  end
-  window:make_current()
-  ]]--
+
   for i=1,#planetsb do
        --for earth/moon barycenter "EM", no change of pos: keep out of view (Attention: EM pos is needed for other planets computations
        posx= floor(((24-(ra_h_p[i]+(ra_m_p[i]/60)+(ra_s_p[i]/3600)))*grid_hor_width)+grid_decx)      
@@ -629,13 +650,18 @@ function update_time()
  ss_b:value(ss)
  jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
  jd_button:label(jd)
- cwindow:redraw()
+ window:redraw()
 end --end function
 
 function show_objects()  
 --print("Appel show_objects() avec timestep = " .. timestep)
  if timestep == 0 then 
     update_time() --set date/time to current = NOT in animation context
+    dd,mm,yyyy,hh,mn,ss,t = get_date_time()
+    planetpositions.clearResultsTable()
+    jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
+    planetpositions.computeAll(jd)
+    extract_from_planets()
  else
 --print("jd=" .. jd)
  end
@@ -674,7 +700,7 @@ function select_const()
           break
        end
  end
- cwindow:redraw()
+ window:redraw()
  show_objects()
 end --end function
 
@@ -726,176 +752,31 @@ end --end function
 
 function reset_mag_mess()
   magn_slider_m:value(6)
-  cwindow:redraw()
-  --magn_slider_m:redraw()
+  window:redraw()
   show_objects()
 end --end function
 
 function reset_mag_star()
   magn_slider_s:value(4)
-  cwindow:redraw()
-  --magn_slider_s:redraw()
+  window:redraw()
   show_objects()
 end --end function
 
 function reset_planets_anim()
+ stop_timer() --stop anim
  timestep=0
+ --dd,mm,yyyy,hh,mn,ss,t=get_date_time()
  show_objects()
 end --end function
 
-function cmd_display()
- local i,j,k,l,st,b,c,st2
- local time_cell_width=20
- cwindow = fltk:Fl_Window(0,0, width_cwindow, height_cwindow, "Skymap Commander")   
- u_quit = fltk:Fl_Button(0, 0, width_button, height_button, "Quit")
- u_quit:color(fltk.FL_RED)
- u_quit:tooltip("Quit this application")
- u_quit:callback(function (quit_u)
-   cwindow:hide()
-   cwindow:clear()
-   cwindow = nil
-  os.exit()
- end)
- --date + time
- dd,mm,yyyy,hh,mn,ss,t = get_date_time()
- day_b = fltk:Fl_Int_Input(0, height_button, time_cell_width, height_button)
- day_b:insert(dd)
- day_b:textsize(10)
- day_b:tooltip("Day 1-31")
---[[
- day_b:callback(  function(inputday)
-   alta = alti:value()
-   day_b:redraw()
-  end)
-]]--
- month_b = fltk:Fl_Int_Input(time_cell_width+1, height_button, time_cell_width, height_button)
- month_b:tooltip("Month 1-12")
- month_b:insert(mm)
- month_b:textsize(10)
- year_b= fltk:Fl_Int_Input((2*time_cell_width)+2, height_button, 2*time_cell_width, height_button)
- year_b:tooltip("Year")
- year_b:insert(yyyy)
- year_b:textsize(10)
- --time
- hh_b = fltk:Fl_Int_Input((4*time_cell_width)+16, height_button, time_cell_width, height_button)
- hh_b:insert(hh)
- hh_b:textsize(10)
- hh_b:tooltip("Hours 0-23")
- mn_b = fltk:Fl_Int_Input((5*time_cell_width)+17, height_button, time_cell_width, height_button)
- mn_b:tooltip("Minutes 0-59")
- mn_b:insert(mn)
- mn_b:textsize(10)
- ss_b= fltk:Fl_Int_Input((6*time_cell_width)+18, height_button, time_cell_width, height_button)
- ss_b:tooltip("Seconds 0-59")
- ss_b:insert(ss)
- ss_b:textsize(10)
- 
- --Julian date jd converted from previous date time buttons' contents
- --jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
- jd_button = fltk:Fl_Button(0, 2*height_button, (2*width_button), height_button)
- jd_button:label(jd)
- jd_button:tooltip("Julian Date from the given date/time")
- --planetpositions.computeAll(jd)
- --extract_from_planets() --for first displaying of skymap
- 
- v_button = fltk:Fl_Button(width_button, 0, width_button, height_button, "Update")
- --v_button:color(fltk.FL_RED)
- v_button:tooltip("Update Skymap with current parameters")
- v_button:callback(show_objects)
- 
- night_button = fltk:Fl_Button(2*width_button, 0, height_button, height_button, "@circle")
- --night_button:label("@circle")
- night_button:labelcolor(fltk.FL_YELLOW) --default=day=yellow, night=BLACK
- night_button:tooltip("Toggles between day and night vision")
- night_button:callback(night_vision)
- s1_button = fltk:Fl_Button((2*width_button)+height_button, 0, height_button, height_button, "S1")
- s2_button = fltk:Fl_Button((2*width_button), height_button, height_button, height_button, "S2")
- s3_button = fltk:Fl_Button((2*width_button)+height_button, height_button, height_button, height_button, "S3")
- s4_button = fltk:Fl_Button((2*width_button), (2*height_button), height_button, height_button, "S4")
- s5_button = fltk:Fl_Button((2*width_button)+height_button, (2*height_button), height_button, height_button, "S5")
- k=(2*width_button)+(2*height_button)
- s_button = fltk:Fl_Light_Button(k, 0, width_button, height_button, "Stars")
- s_button:tooltip("Display or not stars from Bright Stars catalog")
- s_button:selection_color(2) --green as default "ON"
- s_button:value(1) --default button as "ON"
-
- m_button = fltk:Fl_Light_Button(k, height_button, width_button, height_button, "Messier")
- m_button:tooltip("Display or not Messier Objects")
- m_button:selection_color(2) --green as default "ON"
- m_button:value(1) --default button as "ON"
- 
- p_button = fltk:Fl_Light_Button(k, 2*height_button, width_button, height_button, "Planets")
- p_button:tooltip("Display or not Planets & Sun")
- p_button:selection_color(2) --green as default "ON"
- p_button:value(1) --default button as "ON"
- --planets animation buttons
- i=(2*width_button)+(2*height_button)+width_button
- fbackward_b = fltk:Fl_Button(i, 2*height_button, height_button, height_button, "@<<")
- backward_b = fltk:Fl_Button(i+height_button, 2*height_button, height_button, height_button, "@<")
- pause_b = fltk:Fl_Button(i+(2*height_button), 2*height_button, height_button, height_button, "@||")
- stop_b = fltk:Fl_Button(i+(3*height_button), 2*height_button, height_button, height_button, "@square")
- stop_b:tooltip("STOP Planets & Sun animation")
- stop_b:callback(planet_animation)
- forward_b = fltk:Fl_Button(i+(4*height_button), 2*height_button, height_button, height_button, "@>")
- forward_b:tooltip("Planets & Sun slow animation from current date : one week between two plotting")
- forward_b:callback(planet_animation)
- fforward_b = fltk:Fl_Button(i+(5*height_button), 2*height_button, height_button, height_button, "@>>")
- fforward_b:callback(planet_animation)
- 
- reinit_b = fltk:Fl_Button(i+(6*height_button), 2*height_button, height_button, height_button, "@reload")
- reinit_b:tooltip("Reset Date/Time to current and end animation")
- reinit_b:callback(reset_planets_anim)
- 
- magn_slider_s=fltk:Fl_Value_Slider(i, 0, (6*height_button), height_button, nil)
- magn_slider_s:type(fltk.FL_HOR_NICE_SLIDER)
- magn_slider_s:labelsize(8)
- magn_slider_s:textsize(8)
- magn_slider_s:value(4)
- magn_slider_s:maximum(30)
- magn_slider_s:minimum(-30)
- magn_slider_s:tooltip("All Stars below this Magnitude will be displayed")
- reinit_s = fltk:Fl_Button(i+(6*height_button), 0, height_button, height_button, "@reload")
- reinit_s:tooltip("Reset upper limit Magnitude to 4 for Stars")
- reinit_s:callback(reset_mag_star)
- 
- magn_slider_m=fltk:Fl_Value_Slider(i, height_button, (6*height_button), height_button, nil)
- magn_slider_m:type(fltk.FL_HOR_NICE_SLIDER)
- magn_slider_m:labelsize(8)
- magn_slider_m:textsize(8)
- magn_slider_m:value(6)
- magn_slider_m:maximum(30)
- magn_slider_m:minimum(-30)
- magn_slider_m:tooltip("All Messier Objects below this Magnitude will be displayed")
- reinit_m = fltk:Fl_Button(i+(6*height_button), height_button, height_button, height_button, "@reload")
- reinit_m:tooltip("Reset upper limit Magnitude to 6 for Messier")
- reinit_m:callback(reset_mag_mess)
- --display constellations buttons
- local width_b_const=21 --19 before
- local height_b_const=15 --11, then 12, before 
- j=(2*width_button)+(2*height_button)+width_button+(7*height_button)
- x=j
- y=0
- for i=1,#constellation_abrev do
-      table.insert(co, fltk:Fl_Button(x, y, width_b_const, height_b_const, constellation_abrev[i]) )
-      co[#co]:tooltip(constellation_name[i])
-      co[#co]:labelsize(8)
-      co[#co]:callback( select_const )
-      x=x+width_b_const
-      if x>=(j+(20*width_b_const)) then
-         x=j
-         y=y+height_b_const
-      end
- end
- y=y+height_b_const
- 
- cwindow:show()
-end --end function
-
 function info_p()
- --display info about mouse-pointed planet (or sun, moon to come) 
+ --display info about mouse-pointed planet (or sun, moon to come)  
+ local st
  for i=1,#planetsb do
        if Fl.event_inside(planetsb[i]) == 1 then
-fltk:fl_alert(comment_p[i])
+          st = comment_p[i] .. "\nJulianDate=" .. jd_button:label()
+          st = st .. "\nGregorianDate=" .. day_b:value() .. "/" .. month_b:value() .. "/" .. year_b:value().. " at ".. hh_b:value() .. ":" .. mn_b:value() .. ":" .. ss_b:value()
+fltk:fl_alert(st)
        end
  end
 end --end function
@@ -932,9 +813,7 @@ function main_display()
  u_quit:labelsize(labelsize)
  u_quit:tooltip("Quit this application")
  u_quit:callback(function (quit_u)
-   cwindow:hide()
-   cwindow:clear()
-   cwindow = nil
+  stop_timer() --ends animation
   os.exit()
  end)
  --
@@ -1013,21 +892,75 @@ function main_display()
  --
  --planets animation buttons
  i=(2*width_button)+(2*height_button)+width_button
- fbackward_b = fltk:Fl_Button(i, 2*height_button, height_button, height_button, "@-4<<")
- backward_b = fltk:Fl_Button(i+height_button, 2*height_button, height_button, height_button, "@-4<")
- pause_b = fltk:Fl_Button(i+(2*height_button), 2*height_button, height_button, height_button, "@-4||")
- stop_b = fltk:Fl_Button(i+(3*height_button), 2*height_button, height_button, height_button, "@-4square")
+ sign_b = fltk:Fl_Button(i, 2*height_button, height_button, height_button, "@-4+")
+ sign_b:tooltip("Direction in time toggles between + or -")
+ stop_b = fltk:Fl_Button(i+(1*height_button), 2*height_button, height_button, height_button, "@-4square")
  stop_b:tooltip("STOP Planets & Sun animation")
- stop_b:callback(planet_animation)
- forward_b = fltk:Fl_Button(i+(4*height_button), 2*height_button, height_button, height_button, "@-4>")
- forward_b:tooltip("Planets & Sun slow animation from current date : one week between two plotting")
- forward_b:callback(planet_animation)
- fforward_b = fltk:Fl_Button(i+(5*height_button), 2*height_button, height_button, height_button, "@-4>>")
- fforward_b:callback(planet_animation)
- 
- reinit_b = fltk:Fl_Button(i+(6*height_button), 2*height_button, height_button, height_button, "@-4reload")
+ stop_b:callback(stop_timer)
+ forward_b = fltk:Fl_Button(i+(2*height_button), 2*height_button, height_button, height_button, "1")
+ forward_b:labelsize(labelsize)
+ forward_b:tooltip("Planets & Sun slow animation from current date : one day between updates")
+ forward_b:callback(get_timestep)
+ fforward_b = fltk:Fl_Button(i+(3*height_button), 2*height_button, height_button, height_button, "7")
+ fforward_b:labelsize(labelsize)
+ fforward_b:tooltip("Planets & Sun faster animation from current date : one week between updates")
+ fforward_b:callback(get_timestep)
+ vfforward_b = fltk:Fl_Button(i+(4*height_button), 2*height_button, height_button, height_button, "30")
+ vfforward_b:labelsize(labelsize)
+ vfforward_b:tooltip("Planets & Sun fastest animation from current date : one month between updates")
+ vfforward_b:callback(get_timestep)
+ play_b = fltk:Fl_Button(i+(5*height_button), 2*height_button, height_button, height_button, "@-4>")
+ play_b:labelsize(labelsize)
+ play_b:tooltip("Play Planets & Sun animation with current timestep")
+ play_b:callback(timer_planet_animation)
+ reinit_b = fltk:Fl_Button(i+(6*height_button), 2*height_button, height_button, height_button, "@-4undo")
  reinit_b:tooltip("Reset Date/Time to current and end animation")
  reinit_b:callback(reset_planets_anim)
+ --
+ magn_slider_s=fltk:Fl_Value_Slider(i, 0, (6*height_button), height_button, nil)
+ magn_slider_s:type(fltk.FL_HOR_NICE_SLIDER)
+ magn_slider_s:labelsize(8)
+ magn_slider_s:textsize(8)
+ magn_slider_s:value(4)
+ magn_slider_s:maximum(30)
+ magn_slider_s:minimum(-30)
+ magn_slider_s:tooltip("All Stars below this Magnitude will be displayed")
+ magn_slider_s:precision(0)
+ reinit_s = fltk:Fl_Button(i+(6*height_button), 0, height_button, height_button, "@-4reload")
+ reinit_s:tooltip("Reset upper limit Magnitude to 4 for Stars")
+ reinit_s:callback(reset_mag_star)
+ 
+ magn_slider_m=fltk:Fl_Value_Slider(i, height_button, (6*height_button), height_button, nil)
+ magn_slider_m:type(fltk.FL_HOR_NICE_SLIDER)
+ magn_slider_m:labelsize(8)
+ magn_slider_m:textsize(8)
+ magn_slider_m:value(6)
+ magn_slider_m:maximum(30)
+ magn_slider_m:minimum(-30)
+ magn_slider_m:tooltip("All Messier Objects below this Magnitude will be displayed")
+ magn_slider_m:precision(0)
+ reinit_m = fltk:Fl_Button(i+(6*height_button), height_button, height_button, height_button, "@-4reload")
+ reinit_m:tooltip("Reset upper limit Magnitude to 6 for Messier")
+ reinit_m:callback(reset_mag_mess)
+ --display constellations buttons
+ local width_b_const=21 --19 before
+ local height_b_const=15 --11, then 12, before 
+ j=(2*width_button)+(2*height_button)+width_button+(7*height_button)
+ x=j
+ y=0
+ for i=1,#constellation_abrev do
+      table.insert(co, fltk:Fl_Button(x, y, width_b_const, height_b_const, constellation_abrev[i]) )
+      co[#co]:tooltip(constellation_name[i])
+      co[#co]:labelsize(8)
+      co[#co]:callback( select_const )
+      x=x+width_b_const
+      if x>=(j+(30*width_b_const)) then
+         x=j
+         y=y+height_b_const
+      end
+ end
+ y=y+height_b_const
+ --
  --text for grid
  for i=24,0,-1 do
        k=0
@@ -1302,9 +1235,10 @@ end --end function
     fltk:fl_alert(comment_m[i])
     exit(0)
  end
- cmd_display()
- 
-  jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
+ --cmd_display()
+ dd,mm,yyyy,hh,mn,ss,t = get_date_time()
+ planetpositions.clearResultsTable()
+ jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
  planetpositions.computeAll(jd)
  extract_from_planets()  --for 1st display
  
