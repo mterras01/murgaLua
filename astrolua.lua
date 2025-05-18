@@ -66,12 +66,12 @@ season_m={}
 diff_m={}
 comment_m={}
 
---database / tables : tables for planets & Sun info data
-ra_h_p={0,0,0,0,0,0,0,0,0,0}
-ra_m_p={0,0,0,0,0,0,0,0,0,0}
-ra_s_p={0,0,0,0,0,0,0,0,0,0}
-decl_p={0,0,0,0,0,0,0,0,0,0}
-comment_p={"","","","","","","","","",""}
+--database / tables : tables for planets & Sun & Moon info data
+ra_h_p={0,0,0,0,0,0,0,0,0,0,0} ----11th celestial object is moon for all these tables
+ra_m_p={0,0,0,0,0,0,0,0,0,0,0}
+ra_s_p={0,0,0,0,0,0,0,0,0,0,0}
+decl_p={0,0,0,0,0,0,0,0,0,0,0}
+comment_p={"","","","","","","","","","",""} --11th celestial object is moon
 
 --GUI
 window=object
@@ -108,6 +108,7 @@ sign_timestep=1 --default=direction's time for planets' animation is future (pas
 timestep=0 --unit of time between two plotting (julian date format, nb of millisec)
 timebeg=0 --beginning in time of the current animation (julian date format, nb of millisec)
 timelapsefactor=10000 --time scale = increasing => lower animation speed, decreasing => higher animation speed
+tron=0
 
 --location for database files (ONE path for all files)
 pathname=""
@@ -393,13 +394,13 @@ function extract_from_planets()
   local ra_planet,decl_planet
   local rahh,ramn,rass
   local decdeg,decmn,decss
-  
+  local dd,mm,yyyy,hh,mn,ss
   --init global table, in case of update
-  ra_h_p={0,0,0,0,0,0,0,0,0,0}
-  ra_m_p={0,0,0,0,0,0,0,0,0,0}
-  ra_s_p={0,0,0,0,0,0,0,0,0,0}
-  decl_p={0,0,0,0,0,0,0,0,0,0}
-  comment_p={"","","","","","","","","",""}
+  ra_h_p={0,0,0,0,0,0,0,0,0,0,0} ----11th celestial object is moon for all these tables
+  ra_m_p={0,0,0,0,0,0,0,0,0,0,0}
+  ra_s_p={0,0,0,0,0,0,0,0,0,0,0}
+  decl_p={0,0,0,0,0,0,0,0,0,0,0}
+  comment_p={"","","","","","","","","","",""} --11th celestial object is moon
   
   numplanet=1
   for i=1,#planetpositions.results do
@@ -439,6 +440,20 @@ exit(0)
           end
        end
   end
+  numplanet=11 --Moon, not a planet
+  if jd>0 then
+     --continue
+  else
+     dd,mm,yyyy,hh,mn,ss,t=get_date_time()
+     jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
+  end
+  ra,dec,d=planetpositions.getGeocentricMoonPos(jd)
+  ra_h_p[numplanet] = floor(ra)
+  ra_m_p[numplanet] = floor((ra-floor(ra))*60)
+  ra_s_p[numplanet] = 0 --no use, low accuracy flor plotting is expected
+  decl_p[numplanet] = dec
+  st = "Celestial Object= " .. planetpositions.planetNames[numplanet] .."\nRA=".. ra_h_p[numplanet].."H ".. ra_m_p[numplanet].."mn " ..ra_s_p[numplanet] .."sec " .."\nDECL="..decl_p[numplanet] .."\nDIST="..d.. "AU"
+  comment_p[numplanet] = st
 end --end function
 
 function draw_planet_animation()
@@ -537,7 +552,11 @@ function planet_animation()
  ask_night() --look for parameter night or day vision? windowbg / gridcol / labelcol
  plot_planets()
  Fl:check()
- window:redraw()
+ if tron==1 then
+    --no redraw() => trajectory is visible and 
+ else
+    window:redraw()
+ end
  --window:show()
 end --end function
 
@@ -648,6 +667,27 @@ function plot_planets()
           planetsb[i]:hide()
        end
   end
+  --plotting moon
+  i=11
+  posx= floor(((24-(ra_h_p[i]+(ra_m_p[i]/60)+(ra_s_p[i]/3600)))*grid_hor_width)+grid_decx)      
+  if decl_p[i]>0 then
+     posy=floor((80-decl_p[i])*pixelsperdeg)+grid_decy
+  else
+     posy=floor(-1*decl_p[i]*pixelsperdeg)+grid_mid_vert --+grid_decy
+  end
+  if p_button:value() == 1 then
+        --all planets except barycenter earth/moon
+        planetsb[i]:position(posx, posy)
+        planetsb[i]:labelsize(12)
+        --planetsb[i]:labelcolor(256)
+       planetsb[i]:labelcolor(labelcol)
+       planetsb[i]:redraw_label()
+       planetsb[i]:redraw()
+       planetsb[i]:show()
+  else
+     planetsb[i]:hide()
+  end
+  
 end --end function
 
 function ask_night()
@@ -689,6 +729,8 @@ function show_objects()
     jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
     planetpositions.computeAll(jd)
     extract_from_planets()
+    ra,dec,d=planetpositions.getGeocentricMoonPos(jd)
+--print("Moon Pos at JD=" .. jd .."\nRA="..ra.."\nDecl=".. dec.."\nDist="..d .. "AU, ie " .. (d*149597870.7).. " km")
  else
 --print("jd=" .. jd)
  end
@@ -697,6 +739,7 @@ function show_objects()
  plot_stars()
  plot_messier()
  plot_planets()
+
  window:redraw()
  window:show()
 end --end function
@@ -826,13 +869,26 @@ fltk:fl_alert(comment_bsc[i])
  end
 end --end function
 
+function traceon()
+ --toggles between trace ON and trace OFF for planets animation : partial redrawing enables visualization of celestial body's trajectory
+ if s1_button:label() == "ON" then
+    s1_button:label("OFF")
+    s1_button:redraw()
+    tron=0
+ else
+    s1_button:label("ON")
+    s1_button:redraw()
+    tron=1
+ end
+end --end function
+
 function main_display()
  local i,j,k,l,st,b,c,st2,x,y
  local time_cell_width=20
  local width_button,height_button=80,15
  local labelsize=10
  
- local planetcolors={51,54,221,93,84,215,247,247,215,3} --ordered from Mercury to Pluto (last old planet, now small body), and last=Sun (not planet)
+ local planetcolors={51,54,221,93,84,215,247,247,215,3,27} --ordered from Mercury to Pluto (last old planet, now small body), and forlast=Sun (not planet) and very last=Moon
  window = fltk:Fl_Window(0,0, width_window, height_window, "Global skymap")
 --GUI commands & parameters
  u_quit = fltk:Fl_Button(0, 0, width_button, height_button, "Quit")
@@ -888,8 +944,10 @@ function main_display()
  night_button:tooltip("Toggles between day and night vision")
  night_button:labelsize(labelsize)
  night_button:callback(night_vision)
- s1_button = fltk:Fl_Button((2*width_button)+height_button, 0, height_button, height_button, "S1")
- s1_button:labelsize(labelsize)
+ s1_button = fltk:Fl_Button((2*width_button)+height_button, 0, height_button, height_button, "ON")
+ s1_button:tooltip("Planet's trajectory is visible (trace ON)/invisible (trace OFF)")
+ s1_button:callback(traceon)
+ s1_button:labelsize(labelsize-2)
  s2_button = fltk:Fl_Button((2*width_button), height_button, height_button, height_button, "S2")
  s2_button:labelsize(labelsize)
  s3_button = fltk:Fl_Button((2*width_button)+height_button, height_button, height_button, height_button, "S3")
