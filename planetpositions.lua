@@ -103,7 +103,7 @@ extraTerms = {
    {-0.00041348,    0.68346318,   -0.10162547,    7.67025000}, --Neptune
    {-0.01262724,    0,             0,             0,}          --Pluto
 }
-planetNames={"Mercury","Venus","Earth","Mars","Jupiter","Saturn","Uranus","Neptune","Pluto","Sun"}
+planetNames={"Mercury","Venus","Earth","Mars","Jupiter","Saturn","Uranus","Neptune","Pluto","Sun","Moon"}
 
 function computePlanetPosition(jd,elements,rates,extraTerms)
     local temp={}
@@ -377,3 +377,41 @@ javascript function GregorianTojulianDate() to convert to Lua if needed
 
     document.write("julian date = " + jd);
 ]]--
+
+torad=pi/180.0
+
+function sind(r)
+	return sin(r*torad)
+end --end function
+
+function cosd(r)
+	return cos(r*torad)
+end --end function
+
+--Low precision geocentric moon position (RA,DEC) from Astronomical Almanac page D22 (2017 ed), best in [1900-2100]
+--other source=https://sohcahtoa.org.uk/kepler/jsmoon.html
+function getGeocentricMoonPos(jd)
+	T = (jd-2451545)/36525
+	L = 218.32 + 481267.881*T + 6.29*sind(135.0 + 477198.87*T) - 1.27*sind(259.3 - 413335.36*T) + 0.66*sind(235.7 + 890534.22*T) + 0.21*sind(269.9 + 954397.74*T) - 0.19*sind(357.5 + 35999.05*T) - 0.11*sind(186.5 + 966404.03*T)
+	B = 5.13*sind( 93.3 + 483202.02*T) + 0.28*sind(228.2 + 960400.89*T) - 0.28*sind(318.3 + 6003.15*T) - 0.17*sind(217.6 - 407332.21*T)
+	P = 0.9508 + 0.0518*cosd(135.0 + 477198.87*T) + 0.0095*cosd(259.3 - 413335.36*T) + 0.0078*cosd(235.7 + 890534.22*T) + 0.0028*cosd(269.9 + 954397.74*T)
+
+	SD=0.2724*P
+	r=1/sind(P) --distance' in earth radii unit, ie 6371km. To convert to AU
+	r=r*6371 --distance in km
+	--1AU = 149597870700 m
+	--1AU = 149597870.7 km
+	--1km = 1/149597870.7 AU
+	r = r/149597870.7 --distance in AU
+
+	l = cosd(B) * cosd(L)
+	m = 0.9175*cosd(B)*sind(L) - 0.3978*sind(B)
+	n = 0.3978*cosd(B)*sind(L) + 0.9175*sind(B)
+
+	ra=atan2(m,l)
+	if ra<0 then
+	   ra=ra+(2*pi)
+	end
+	dec=asin(n)
+	return (ra/torad/15),(dec/torad),r
+end --end function	
