@@ -75,7 +75,7 @@ comment_p={"","","","","","","","","",""}
 
 --GUI
 window=object
-width_twindow, height_twindow= 1500, 768
+width_window, height_window= 1500, 768
 u_quit,v_button=object,object
 magn_slider_s=object
 magn_slider_m=object
@@ -99,9 +99,12 @@ grid_hor_width=60
 grid_vert_height=40
 grid_decx=37
 grid_decy=80
+grid_mid_vert=0
+pixelsperdeg=1
 
 --time vars
 jd=0 --julian date
+sign_timestep=1 --default=direction's time for planets' animation is future (past is -1)
 timestep=0 --unit of time between two plotting (julian date format, nb of millisec)
 timebeg=0 --beginning in time of the current animation (julian date format, nb of millisec)
 timelapsefactor=10000 --time scale = increasing => lower animation speed, decreasing => higher animation speed
@@ -455,6 +458,18 @@ print(st)
  end
 end --end function
 
+function get_timestep_sign()
+ --set direction of time animation : +=future, -=past
+ --ATTENTION! function JulianDateFromUnixTime() in module planetpositions.lua is Not valid for dates before Oct 15, 1582
+ if sign_b:label() == "@-4->" then
+    sign_timestep = -1
+    sign_b:label("@-4<-")
+ else
+    sign_timestep = 1
+    sign_b:label("@-4->")
+ end
+end --end function
+
 function get_timestep()
  --this function is called once BEFORE animation
  if Fl.event_inside(forward_b) == 1 then
@@ -499,7 +514,7 @@ function planet_animation()
  jd=tonumber(jd_button:label()) --displayed jd
  t = planetpositions.UnixTimeFromJulianDate(jd)/1000
  timebeg=t
- t=timebeg+timestep
+ t=timebeg+(timestep*sign_timestep)
  planetpositions.clearResultsTable()
  jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
  window:make_current()
@@ -517,7 +532,13 @@ function planet_animation()
  planetpositions.computeAll(jd)
  extract_from_planets()
  
- show_objects()
+ --show_objects()
+ --window:make_current()
+ ask_night() --look for parameter night or day vision? windowbg / gridcol / labelcol
+ plot_planets()
+ Fl:check()
+ window:redraw()
+ --window:show()
 end --end function
 
 function plot_messier()  
@@ -531,9 +552,11 @@ function plot_messier()
        else
           posx= floor(((24-(ra_h_m[i]+(ra_m_m[i]/60)))*grid_hor_width)+grid_decx)
           if decl_m[i]>0 then
-              posy=floor((80-decl_m[i])*4)+grid_decy
+              --posy=floor((80-decl_m[i])*4)+grid_decy
+              posy=floor((80-decl_m[i])*pixelsperdeg)+grid_decy
           else
-              posy=floor(-1*decl_m[i]*4)+320+grid_decy
+              --posy=floor(-1*decl_m[i]*4)+320+grid_decy
+              posy=floor(-1*decl_m[i]*pixelsperdeg)+grid_mid_vert
           end
           if magn_m[i] < magn_slider_m:value() then                
              messiersb[i]:position(posx, posy)
@@ -560,9 +583,11 @@ function plot_stars()
           if magn[i] < magn_slider_s:value() then --magnitude limit condition
              posx= floor(((24-(ra_h[i]+(ra_m[i]/60)+(ra_s[i]/3600)))*grid_hor_width)+grid_decx)
              if decl[i]>0 then
-                posy=floor((80-decl[i])*4)+grid_decy
+                --posy=floor((80-decl[i])*4)+grid_decy
+                posy=floor((80-decl[i])*pixelsperdeg)+grid_decy
              else
-                posy=floor(-1*decl[i]*4)+320+grid_decy
+                --posy=floor(-1*decl[i]*4)+320+grid_decy
+                posy=floor(-1*decl[i]*pixelsperdeg)+grid_mid_vert
              end
              starsb[i]:position(posx, posy)
              starsb[i]:labelsize(8)
@@ -597,14 +622,16 @@ function plot_planets()
   local i
   local posx,oldrposx,rposx,posy,f,decx
   local c,d
-
+  
   for i=1,#planetsb do
        --for earth/moon barycenter "EM", no change of pos: keep out of view (Attention: EM pos is needed for other planets computations
        posx= floor(((24-(ra_h_p[i]+(ra_m_p[i]/60)+(ra_s_p[i]/3600)))*grid_hor_width)+grid_decx)      
        if decl_p[i]>0 then
-           posy=floor((80-decl_p[i])*4)+grid_decy
+           --posy=floor((80-decl_p[i])*4)+grid_decy -- "*4" was for "40 pixels per 10 degrees"
+           posy=floor((80-decl_p[i])*pixelsperdeg)+grid_decy
        else
-           posy=floor(-1*decl_p[i]*4)+320+grid_decy
+           --posy=floor(-1*decl_p[i]*4)+320+grid_decy -- "*4" was for "40 pixels per 10 degrees" and 320 for midscreen's mark
+           posy=floor(-1*decl_p[i]*pixelsperdeg)+grid_mid_vert --+grid_decy
        end
        if p_button:value() == 1 then
           if i ~= 3 then
@@ -806,7 +833,7 @@ function main_display()
  local labelsize=10
  
  local planetcolors={51,54,221,93,84,215,247,247,215,3} --ordered from Mercury to Pluto (last old planet, now small body), and last=Sun (not planet)
- window = fltk:Fl_Window(0,130, width_twindow, height_twindow, "Global skymap")
+ window = fltk:Fl_Window(0,0, width_window, height_window, "Global skymap")
 --GUI commands & parameters
  u_quit = fltk:Fl_Button(0, 0, width_button, height_button, "Quit")
  u_quit:color(fltk.FL_RED)
@@ -892,8 +919,9 @@ function main_display()
  --
  --planets animation buttons
  i=(2*width_button)+(2*height_button)+width_button
- sign_b = fltk:Fl_Button(i, 2*height_button, height_button, height_button, "@-4+")
- sign_b:tooltip("Direction in time toggles between + or -")
+ sign_b = fltk:Fl_Button(i, 2*height_button, height_button, height_button, "@-4->")
+ sign_b:callback(get_timestep_sign)
+ sign_b:tooltip("Set direction in time toggling between <= (past) and => (future)")
  stop_b = fltk:Fl_Button(i+(1*height_button), 2*height_button, height_button, height_button, "@-4square")
  stop_b:tooltip("STOP Planets & Sun animation")
  stop_b:callback(stop_timer)
@@ -1212,9 +1240,25 @@ end --end function
  
  print("W = " .. Fl:w() .. "\nH = " .. Fl:h())
  if Fl:w() >= 1200 and Fl:h() >= 768 then
-    --continue
+    --optimize main window's size
+    width_window = Fl:w()-100
+    if Fl:h()>768 then
+       height_window = Fl:h()-100
+    else
+       height_window = Fl:h()
+    end
+    --adjust grid's graphic parameters
+    --[-[
+    grid_hor_width=math.floor(width_window/25) --previous fixed value 60
+    grid_vert_height=math.floor((height_window-80)/17) --previous fixed value 40
+    grid_decx=37
+    grid_decy=80
+    grid_mid_vert=grid_decy+(8*grid_vert_height) 
+    pixelsperdeg = floor(grid_vert_height/10)
+print("pixelsperdeg = " .. pixelsperdeg )
+    --]]--
  else
-    st="Sorry, a minimal resolution (Width x Height) = 1500 x 768 is required for this app displaying up to 9200+ celestial objects.\nChange your screen resolution or change host computer !"
+    st="Sorry, a minimal resolution (Width x Height) = 1200 x 768 is required for this app displaying up to 9200+ celestial objects.\nChange your screen resolution or change host computer !"
     fltk:fl_alert(st)
     exit(0)
  end
