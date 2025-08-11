@@ -1,7 +1,7 @@
 #!/bin/murgaLua
 
 --this murgaLua script has been tested with version 0750 https://github.com/igame3dbill/MurgaLua_0.7.5
---goals=it gives a sky card, adjusting some parameters :
+--goals=plotting a sky card, adjusting some parameters :
 -- -- max visible magnitudes for celestial objects (user defined)
 --planet's locations
 -- https://celestialprogramming.com/planets_with_keplers_equation.html (code written entirely in js)
@@ -35,8 +35,21 @@ constellation_name={}
 constellation_abrev={}
 selconst=0 --index of selected constellation
 
---database / tables : tables for bright star catalog data
-filename_bsc="yalebsc.dat"
+--database / tables : tables from a subset of bright star catalog, built with script "astrobuildbsc.lua"
+filename_bsc="newbfc.csv"
+separator_bsc=";"
+hr_star={}
+bayer_flamesteed={}
+ra_h={}
+ra_m={}
+ra_s={}
+decl={}
+magn={}
+const={}
+star={}
+comment_bsc={}
+--[[
+filename_bsc="yalebsc.dat" --old version of database
 ra_h={}
 ra_m={}
 ra_s={}
@@ -48,6 +61,7 @@ let={}
 const={}
 star={}
 comment_bsc={}
+]]--
 
 --database / tables : tables for messier catalog data
 filename_mess="Messier_Catalog_110_List3.csv"
@@ -163,60 +177,83 @@ function define_textfile_origin(data)
   end
 end --end function
 
-function extract_from_bsc_line(line) 
- local st,i,constp
+function extract_from_bsc2_line(line) 
+ local st,i,j,nb,constp,occurs,pos,loc
+ local cdecl,decl_sign, decl_d, decl_m, decl_s, mag_sign
+ 
  if line == nil then
     return
  end
-    right_asc_hh=tonumber( sub(line,1,2) )
-    right_asc_mm=tonumber( sub(line,3,4) )
-    right_asc_ss=tonumber( sub(line,5,6) )
---print("=====> RA " ..right_asc_hh .. "h " .. right_asc_mm .. "mn " .. right_asc_ss .."s ")
-    --declination
-    if sub(line,7,7) == "-" then
-       sign=-1
-    elseif sub(line,7,7) == "+" then
-       sign=1
-    else 
-print("Erreur de format, line = " .. line)
-exit(0)
-    end
-    declination=sign*tonumber( sub(line,8,11) )/100
---print("=====> DECL " ..declination  .. "deg ")
-    --magnitude
-    if sub(line,12,12) == "-" then
-       sign=-1
-       magnitude=sign*tonumber( sub(line,13,14) )/10
+ _, occurs = line:gsub(separator_bsc, "") --check for 11 separator occurences
+ if occurs ~= 11 then
+    return
+ end
+ pos=1
+ loc=find(line,separator_bsc,pos,true) --1st separator
+ if loc then
+    st=sub(line,pos,loc-1)
+    nb=tonumber(st)
+    table.insert(hr_star, nb)
+ end
+ pos=loc+1
+ loc=find(line,separator_bsc,pos,true) --2nd separator
+ if loc then
+    st=sub(line,pos,loc-1)
+    table.insert(bayer_flamesteed, st)
+ end
+ pos=loc+1 --afer 2nd separator = formatted area (with separator) = Right Ascension hh;mm;ss;sign of decl;dd;mm;ss;magnitude 5 digits; etc.
+ --sample : 1st line
+ --1;          ;00;05;10;+;45;13;45;+6.70;   ;in Andromeda
+ if loc then
+    st=sub(line,pos,pos+1)
+    nb=tonumber(st)
+    table.insert(ra_h, nb)
+    st=sub(line,pos+3,pos+4)
+    nb=tonumber(st)
+    table.insert(ra_m, nb)
+    st=sub(line,pos+6,pos+7)
+    nb=tonumber(st)
+    table.insert(ra_s, nb)
+    if sub(line,pos+9,pos+9) == "+" then
+       decl_sign=1
     else
-       sign=1
-       magnitude=sign*tonumber( sub(line,12,14) )/100
+      decl_sign=-1
     end
---print("=====> magnitude " ..magnitude )
-    --graphic symbol
-    symbol = sub(line,15,16)
-    if symbol == "SS" or symbol == "SD" or symbol == "SV" then
---print("=====> graphical symbol " .. symbol)
+    st=sub(line,pos+11,pos+12)
+    decl_d=tonumber(st)
+    st=sub(line,pos+14,pos+15)
+    decl_m=tonumber(st)
+    st=sub(line,pos+17,pos+18)
+    decl_s=tonumber(st)
+    cdecl = decl_sign*tonumber(format('%2.3f', (decl_d+(decl_m/60)+(decl_s/3600) ) ) )
+    table.insert(decl, cdecl)
+    if sub(line,pos+20,pos+20) == "+" then
+       mag_sign=1
     else
-print("Erreur de format, line = " .. line)
-exit(0)
+       mag_sign=-1
     end
-    --string data...
-    spectral_type = sub(line,17,18)
-    letter = sub(line,19,20)
-    constellation = sub(line,21,23)
-    starname = sub(line,24,-2)
-    
-    --set values
-    table.insert(ra_h, right_asc_hh)
-    table.insert(ra_m, right_asc_mm)
-    table.insert(ra_s, right_asc_ss)
-    table.insert(decl, declination)
+    st=sub(line,pos+21,pos+24)
+    nb=tonumber(st)
+    magnitude=mag_sign*nb
     table.insert(magn, magnitude)
-    table.insert(sym, symbol)
-    table.insert(spect, spectral_type)
-    table.insert(let, letter)
+    --last two fields are strings
+    constellation = upper(sub(line,pos+26,pos+28))
+    if constellation == "   " then
+       constellation = "" --empty string
+    end
     table.insert(const, constellation)
+    j=find(line,"\n",1,true)
+    if j then
+       starname = sub(line,pos+30,j-1)
+    else
+       starname = sub(line,pos+30)
+    end
+    if starname == nil then
+       starname =""
+    end
     table.insert(star, starname)
+ end
+
     --find complete constellation name from its abrev
     constp=""
     for i=1,#constellation_abrev do
@@ -228,13 +265,8 @@ exit(0)
     if constp == "" then
        constp=const[#const]
     end
-    st="RA="..ra_h[#ra_h] .."h ".. ra_m[#ra_m] .."mn " .. ra_s[#ra_s].. "s\nDecl=" .. decl[#decl] .."deg\nMagn=".. magn[#magn] .."\nGrphSym=" ..sym[#sym] .."\nSpec Type=" .. spect[#spect] .."\nLetter=" .. let[#let] .."\n" .. "Const=" .. constp .. "\nStar=" ..star[#star]
+    st="HR Number " .. hr_star[#hr_star] .. "\nBayer Flamesteed name=" ..bayer_flamesteed[#bayer_flamesteed].. "\nRA="..ra_h[#ra_h] .."h ".. ra_m[#ra_m] .."mn " .. ra_s[#ra_s].. "s\nDecl= "..(decl_sign*decl_d) .."deg"..decl_m.."mn"..decl_s.."secs (original) (decimal computed=" .. decl[#decl] .."deg)\nMagn=".. magn[#magn] .."\n" .. "Const=" .. constp .. "\nStar=" ..star[#star]
     table.insert(comment_bsc, st)
-
---print("=====> spectral type " ..spectral_type)
---print("=====> letter " ..letter)
---print("=====> constellation " ..constellation)
---print("=====> starname " ..starname)
 end --end function
 
 function extract_from_const_line(line)
@@ -1089,7 +1121,12 @@ function main_display()
   end
   --buttons for stars, messiers, and planets, created with a "standard" location (not in visible area)
   for i=1,#star do
-      st=star[i] ..""
+      --limit -with greatest magnitude- nb of stars with a button label for global visibility
+      if magn[i]<=2.6 then
+         st=star[i] ..""
+      else 
+         st=nil --no display label for stars with greater magnitude (=less bright)
+      end
       table.insert(starsb, fltk:Fl_Button(-30, -30, 4, 4,st) )
       starsb[#starsb]:box(fltk.FL_FLAT_BOX)
       starsb[#starsb]:color(1)
@@ -1208,6 +1245,8 @@ function dl_bsc()
  local buffer="" 
  local nblines=0
  local pos,j
+ 
+--new version of BSC database 110825
 --csv file for celestial objects data loading
 --Bright Star Catalogue / dezipped file yalebsc.tar.bz2
 --source=https://ian.macky.net/pat/yalebsc/yalebsc.tar.bz2
@@ -1231,13 +1270,16 @@ print("File " .. filename_bsc .. " opened for reading !")
              j = find(buffer,"\n",pos)
              if j then
 	            line = sub(buffer, pos, j)
-                extract_from_bsc_line(line)
+                extract_from_bsc2_line(line)
                 pos = j+1
                 nblines=nblines+1
              else
                   break
              end
        end
+    else
+print("File " .. filename_bsc .. " is not present in dir " .. pathname)
+os.exit(0)
     end
  end
 end --end function
