@@ -381,7 +381,7 @@ function save_newbsc()
          buffer = buffer .. csv_separator .. ""
       end
       buffer=buffer.. csv_separator .. format('%02d',cra_h[i]).. csv_separator.. format('%02d',cra_m[i])..csv_separator.. format('%02d',cra_s[i])
-      if cdeclsign == -1 then
+      if cdeclsign[i] == -1 then
          buffer=buffer.. csv_separator.. "-"
       else
          buffer=buffer.. csv_separator.. "+"
