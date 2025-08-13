@@ -80,7 +80,7 @@ comment_p={"","","","","","","","","","",""} --11th celestial object is moon
 -- Copyright (c) 2005-2023, Marc van der Sluys - https://hemel.waarnemen.com
 -- adapted to Lua by MT 110825
 asterisms={
-"And  20 8961 8976 8965 8762 8965   68  165   15  165  163  215  163  165  337  603  337  464  337  269  226"
+"And  21 8961 8976 8965 8762 8965   -1   68  165   15  165  163  215  163  165  337  603  337  464  337  269  226"
 ,"Ant   4 4273 4104 3871 3765"
 ,"Aps   4 5470 6020 6102 6163"
 ,"Aql  12 7602 7557 7525 7377 7235 7377 7570 7710 7570 7377 7236 7193"
@@ -108,8 +108,7 @@ asterisms={
 ,"CrA   6 7152 7226 7254 7259 7242 7188"
 ,"CrB   7 5971 5947 5889 5849 5793 5747 5778"
 ,"Crt  10 4567 4514 4405 4343 4287 4382 4405 4382 4402 4468"
-,"Cru   2 4730 4763"
-,"Cru   2 4853 4656"
+,"Cru   5 4730 4763   -1 4853 4656"
 ,"Crv   6 4623 4630 4662 4757 4786 4630"
 ,"Cyg  11 7417 7615 7796 7949 8115 7949 7796 7924 7796 7528 7420"
 ,"Del   6 7852 7882 7906 7948 7928 7882"
@@ -142,7 +141,7 @@ asterisms={
 ,"Oph   9 6556 6299 6149 6056 6075 6175 6378 6603 6556"
 ,"Ori  30 1948 2004 1713 1852 1790 1879 2061 2124 2199 2159 2047 2135 2199 2124 2061 1948 1903 1852 1790 1543 1552 1567 1601 1567 1552 1543 1544 1580 1638 1676"
 ,"Pav  12 7790 7913 8181 7913 7590 6982 6582 6745 6855 7074 7665 7913"
-,"Peg  13 8454 8650 8775   15 8775 8781   39   15   39 8781 8634 8450 8308"
+,"Peg  12 8454 8650 8775 8781   -1   39   15   -1 8781 8634 8450 8308"
 ,"Per   9  936  941 1017  915 1017 1122 1220 1228 1203"
 ,"Phe  10   99  322  429  440  429  322  338  191   25   99"
 ,"Pic   3 2550 2042 2020"
@@ -807,29 +806,6 @@ function plot_planets()
   
 end --end function
 
-function plotter_asterism(constast, nodes_ast, hr_ast_array)
- local i, j, x1, y1, x2, y2
- 
- fltk.fl_color(4)
- for i=1,#hr_ast_array-1 do
-      j=hr_ast_array[ i ] --star index
-      x1= floor(((24-(ra_h[j]+(ra_m[j]/60)+(ra_s[j]/3600)))*grid_hor_width)+grid_decx)
-      if decl[j]>0 then
-         y1=floor((80-decl[j])*pixelsperdeg)+grid_decy
-      else
-         y1=floor(-1*decl[j]*pixelsperdeg)+grid_mid_vert
-      end
-      j=hr_ast_array[ i+1 ] --next star index
-      x2= floor(((24-(ra_h[j]+(ra_m[j]/60)+(ra_s[j]/3600)))*grid_hor_width)+grid_decx)
-      if decl[j]>0 then
-         y2=floor((80-decl[j])*pixelsperdeg)+grid_decy
-      else
-         y2=floor(-1*decl[j]*pixelsperdeg)+grid_mid_vert
-      end
-      fltk.fl_line(x1, y1, x2,y2)
- end
-end --end function
-
 function get_info_asterism2( cname )
  --get constellation's info from its (3 cars-text) name
  local i,j,st,idx
@@ -861,61 +837,6 @@ print("Detailed node array with HR_numbers = " .. table.concat(hr_nb_array,"//")
  end
  --]]--
  return constast,nodes_ast,hr_nb_array
-end --end function
-
-function get_info_asterism( idx )
- local i,j,st
- local constast,nodes_ast
- local hr_nb_array={}
- --asterism samples
- --"Sco  17 5985 6084 5953 6084 5944 6084 6134 6165 6241 6247 6271 6380 6553 6615 6580 6527 6508"
- --"Aps   4 5470 6020 6102 6163"
- --"Cas   5  542  403  264  168   21"
- constast = upper( sub(asterisms[idx], 1,3) )
- st=sub(asterisms[idx], 6,7)
- nodes_ast = tonumber(st)
- for i=9,#asterisms[idx],5 do
-      st=sub(asterisms[idx], i,(i+3))
-      j=tonumber(st)
-      table.insert(hr_nb_array, j)
- end
- if #hr_nb_array == nodes_ast then
-print("Number of Nodes in array for constellation ".. constast .. " (".. nodes_ast ..") is equal to computed nodes tables (" ..#hr_nb_array.. ")")
-print("Detailed node array with HR_numbers = " .. table.concat(hr_nb_array,"//") )
- end
- return constast,nodes_ast,hr_nb_array
-end --end function
-
-function plot_asterisms(cname)
- local i, j, const_name, st
- local hr_ast_array={}
- 
---window:make_current()
- if cname then
-    --plot this asterism described by constellation's name
-    for j=1,#asterisms do
-         constasterisms = upper( sub(asterisms[j], 1,3) )
-         if cname  == constasterisms then
-            constast, nodes_ast, hr_ast_array = get_info_asterism( j )
-            plotter_asterism(constast, nodes_ast, hr_ast_array)
-         end
-    end
- else
-    --plot ALL asterism
-    for i=1,#constellation_abrev do
-         for j=1,#asterisms do
-              constasterisms = upper( sub(asterisms[j], 1,3) )
-              if cname then
-              else
-                 if constasterisms == constellation_abrev[i] then
-                    constast, nodes_ast, hr_ast_array = get_info_asterism( j )
-                    plotter_asterism(constast, nodes_ast, hr_ast_array)
-                 end
-              end
-         end
-    end
- end
- Fl:check()
 end --end function
 
 function ask_night()
@@ -967,11 +888,6 @@ function show_objects()
  plot_stars()
  plot_messier()
  plot_planets()
- --window:make_current()
- --plot_asterisms("ORI")
- --plot_asterisms("UMA")
- --plot_asterisms("CAS")
- 
  window:redraw()
  window:show()
 end --end function
@@ -986,11 +902,12 @@ function get_hr_array_idx( hr_ast_array_idx )
 end --end function
 
 function select_const2()
- --Version 2 for plotting selected constellation asterism 
+ --callback function V2 for plotting selected constellation asterism 
  local i,x1,y1,x2,y2,cname,cidx
- local constast, nodes_ast
+ local constast, nodes_ast,asterism_color
  local hr_ast_array={}
  local previous_selconst=0
+ --find clicked button=selected constellation (3-cars acronym & index)
  for i=1,#co do
       if Fl.event_inside(co[ i ]) == 1 then
          cname = co[ i ]:label() --less smart than self:label(), but self solution does not work for some reason
@@ -1000,8 +917,9 @@ function select_const2()
  end
  if cname == nil then 
     return
- end 
- --search previous GUI selection BUTTON for constellation, if any
+ end
+ --GUI constellations' buttons update is ONLY here
+ --search (unique) previous GUI selection BUTTON for constellation, if any
  for i=1,#co do
       if co[i]:color() == fltk.FL_RED then
          previous_selconst=i
@@ -1009,52 +927,65 @@ function select_const2()
       co[i]:color(fltk.FL_BACKGROUND_COLOR)
       co[i]:redraw()
  end
- for i=1,#co do
-       if i == cidx then
---print(constellation_name[i] .. " has been selected !")
-          co[i]:color(fltk.FL_RED)
-          if previous_selconst>0 then
-             co[previous_selconst]:color(fltk.FL_BACKGROUND_COLOR)
-          end
-          if previous_selconst == i then
-             selconst=0
-          else
-             selconst=i
-          end
-          break
-       end
+ if previous_selconst>0 then
+    co[previous_selconst]:color(fltk.FL_BACKGROUND_COLOR)
+    co[previous_selconst]:redraw()
  end
- constast, nodes_ast, hr_ast_array = get_info_asterism2( cname )
---DEBUG INFO 
-print(constast.. "-- " .. nodes_ast .. " -- (#hr_ast_array=)".. #hr_ast_array ..")" .. table.concat(hr_ast_array,"//") )
-for i=1,#hr_ast_array do
-    --j=hr_ast_array[ i ]
-    j = get_hr_array_idx( hr_ast_array[ i ] )
-    print( "HR" .. hr_star[ j ] .. ". RA=" ..ra_h[ j ].."h".. ra_m[ j ].."mn".. ra_s[ j ].. "sec, DECL=".. decl[ j ] )
-end
+ if previous_selconst == cidx then
+    --unselect color already set
+    co[cidx]:redraw()
+    --remove plotting
+    window:redraw()
+    return --quit, no more operations needed
+ else
+    co[cidx]:color(fltk.FL_RED)
+    co[cidx]:redraw()
+ end
  
+ constast, nodes_ast, hr_ast_array = get_info_asterism2( cname )
+--[[
+--DEBUG INFO 
+--print(constast.. "-- " .. nodes_ast .. " -- (#hr_ast_array=)".. #hr_ast_array ..")" .. table.concat(hr_ast_array,"//") )
+for i=1,#hr_ast_array do
+    j = get_hr_array_idx( hr_ast_array[ i ] )
+--print( "HR" .. hr_star[ j ] .. ". RA=" ..ra_h[ j ].."h".. ra_m[ j ].."mn".. ra_s[ j ].. "sec, DECL=".. decl[ j ] )
+end
+--]]--
+ if night_button:labelcolor() == fltk.FL_BLACK then
+    --best color / night vision
+    asterism_color=2
+ else
+    --best color / day vision
+    asterism_color=4
+ end
  window:make_current() -- needed for all drawing functions
- fltk.fl_color(4)
+ fltk.fl_color(asterism_color)
  fltk.fl_line_style(fltk.FL_SOLID, 2, nil) --must be set only AFTER drawing color
  -- Linux will segfault unless we set the font before using fl_draw (=text drawing) with, for example, fltk.fl_font(fltk.FL_HELVETICA_BOLD,20)
   for i=1,#hr_ast_array-1 do
-      --j=hr_ast_array[ i ] --star index
-      j = get_hr_array_idx( hr_ast_array[ i ] )  --star index
-      x1= floor(((24-(ra_h[j]+(ra_m[j]/60)+(ra_s[j]/3600)))*grid_hor_width)+grid_decx)
-      if decl[j]>0 then
-         y1=floor((80-decl[j])*pixelsperdeg)+grid_decy
+      if hr_ast_array[ i ] == -1 then 
+         --no plotting : "plotter up"
       else
-         y1=floor(-1*decl[j]*pixelsperdeg)+grid_mid_vert
+         j = get_hr_array_idx( hr_ast_array[ i ] )  --star index
+         x1= floor(((24-(ra_h[j]+(ra_m[j]/60)+(ra_s[j]/3600)))*grid_hor_width)+grid_decx)
+         if decl[j]>0 then
+            y1=floor((80-decl[j])*pixelsperdeg)+grid_decy
+         else
+            y1=floor(-1*decl[j]*pixelsperdeg)+grid_mid_vert
+         end
+         j = get_hr_array_idx( hr_ast_array[ i+1 ] )  --next star index
+         if hr_ast_array[ i+1 ] == -1 then 
+            --no plotting : "plotter up"
+         else
+            x2= floor(((24-(ra_h[j]+(ra_m[j]/60)+(ra_s[j]/3600)))*grid_hor_width)+grid_decx)
+            if decl[j]>0 then
+               y2=floor((80-decl[j])*pixelsperdeg)+grid_decy
+            else
+               y2=floor(-1*decl[j]*pixelsperdeg)+grid_mid_vert
+            end
+            fltk.fl_line(x1, y1, x2,y2)
+         end
       end
-      --j=hr_ast_array[ i+1 ] --next star index
-      j = get_hr_array_idx( hr_ast_array[ i+1 ] )  --next star index
-      x2= floor(((24-(ra_h[j]+(ra_m[j]/60)+(ra_s[j]/3600)))*grid_hor_width)+grid_decx)
-      if decl[j]>0 then
-         y2=floor((80-decl[j])*pixelsperdeg)+grid_decy
-      else
-         y2=floor(-1*decl[j]*pixelsperdeg)+grid_mid_vert
-      end
-      fltk.fl_line(x1, y1, x2,y2)
  end
 end --end function
 
