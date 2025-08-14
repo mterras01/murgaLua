@@ -78,7 +78,7 @@ comment_p={"","","","","","","","","","",""} --11th celestial object is moon
 -- Licence: Creative commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0 - https://creativecommons.org/licenses/by-sa/4.0/)
 -- Source and documentation: https://github.com/MarcvdSluys/ConstellationLines
 -- Copyright (c) 2005-2023, Marc van der Sluys - https://hemel.waarnemen.com
--- adapted to Lua by MT 110825
+-- adapted to murgaLua by MT 110825
 asterisms={
 "And  21 8961 8976 8965 8762 8965   -1   68  165   15  165  163  215  163  165  337  603  337  464  337  269  226"
 ,"Ant   4 4273 4104 3871 3765"
@@ -146,11 +146,11 @@ asterisms={
 ,"Phe  10   99  322  429  440  429  322  338  191   25   99"
 ,"Pic   3 2550 2042 2020"
 ,"PsA  11 8728 8628 8478 8386 8326 8305 8431 8576 8695 8720 8728"
-,"Psc  19  360  383  352  360  437  510  596  489  294  224 9072 8969 8916 8878 8852 8911 8984 9004 8969"
+,"Psc  20  360  383  352  360  437  510  596  489  294  224   -1 9072 8969 8916 8878 8852 8911 8984 9004 8969"
 ,"Pup  10 3185 3045 2948 2922 2773 2451 2553 2878 3165 3185"
 ,"Pyx   3 3438 3468 3518"
 ,"Ret   6 1336 1355 1247 1264 1175 1336"
-,"Scl   4  280 9016 8863 8937"
+,"Scl   6  280  280   -1 9016 8863 8937"
 ,"Sco  17 5985 6084 5953 6084 5944 6084 6134 6165 6241 6247 6271 6380 6553 6615 6580 6527 6508"
 ,"Sct   5 7063 6973 6930 6973 6884"
 ,"Ser   5 6446 6561 6581 6869 7142"
@@ -162,7 +162,7 @@ asterisms={
 ,"Tel   3 6783 6897 6905"
 ,"TrA   5 6217 5671 5771 5897 6217"
 ,"Tri   4  622  664  544  622"
-,"Tuc   7 8540 8502 8848 9076   77  126 8848"
+,"Tuc   7 8540 8502 8848 9076   -1   77  126   -1 8848"
 ,"UMa  29 5191 5054 4905 4660 4554 4518 4377 4375 4377 4518 4335 4069 4033 4069 4335 4518 4554 4295 4301 4660 4301 3757 3323 3888 4295 3888 3775 3594 3569"
 ,"UMi   8  424 6789 6322 5903 5563 5735 6116 5903"
 ,"Vel  12 3206 3485 3734 3940 4216 4167 4023 3786 3634 3477 3426 3206"
@@ -903,10 +903,11 @@ end --end function
 
 function select_const2()
  --callback function V2 for plotting selected constellation asterism 
- local i,x1,y1,x2,y2,cname,cidx
- local constast, nodes_ast,asterism_color
+ local i,j,k,x1,y1,x2,y2,cname,cidx
+ local constast, nodes_ast,asterism_color,midpoint_asterism_idx,second_ast_color
  local hr_ast_array={}
  local previous_selconst=0
+ local linecolor, textcolor, linestyle, linewidth
  --find clicked button=selected constellation (3-cars acronym & index)
  for i=1,#co do
       if Fl.event_inside(co[ i ]) == 1 then
@@ -941,52 +942,113 @@ function select_const2()
     co[cidx]:color(fltk.FL_RED)
     co[cidx]:redraw()
  end
+ --ending buttons ops
  
- constast, nodes_ast, hr_ast_array = get_info_asterism2( cname )
---[[
---DEBUG INFO 
---print(constast.. "-- " .. nodes_ast .. " -- (#hr_ast_array=)".. #hr_ast_array ..")" .. table.concat(hr_ast_array,"//") )
-for i=1,#hr_ast_array do
-    j = get_hr_array_idx( hr_ast_array[ i ] )
---print( "HR" .. hr_star[ j ] .. ". RA=" ..ra_h[ j ].."h".. ra_m[ j ].."mn".. ra_s[ j ].. "sec, DECL=".. decl[ j ] )
-end
---]]--
  if night_button:labelcolor() == fltk.FL_BLACK then
     --best color / night vision
-    asterism_color=2
+    asterism_color=2 --LIGHT GREEN
+    second_ast_color=207 --very light green
  else
     --best color / day vision
-    asterism_color=4
+    asterism_color=4 --DARK BLUE
+    second_ast_color=6 --light blue
+ end
+
+ --UNIFIED ALL asterisms, included the one related to selected constellation 
+ --adapt color and style to context
+ if night_button:labelcolor() == fltk.FL_BLACK then
+    --best color / night vision
+    asterism_color=2 --LIGHT GREEN
+    second_ast_color=207 --very light green
+ else
+    --best color / day vision
+    asterism_color=4 --DARK BLUE
+    second_ast_color=6 --light blue
  end
  window:make_current() -- needed for all drawing functions
  fltk.fl_color(asterism_color)
- fltk.fl_line_style(fltk.FL_SOLID, 2, nil) --must be set only AFTER drawing color
- -- Linux will segfault unless we set the font before using fl_draw (=text drawing) with, for example, fltk.fl_font(fltk.FL_HELVETICA_BOLD,20)
-  for i=1,#hr_ast_array-1 do
-      if hr_ast_array[ i ] == -1 then 
-         --no plotting : "plotter up"
-      else
-         j = get_hr_array_idx( hr_ast_array[ i ] )  --star index
-         x1= floor(((24-(ra_h[j]+(ra_m[j]/60)+(ra_s[j]/3600)))*grid_hor_width)+grid_decx)
-         if decl[j]>0 then
-            y1=floor((80-decl[j])*pixelsperdeg)+grid_decy
-         else
-            y1=floor(-1*decl[j]*pixelsperdeg)+grid_mid_vert
-         end
-         j = get_hr_array_idx( hr_ast_array[ i+1 ] )  --next star index
-         if hr_ast_array[ i+1 ] == -1 then 
-            --no plotting : "plotter up"
-         else
-            x2= floor(((24-(ra_h[j]+(ra_m[j]/60)+(ra_s[j]/3600)))*grid_hor_width)+grid_decx)
-            if decl[j]>0 then
-               y2=floor((80-decl[j])*pixelsperdeg)+grid_decy
-            else
-               y2=floor(-1*decl[j]*pixelsperdeg)+grid_mid_vert
-            end
-            fltk.fl_line(x1, y1, x2,y2)
-         end
-      end
- end
+ fltk.fl_line_style(fltk.FL_DOT, 2, nil)
+
+ for c=1,#constellation_abrev do
+  if constellation_abrev[c] == cname then
+     --color & style for selected constellation 
+     linecolor=asterism_color
+     textcolor=asterism_color
+     linestyle=fltk.FL_SOLID
+     linewidth=2
+  else
+     --color & style for selected constellation 
+     linecolor=asterism_color
+     textcolor=second_ast_color
+     linestyle=fltk.FL_DOT
+     linewidth=1
+  end
+     constast, nodes_ast, hr_ast_array = get_info_asterism2( constellation_abrev[c] )
+     for i=1,#hr_ast_array-1 do
+        if hr_ast_array[ i ] == -1 then 
+           --no plotting : "plotter up"
+        else
+           j = get_hr_array_idx( hr_ast_array[ i ] )  --star index
+           --computing midpoint asterism, used to position constellation "label"
+--add 140825
+           k = floor(#hr_ast_array/2)
+           while hr_ast_array[ k ] == -1 do
+              k = k+1
+           end
+           midpoint_asterism_idx=k
+ --end adding
+           x1= floor(((24-(ra_h[j]+(ra_m[j]/60)+(ra_s[j]/3600)))*grid_hor_width)+grid_decx)
+           if decl[j]>0 then
+              y1=floor((80-decl[j])*pixelsperdeg)+grid_decy
+           else
+              y1=floor(-1*decl[j]*pixelsperdeg)+grid_mid_vert
+           end
+           if upper(constellation_abrev[c]) == "PEG" then --beginning of various displaying rules for constellation labels
+              if i== midpoint_asterism_idx+4 then
+                 fltk.fl_color(textcolor)
+                 fltk.fl_font(fltk.FL_HELVETICA_BOLD,26)
+                 fltk.fl_draw(constellation_abrev[c],x1,y1-30)
+              end
+           elseif upper(constellation_abrev[c]) == "AND" then
+              if i== midpoint_asterism_idx-1 then
+                 fltk.fl_color(textcolor)
+                 fltk.fl_font(fltk.FL_HELVETICA_BOLD,26)
+                 fltk.fl_draw(constellation_abrev[c],x1-50,y1+10)
+              end
+           elseif upper(constellation_abrev[c]) == "UMI" then
+              if i== midpoint_asterism_idx-1 then
+                 fltk.fl_color(textcolor)
+                 fltk.fl_font(fltk.FL_HELVETICA_BOLD,26)
+                 fltk.fl_draw(constellation_abrev[c],x1,y1+50)
+              end
+           else
+             if i== midpoint_asterism_idx then
+                fltk.fl_color(textcolor)
+                fltk.fl_font(fltk.FL_HELVETICA_BOLD,26)
+                fltk.fl_draw(constellation_abrev[c],x1,y1-50)
+             end
+           end --end of various displaying rules for constellation labels
+           
+           j = get_hr_array_idx( hr_ast_array[ i+1 ] )  --next star index
+           if hr_ast_array[ i+1 ] == -1 then 
+              --no plotting : "plotter up"
+           else
+              x2= floor(((24-(ra_h[j]+(ra_m[j]/60)+(ra_s[j]/3600)))*grid_hor_width)+grid_decx)
+              if decl[j]>0 then
+                 y2=floor((80-decl[j])*pixelsperdeg)+grid_decy
+              else
+                 y2=floor(-1*decl[j]*pixelsperdeg)+grid_mid_vert
+              end
+              --style for current constellation
+              fltk.fl_color(linecolor)
+              fltk.fl_line_style(linestyle, linewidth, nil)
+              fltk.fl_line(x1, y1, x2,y2)
+           end
+        end
+     end --for i
+ end --for c
+ 
+ 
 end --end function
 
 function night_vision()
