@@ -24,8 +24,10 @@ cos=math.cos
 sin=math.sin
 acos=math.acos
 asin=math.asin
+tan=math.tan
 atan=math.atan
 atan2=math.atan2
+format=string.format
 
 results={} --table of results for each planets, with right ascension, declination, distance for each series short and long 5colsx19 lines with legends
 table.insert(results,{"Planet","Series","RA (J2000)","DEC (J2000)","Distance AU"})
@@ -300,6 +302,22 @@ function degreesToHMS(d)
     return(st)
 end --end function
 
+function HdecToHMS(d) --M.TERRAS code
+ --concerned = right ascension in decimal hours
+ --output = right ascension in hours, mn, sec
+ local i
+ if d == nil then
+    return nil
+ end
+ local hh=floor(d)
+ local mn,sec=0,0
+ mn = (d-hh)*60
+ i = floor( ((d-hh)*100) )
+ sec= (((d-hh)*100)-i)*60
+ st=format('%02d',hh).."h"..format('%02d',mn).."mn"..format('%02d',sec).."s"
+ return st
+end --end function
+
 function computePlanetShort(planet,jd)
    return computePlanetPosition(jd,data1800to2050[planet][1],data1800to2050[planet][2])
 end
@@ -361,22 +379,43 @@ function julianDateToGregorian(jd)
  return year, month, day
 end  --end function
 
---[[
-javascript function GregorianTojulianDate() to convert to Lua if needed
-    var jd, year, month, day, i, j, k;
-
-    year = 1970;
-    month = 1;
-    day = 1;
-
-    i = year;
-    j = month;
-    k = day;
-
-    jd = Math.floor(k - 32075 + 1461 * (i + 4800 + (j - 14) / 12) / 4 + 367 * (j - 2 - (j - 14) / 12 * 12) / 12 - 3 * ((i + 4900 + (j - 14) / 12) / 100) / 4);
-
-    document.write("julian date = " + jd);
-]]--
+function GregorianTojulianDate(year, month,day,h) --by MT with some help from Qwant
+ --h is decimal hour
+ local y,m,d=year,month,day
+ local fraction_time
+ local jd_day,jd
+ local a,b
+ 
+ if year and month and day and h then
+--print("year, month,day,h = " .. year, month,day,h)
+    y,m,d=tonumber(year),tonumber(month),tonumber(day),tonumber(h)
+    if y and m and d and h then
+       if y >1582 and m>=1 and m<=31 and d>=1 and d<=31 and h>=0 and h<24 then
+          --continue
+       else 
+          return nil
+       end
+    else 
+       return nil
+    end
+ else 
+    return nil
+ end
+ fraction_time=h/24
+ -- Ajustement de l'année et du mois
+ if m <= 2 then
+    y = y - 1
+    m = m + 12
+ end
+ --Calcul du nombre de jours julien (JDN) à midi (12h)
+ a = floor(y / 100)
+ b = 2 - a + floor(a / 4)
+ --Calcul du jour julien entier (pour la date sans l'heure) : 
+ jd_day = floor(365.25 * (y + 4716)) + floor(30.6001 * (m + 1)) + d + b - 1524.5 
+ jd=jd_day+fraction_time
+ print("jd="..jd)
+ return jd
+end  --end function
 
 torad=pi/180.0
 
@@ -397,7 +436,7 @@ function getGeocentricMoonPos(jd)
 	P = 0.9508 + 0.0518*cosd(135.0 + 477198.87*T) + 0.0095*cosd(259.3 - 413335.36*T) + 0.0078*cosd(235.7 + 890534.22*T) + 0.0028*cosd(269.9 + 954397.74*T)
 
 	SD=0.2724*P
-	r=1/sind(P) --distance' in earth radii unit, ie 6371km. To convert to AU
+	r=1/sind(P) --distance in earth radii unit, ie 6371km. To convert to AU
 	r=r*6371 --distance in km
 	--1AU = 149597870700 m
 	--1AU = 149597870.7 km
@@ -415,3 +454,104 @@ function getGeocentricMoonPos(jd)
 	dec=asin(n)
 	return (ra/torad/15),(dec/torad),r
 end --end function	
+
+--computing set & rise of sun
+--Original javascript code by By Greg Miller gmiller@gregmiller.net celestialprogramming.com
+--Released as public domain
+--at https://celestialprogramming.com/risesetalgorithm.html
+--default location is set @ St Denis Lès Bourg
+dec_longitude=-5,1899 --degree ATTENTION! all west longitude have to be negative (and eastern positive) IN THIS PARTICULAR COMPUTATION
+dec_latitude=46,2026 --° N 
+--sun position at rise time (cf below) will give the EAST cardinal point on mercator skycard for your lat & lon location
+toRad=pi/180.0
+toDeg=180.0/pi
+function constrain(v)
+ if v<0 then
+    return v+1
+ end
+ if v>1 then
+    return v-1
+ end
+ return v
+end --end function
+
+--Greenwhich mean sidereal time from Meeus page 87
+--Input is julian date, does not have to be 0h
+--Output is angle in degrees
+function GMST(jd)
+ local t=(jd-2451545.0)/36525.0
+ local st=280.46061837+360.98564736629*(jd-2451545.0)+0.000387933*t*t - t*t*t/38710000.0
+ st=st%360
+ if st<0 then
+    st = st+360
+ end
+ return st
+end --end function
+
+function get_timezone()
+--linux bash cmd=> date +"%z" => +0200
+--windows equivalent powershell => Get-Date -format "zz" => +02
+--macos equivalent=>  date +%z
+local osName, linecmd, res, f, sign, buf,st,tz
+ osName=murgaLua.getHostOsName()
+ if osName == "linux" then
+    linecmd = "date +\"%z\" > temp.txt"
+ elseif osName == "macos" then
+    linecmd = "date +%z  > temp.txt"
+ elseif osName == "windows" then
+    linecmd = "Get-Date -format \"zz\"> temp.txt"
+ else
+    --nothing
+ end
+ res = os.execute(linecmd)
+--print("linecmd = " .. linecmd .. ", res is " .. res)
+ if res == 0 then
+    f = io.open("temp.txt", "rb")
+    if f then
+       buf = f:read("*all")
+       io.close(f)
+       if buf then 
+          if string.sub(buf,1,1) == "+" then
+             sign=1
+          elseif string.sub(buf,1,1) == "-" then
+             sign=-1
+          else
+          end
+          st = string.sub(buf,2)
+          if osName == "linux" or osName == "macos"then
+             tz = sign*tonumber(st)/100
+          elseif osName == "windows" then
+             tz = sign*tonumber(st)
+          else
+          end
+          if tz then
+--print("Current TimeZone is : " .. tz)
+             return tz
+          end
+      end
+    end
+ else
+--print("res of cmd : " .. linecmd .. " is " .. res)
+ end
+ return nil
+end --end function
+
+function getRiseSet(jd,lat,lon,ra,dec)
+ local h0=-0.8333 --For Sun
+-- local h0=-0.5667 --For stars and planets, local h0=0.125   --For Moon
+ local cosH=(sin(h0*pi/180.0)-(sin(lat*pi/180.0)*sin(dec*pi/180.0))) / (cos(lat*pi/180.0)*cos(dec*pi/180.0))
+ local h1=acos(cosH)*180.0/pi
+ local gmst=GMST(floor(jd)+.5)
+--print("temp values\ncosH="..cosH.."\nh1="..h1.."\ngmst="..gmst)
+ 
+ local suntransit=(ra+lon-gmst)/360.0
+ local sunrise=suntransit-(h1/360.0)
+ local sunset=suntransit+(h1/360.0)
+--print("temp suntransit="..suntransit..", sunrise=".. sunrise .. ", sunset="..sunset) 
+ local finaltransit=constrain(suntransit)*24.0
+ local finalrise=constrain(sunrise)*24.0
+ local finalset=constrain(sunset)*24.0
+--print("final suntransit="..finaltransit..", sunrise=".. finalrise .. ", sunset="..finalset) 
+ 
+return finaltransit, finalrise, finalset
+end --end function
