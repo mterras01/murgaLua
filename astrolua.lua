@@ -200,6 +200,15 @@ grid_decy=80
 grid_mid_vert=0
 pixelsperdeg=1
 
+--user location
+--default location is set @ St Denis Lès Bourg
+dec_longitude=-5,1899 --degree East, need to be negative for East with certain algorithms
+dec_latitude=46,2026 --degree N
+suntransit, sunrise, sunset=0,0,0 --computed decimal hours computed with previous info
+tz=0 --time zone for current location (from OpSys)
+ra_east=0 --East Right Ascension in decimal hour for current location
+date_ra_east={} --date of ra_east computation (ra_east is valid for this date , and must be updated for other days), format is {dd,mm,yyyy}
+
 --time vars
 jd=0 --julian date
 sign_timestep=1 --default=direction's time for planets' animation is future (past is -1)
@@ -606,6 +615,7 @@ function get_timestep()
  if Fl.event_inside(forward_b) == 1 then
     --step of one day
     timestep=24*60*60
+    --timestep=60*60 --one hour
     forward_b:labelcolor(1)
     fforward_b:labelcolor(256)
     vfforward_b:labelcolor(256)
@@ -888,6 +898,7 @@ function show_objects()
  plot_stars()
  plot_messier()
  plot_planets()
+ display_cardinal()
  window:redraw()
  window:show()
 end --end function
@@ -902,17 +913,21 @@ function get_hr_array_idx( hr_ast_array_idx )
 end --end function
 
 function select_const2()
- --callback function V2 for plotting selected constellation asterism 
+ --callback function V2 for plotting constellations asterisms
  local i,j,k,x1,y1,x2,y2,cname,cidx
  local constast, nodes_ast,asterism_color,midpoint_asterism_idx,second_ast_color
  local hr_ast_array={}
  local previous_selconst=0
- local linecolor, textcolor, linestyle, linewidth
+ local linecolor, textcolor, linestyle, linewidth, textfont, textheight
  --find clicked button=selected constellation (3-cars acronym & index)
  for i=1,#co do
       if Fl.event_inside(co[ i ]) == 1 then
          cname = co[ i ]:label() --less smart than self:label(), but self solution does not work for some reason
+         if co[i ]:color() == fltk.FL_RED then
+            
+         end
          cidx = i
+         selconst = i
          break
       end
  end
@@ -944,26 +959,16 @@ function select_const2()
  end
  --ending buttons ops
  
- if night_button:labelcolor() == fltk.FL_BLACK then
-    --best color / night vision
-    asterism_color=2 --LIGHT GREEN
-    second_ast_color=207 --very light green
- else
-    --best color / day vision
-    asterism_color=4 --DARK BLUE
-    second_ast_color=6 --light blue
- end
-
  --UNIFIED ALL asterisms, included the one related to selected constellation 
  --adapt color and style to context
  if night_button:labelcolor() == fltk.FL_BLACK then
     --best color / night vision
     asterism_color=2 --LIGHT GREEN
-    second_ast_color=207 --very light green
+    second_ast_color=fltk.FL_WHITE --207 --very light green
  else
     --best color / day vision
     asterism_color=4 --DARK BLUE
-    second_ast_color=6 --light blue
+    second_ast_color=219 --6 --light blue
  end
  window:make_current() -- needed for all drawing functions
  fltk.fl_color(asterism_color)
@@ -975,13 +980,17 @@ function select_const2()
      linecolor=asterism_color
      textcolor=asterism_color
      linestyle=fltk.FL_SOLID
-     linewidth=2
+     linewidth=4
+     textfont=fltk.FL_HELVETICA_BOLD
+     textheight=26
   else
      --color & style for selected constellation 
      linecolor=asterism_color
      textcolor=second_ast_color
      linestyle=fltk.FL_DOT
      linewidth=1
+     textfont=fltk.FL_HELVETICA
+     textheight=20
   end
      constast, nodes_ast, hr_ast_array = get_info_asterism2( constellation_abrev[c] )
      for i=1,#hr_ast_array-1 do
@@ -1006,25 +1015,26 @@ function select_const2()
            if upper(constellation_abrev[c]) == "PEG" then --beginning of various displaying rules for constellation labels
               if i== midpoint_asterism_idx+4 then
                  fltk.fl_color(textcolor)
-                 fltk.fl_font(fltk.FL_HELVETICA_BOLD,26)
+                 --fltk.fl_font(fltk.FL_HELVETICA_BOLD,26)
+                 fltk.fl_font(textfont, textheight)
                  fltk.fl_draw(constellation_abrev[c],x1,y1-30)
               end
            elseif upper(constellation_abrev[c]) == "AND" then
               if i== midpoint_asterism_idx-1 then
                  fltk.fl_color(textcolor)
-                 fltk.fl_font(fltk.FL_HELVETICA_BOLD,26)
+                 fltk.fl_font(textfont, textheight)
                  fltk.fl_draw(constellation_abrev[c],x1-50,y1+10)
               end
            elseif upper(constellation_abrev[c]) == "UMI" then
               if i== midpoint_asterism_idx-1 then
                  fltk.fl_color(textcolor)
-                 fltk.fl_font(fltk.FL_HELVETICA_BOLD,26)
+                 fltk.fl_font(textfont, textheight)
                  fltk.fl_draw(constellation_abrev[c],x1,y1+50)
               end
            else
              if i== midpoint_asterism_idx then
                 fltk.fl_color(textcolor)
-                fltk.fl_font(fltk.FL_HELVETICA_BOLD,26)
+                fltk.fl_font(textfont, textheight)
                 fltk.fl_draw(constellation_abrev[c],x1,y1-50)
              end
            end --end of various displaying rules for constellation labels
@@ -1211,6 +1221,38 @@ function main_display()
  jd_button:label(jd)
  jd_button:tooltip("Julian Date from the given date/time")
  jd_button:labelsize(labelsize)
+ 
+ --buttons with info for current location = latitude+longitude, system timezone (with current offset), sunrise and sunset hours
+ dec_longitude=-5.1899 --degree East, need to be negative for East with certain algorithms
+ dec_latitude=46.2026 --degree N
+ lat_b = fltk:Fl_Float_Input(0, 3*height_button, 80, height_button)
+ lat_b:insert( dec_latitude )
+ lat_b:textsize(10)
+ lat_b:tooltip("Latitude in decimal degrees")
+ long_b = fltk:Fl_Float_Input(80, 3*height_button, 80, height_button)
+ long_b:insert( (-1*dec_longitude) )
+ long_b:textsize(10)
+ long_b:tooltip("Longitude in decimal degrees")
+ tz_b = fltk:Fl_Float_Input(160, 3*height_button, 40, height_button)
+ tz_b:insert( tz )
+ tz_b:textsize(10)
+ tz_b:tooltip("Current TimeZone (as set in your OpSys)")
+ --suntransit, sunrise, sunset
+ sunrise_b = fltk:Fl_Button(200, 3*height_button, width_button, height_button)
+ st=planetpositions.HdecToHMS(sunrise+tz)
+ sunrise_b:label(st)
+ sunrise_b:tooltip("Sunrise Hour for current location (lat/long/date)")
+ sunrise_b:labelsize(labelsize)
+ sunrise_b:color(fltk.FL_YELLOW)
+ sunset_b = fltk:Fl_Button(200+width_button, 3*height_button, width_button, height_button)
+ st=planetpositions.HdecToHMS(sunset+tz)
+ sunset_b:label(st)
+ sunset_b:tooltip("Sunset Hour for current location (lat/long/date)")
+ sunset_b:labelsize(labelsize)
+ sunset_b:color(fltk.FL_BLACK)
+ sunset_b:labelcolor(fltk.FL_WHITE)
+
+ 
  
  v_button = fltk:Fl_Button(width_button, 0, width_button, height_button, "Update")
  v_button:tooltip("Update Skymap with current parameters")
@@ -1402,6 +1444,50 @@ function main_display()
           planetsb[#planetsb]:callback(info_p)
        end
   end
+  --cardinal points
+  --1st button is EAST, have to compute delta between current hour and hour of sunrise
+  dd,mm,yyyy,hh,mn,ss,t=get_date_time()
+  k=hh+(mn/60)+(ss/3600)
+  delta=floor(k-(sunrise+tz)) --between sunrise and current_time
+  
+  i=floor(24-ra_east-delta+tz)*grid_hor_width+grid_decx
+  if i<0 then i=i+24 end
+  if i>=24 then i=i-24 end
+  if i<0 then i=i+24 end
+  j=grid_decy+15+(16*grid_vert_height)
+  st="EAST (RA="..ra_east .. ") for current date & location"
+  east_b=fltk:Fl_Button(i, j, 25, 35, "E")
+  east_b:labelsize(22)
+  east_b:tooltip(st)
+  
+  i=floor(24-ra_east+12-delta+tz)*grid_hor_width+grid_decx
+  if i<0 then i=i+24 end
+  if i>=24 then i=i-24 end
+  if i<0 then i=i+24 end
+  st="WEST "
+  west_b=fltk:Fl_Button(i, j, 25, 35,"W")
+  west_b:labelsize(22)
+  west_b:tooltip(st)
+  
+  i=floor(24-ra_east-6-delta+tz)*grid_hor_width+grid_decx
+  if i<0 then i=i+24 end
+  if i>=24 then i=i-24 end
+  if i<0 then i=i+24 end
+  st="NORTH "
+  north_b=fltk:Fl_Button(i, j, 25, 35,"N")
+  north_b:labelsize(22)
+  north_b:tooltip(st)
+  --[-[
+  i=floor(24-ra_east+6-delta+tz)*grid_hor_width+grid_decx
+  if i>=24 then i=i-24 end
+  if i<0 then i=i+24 end
+  if i>=24 then i=i-24 end
+  if i<0 then i=i+24 end
+  st="SOUTH "
+  south_b=fltk:Fl_Button(i, j, 25, 35,"S")
+  south_b:labelsize(22)
+  south_b:tooltip(st)
+  --]]--
   fltk:Fl_End(window)
   window:show()
   window:make_current()
@@ -1576,6 +1662,104 @@ print("Problem loading File " .. filename_mess .. " for reading !")
  end
 end --end function
 
+function get_user_East(srise) --srise=sunrise+tz before this call !!!
+--having East cardinal point/current location : computing Sun's RA for the "sunrise hour" ATTENTION! sunrise includes "timezone" (added or substracted)
+local dd,mm,yyyy,hh,mn,ss,t,jd,temp
+ if srise then
+    if srise ~= 0 then
+       --continue
+    else
+       return nil
+    end
+ else 
+    return nil
+ end
+ dd,mm,yyyy,hh,mn,ss,t = get_date_time() --current date for computing sunrise
+ planetpositions.clearResultsTable() --init tables positions for celestial objects
+ jd = planetpositions.GregorianTojulianDate(yyyy, mm, dd, srise) --same date as above, but with sunrise hour
+ planetpositions.computeAll(jd)
+ extract_from_planets() --update tables positions for celestial objects
+ --retrieve sun's RA 
+ ra_east=ra_h_p[10]+(ra_m_p[10]/60)+(ra_s_p[10]/3600) --sun's RA in decimal hour format
+ return ra_east
+end --end function
+
+function display_cardinal() 
+  --cardinal points buttons positions (buttons are defined in main display)
+  local dd,mm,yyyy,hh,mn,ss,t
+  local i,j,k,st
+  local ra
+  
+  if sunrise and tz and ra_east then
+     --continue
+     if sunrise~=0  and tz~=0 and ra_east~=0 then
+       --continue
+     else
+         return
+     end
+  else
+     return
+  end
+  
+  --1st button is EAST, have to compute delta between current hour and hour of sunrise
+  dd,mm,yyyy,hh,mn,ss,t=get_date_time()
+  if dd==date_ra_east[1] and mm==date_ra_east[2] and yyyy==date_ra_east[3] then
+     --continue
+  else
+     --current date has changed : sunrise must be updated
+     dd,mm,yyyy,hh,mn,ss,t = get_date_time()
+     planetpositions.clearResultsTable()
+     jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
+     planetpositions.computeAll(jd)
+     extract_from_planets()  --for 1st display : updating all positions' tables
+  
+     --default location is set @ St Denis Lès Bourg
+     dec_longitude=-5,1899 --degree East, need to be negative for East with certain algorithms
+     dec_latitude=46,2026 --degree N
+
+     --SUN current RAS, cocnverted to decimal hours
+     ra=ra_h_p[10]+(ra_m_p[10]/60)+(ra_s_p[10]/3600)
+     ra=ra*15 --1 hour is 15 degrees
+     tz=planetpositions.get_timezone() --from sys!
+     suntransit, sunrise, sunset = planetpositions.getRiseSet(jd, dec_latitude, dec_longitude, ra, decl_p[10])
+     --print("suntransit, sunrise, sunset = " .. suntransit, sunrise, sunset )
+     --having East cardinal point for current location : computing Sun's RA for the "sunrise hour"
+     --converting sunrise hour in julian date jd => planetpositions.computeAll(jd) => extract_from_planets() => get sun's RA => 
+     --Then show_objects() that update current time => planetpositions.computeAll(jd) => extract_from_planets() 
+     date_ra_east={dd,mm,yyyy}
+     ra_east = get_user_East( (sunrise+tz) )
+  end
+  
+  k=hh+(mn/60)+(ss/3600)
+  delta=floor(k-(sunrise+tz)) --between sunrise and current_time
+  
+  i=floor(24-ra_east-delta+tz)*grid_hor_width+grid_decx
+  if i<0 then i=i+24 end
+  if i>=24 then i=i-24 end
+  if i<0 then i=i+24 end
+  j=grid_decy+15+(16*grid_vert_height)
+  east_b:position(i,j)
+  
+  i=floor(24-ra_east+12-delta+tz)*grid_hor_width+grid_decx
+  if i<0 then i=i+24 end
+  if i>=24 then i=i-24 end
+  if i<0 then i=i+24 end
+  west_b:position(i,j)
+  
+  i=floor(24-ra_east-6-delta+tz)*grid_hor_width+grid_decx
+  if i<0 then i=i+24 end
+  if i>=24 then i=i-24 end
+  if i<0 then i=i+24 end
+  north_b:position(i,j)
+  
+  i=floor(24-ra_east+6-delta+tz)*grid_hor_width+grid_decx
+  if i>=24 then i=i-24 end
+  if i<0 then i=i+24 end
+  if i>=24 then i=i-24 end
+  if i<0 then i=i+24 end
+  south_b:position(i,j)
+end --end function
+
  t00=0
  t00 = os.time() --top chrono
  --osName="OS=" .. murgaLua.getHostOsName()
@@ -1631,12 +1815,30 @@ print("pixelsperdeg = " .. pixelsperdeg )
  planetpositions.clearResultsTable()
  jd=planetpositions.JulianDateFromUnixTime(t*1000) --module planetpositions is required
  planetpositions.computeAll(jd)
- extract_from_planets()  --for 1st display
+ extract_from_planets()  --for 1st display : updating all positions' tables
+  
+  --default location is set @ St Denis Lès Bourg
+ dec_longitude=-5,1899 --degree East, need to be negative for East with certain algorithms
+ dec_latitude=46,2026 --degree N
+
+ --temp={ra_h_p[10], ra_m_p[10], ra_s_p[10]}
+ --needing a conversion function RA HMS to decimal degree 0h to 24h => -90 to +90 degrees => zero degree location?
+ ra=ra_h_p[10]+(ra_m_p[10]/60)+(ra_s_p[10]/3600)
+ --print("(current) SUN RA is " .. ra_h_p[10].."h "..ra_m_p[10].."mn ".. ra_s_p[10].."sec\ndecimal version=" .. ra.."\nSUN RA in degrees (/360) is " .. (ra*15) )
+ --print("SUN DECL in degrees is " ..  decl_p[10] )
+ ra=ra*15
+ tz=planetpositions.get_timezone() --from sys!
+ suntransit, sunrise, sunset = planetpositions.getRiseSet(jd, dec_latitude, dec_longitude, ra, decl_p[10])
+ print("suntransit, sunrise, sunset = " .. suntransit, sunrise, sunset )
+ --having East cardinal point for current location : computing Sun's RA for the "sunrise hour"
+ --converting sunrise hour in julian date jd => planetpositions.computeAll(jd) => extract_from_planets() => get sun's RA => 
+ --Then show_objects() that update current time => planetpositions.computeAll(jd) => extract_from_planets() 
+ date_ra_east={dd,mm,yyyy}
+ ra_east = get_user_East( (sunrise+tz) )
+ print("ra_east = " .. ra_east)
  
  main_display()
  show_objects()
-
- print("RAM used AFTER pre_report() -and freeing some huge tables- by  gcinfo() = " .. gcinfo() .. ", reported by collectgarbage()=" .. collectgarbage("count"))
  
  print("Processing in " .. os.difftime(os.time(), t00) .. " seconds, ie  " .. format('%.2f',(os.difftime(os.time(), t00)/60)) .. " mn, ie " .. format('%.2f',(os.difftime(os.time(), t00)/3600)) .. " hours")
 
