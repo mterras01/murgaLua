@@ -186,6 +186,9 @@ gridb={} --grid (skymap)
 starsb={} --stars'buttons (skymap)
 messiersb={} --Messiers objects' buttons (skymap)
 planetsb={} --planets & suns' buttons (skymap)
+ecliptic_boxes={} --ecliptic curve
+ecliptic_ra={} --ecliptic ra
+ecliptic_decl={} --ecliptic decl
 
 --night vision parameters, default mode=day
 windowbg=fltk.FL_BACKGROUND_COLOR --skymap background
@@ -899,6 +902,7 @@ function show_objects()
  plot_messier()
  plot_planets()
  display_cardinal()
+ update_ecliptic()
  window:redraw()
  window:show()
 end --end function
@@ -1104,6 +1108,7 @@ function night_vision()
   for i=1,#planetsb do
        planetsb[i]:labelcolor(labelcol)
   end
+  update_ecliptic()
   window:redraw()
 end --end function
 
@@ -1477,7 +1482,7 @@ function main_display()
   north_b=fltk:Fl_Button(i, j, 25, 35,"N")
   north_b:labelsize(22)
   north_b:tooltip(st)
-  --[-[
+
   i=floor(24-ra_east+6-delta+tz)*grid_hor_width+grid_decx
   if i>=24 then i=i-24 end
   if i<0 then i=i+24 end
@@ -1487,7 +1492,23 @@ function main_display()
   south_b=fltk:Fl_Button(i, j, 25, 35,"S")
   south_b:labelsize(22)
   south_b:tooltip(st)
-  --]]--
+  
+  --display ecliptic boxes
+  j=1
+  for i=1,366,2 do 
+       --for earth/moon barycenter "EM", no change of pos: keep out of view (Attention: EM pos is needed for other planets computations
+       posx= floor(((24-ecliptic_ra[ j ])*grid_hor_width)+grid_decx)      
+       if ecliptic_decl[ j ]>0 then
+           posy=floor((80-ecliptic_decl[ j ])*pixelsperdeg)+grid_decy
+       else
+           posy=floor(-1*ecliptic_decl[ j ]*pixelsperdeg)+grid_mid_vert
+       end
+       j=j+1
+       table.insert(ecliptic_boxes, fltk:Fl_Button(posx, posy, 3, 3, "") )
+       ecliptic_boxes[#ecliptic_boxes]:box(fltk.FL_FLAT_BOX)
+       ecliptic_boxes[#ecliptic_boxes]:color(192)
+  end
+  
   fltk:Fl_End(window)
   window:show()
   window:make_current()
@@ -1733,31 +1754,87 @@ function display_cardinal()
   k=hh+(mn/60)+(ss/3600)
   delta=floor(k-(sunrise+tz)) --between sunrise and current_time
   
-  i=floor(24-ra_east-delta+tz)*grid_hor_width+grid_decx
-  if i<0 then i=i+24 end
-  if i>=24 then i=i-24 end
-  if i<0 then i=i+24 end
+  k=24-ra_east-delta
+  if k<0 then k=k+24 end
+  if k>=24 then k=k-24 end
+  if k<0 then k=k+24 end
+  i=floor(k*grid_hor_width+grid_decx)
   j=grid_decy+15+(16*grid_vert_height)
   east_b:position(i,j)
   
-  i=floor(24-ra_east+12-delta+tz)*grid_hor_width+grid_decx
-  if i<0 then i=i+24 end
-  if i>=24 then i=i-24 end
-  if i<0 then i=i+24 end
+  k=24-ra_east+12-delta
+  if k<0 then k=k+24 end
+  if k>=24 then k=k-24 end
+  if k<0 then k=k+24 end
+  i=floor(k*grid_hor_width+grid_decx)
   west_b:position(i,j)
   
-  i=floor(24-ra_east-6-delta+tz)*grid_hor_width+grid_decx
-  if i<0 then i=i+24 end
-  if i>=24 then i=i-24 end
-  if i<0 then i=i+24 end
+  k=24-ra_east-6-delta
+  if k<0 then k=k+24 end
+  if k>=24 then k=k-24 end
+  if k<0 then k=k+24 end
+  i=floor(k*grid_hor_width+grid_decx)
   north_b:position(i,j)
   
-  i=floor(24-ra_east+6-delta+tz)*grid_hor_width+grid_decx
-  if i>=24 then i=i-24 end
-  if i<0 then i=i+24 end
-  if i>=24 then i=i-24 end
-  if i<0 then i=i+24 end
+  k=24-ra_east+6-delta
+  if k<0 then k=k+24 end
+  if k>=24 then k=k-24 end
+  if k<0 then k=k+24 end
+  i=floor(k*grid_hor_width+grid_decx)
   south_b:position(i,j)
+end --end function
+
+function update_ecliptic()
+-- changing ecliptic curve's color for day/night vision
+local i,color_e
+ if night_button:labelcolor() == fltk.FL_YELLOW then
+     --day vision
+     color_e=192
+ else
+    --night vision
+    color_e=250
+ end
+ for i=1,#ecliptic_boxes do --update for all boxes of curve
+       ecliptic_boxes[i]:color(color_e)
+ end
+end --end function 
+function compute_ecliptic()
+  --computing annual sun path (current year) from jan, 1st fo dec 31st
+  local i,j
+  local dd,mm,yyyy,hh,mn,ss,t
+  local timebeg, timestep
+  local ra,decl
+  
+  --define timestep = two days in seconds
+  timestep=2*24*60*60
+  --get current_date (only year will be usefull
+  dd,mm,yyyy,hh,mn,ss,t = get_date_time()
+  --compute jd for 1st day of current year
+  jd = planetpositions.GregorianTojulianDate(yyyy, 1,1,0)
+  --convert to UnixTime = 1st day of year
+  timebeg = planetpositions.UnixTimeFromJulianDate(jd)/1000
+  t=timebeg
+  --compute SUN position for 1st year's day
+  planetpositions.clearResultsTable()
+  planetpositions.computeAll(jd)
+  extract_from_planets()
+  ra=ra_h_p[10]+(ra_m_p[10]/60)+(ra_s_p[10]/3600) --sun's RA in decimal hour format
+  table.insert(ecliptic_ra, ra) --ecliptic ra for indexed day of year
+  decl=decl_p[10] --ecliptic decl for indexed day of year
+  table.insert(ecliptic_decl, decl)
+  
+  for i=1,366,2 do
+       t=t+timestep
+       jd=planetpositions.JulianDateFromUnixTime(t*1000) 
+       planetpositions.clearResultsTable()
+       planetpositions.computeAll(jd)
+       extract_from_planets()
+       --compute & record sun's position for this day
+       ra=ra_h_p[10]+(ra_m_p[10]/60)+(ra_s_p[10]/3600) --sun's RA in decimal hour format
+       table.insert(ecliptic_ra, ra) --ecliptic ra for indexed day of year
+       decl=decl_p[10] --ecliptic decl for indexed day of year
+       table.insert(ecliptic_decl, decl)
+  end
 end --end function
 
  t00=0
@@ -1836,6 +1913,8 @@ print("pixelsperdeg = " .. pixelsperdeg )
  date_ra_east={dd,mm,yyyy}
  ra_east = get_user_East( (sunrise+tz) )
  print("ra_east = " .. ra_east)
+ 
+ compute_ecliptic()
  
  main_display()
  show_objects()
