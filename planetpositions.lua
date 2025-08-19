@@ -499,13 +499,13 @@ local osName, linecmd, res, f, sign, buf,st,tz
  elseif osName == "macos" then
     linecmd = "date +%z  > temp.txt"
  elseif osName == "windows" then
-    linecmd = "Get-Date -format \"zz\"> temp.txt"
+    linecmd = "powershell.exe Get-Date -format \"zz\"> temp.txt"
  else
     --nothing
  end
  res = os.execute(linecmd)
---print("linecmd = " .. linecmd .. ", res is " .. res)
- if res == 0 then
+print("linecmd = " .. linecmd .. ", res is " .. res)
+ if res == 0 or res == 1 then
     f = io.open("temp.txt", "rb")
     if f then
        buf = f:read("*all")
