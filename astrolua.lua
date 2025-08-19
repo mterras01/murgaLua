@@ -189,6 +189,7 @@ planetsb={} --planets & suns' buttons (skymap)
 ecliptic_boxes={} --ecliptic curve
 ecliptic_ra={} --ecliptic ra
 ecliptic_decl={} --ecliptic decl
+ecliptic_date={} --date of year for this position in ecliptic
 
 --night vision parameters, default mode=day
 windowbg=fltk.FL_BACKGROUND_COLOR --skymap background
@@ -1503,10 +1504,11 @@ function main_display()
        else
            posy=floor(-1*ecliptic_decl[ j ]*pixelsperdeg)+grid_mid_vert
        end
-       j=j+1
        table.insert(ecliptic_boxes, fltk:Fl_Button(posx, posy, 3, 3, "") )
        ecliptic_boxes[#ecliptic_boxes]:box(fltk.FL_FLAT_BOX)
        ecliptic_boxes[#ecliptic_boxes]:color(192)
+       ecliptic_boxes[#ecliptic_boxes]:tooltip( ecliptic_date[j] )
+       j=j+1
   end
   
   fltk:Fl_End(window)
@@ -1803,6 +1805,7 @@ local i,color_e
        ecliptic_boxes[i]:color(color_e)
  end
 end --end function 
+
 function compute_ecliptic()
   --computing annual sun path (current year) from jan, 1st fo dec 31st
   local i,j
@@ -1816,6 +1819,7 @@ function compute_ecliptic()
   dd,mm,yyyy,hh,mn,ss,t = get_date_time()
   --compute jd for 1st day of current year
   jd = planetpositions.GregorianTojulianDate(yyyy, 1,1,0)
+  table.insert(ecliptic_date,("       01/01/"..yyyy) )
   --convert to UnixTime = 1st day of year
   timebeg = planetpositions.UnixTimeFromJulianDate(jd)/1000
   t=timebeg
@@ -1831,6 +1835,8 @@ function compute_ecliptic()
   for i=1,366,2 do
        t=t+timestep
        jd=planetpositions.JulianDateFromUnixTime(t*1000) 
+       yyyy, mm, dd=planetpositions.julianDateToGregorian(jd)
+       table.insert(ecliptic_date, ("       "..dd .. "/".. mm.."/"..yyyy) )
        planetpositions.clearResultsTable()
        planetpositions.computeAll(jd)
        extract_from_planets()
