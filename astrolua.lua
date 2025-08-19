@@ -1599,7 +1599,7 @@ end --end function
 function dl_bsc()
  local buffer="" 
  local nblines=0
- local pos,j
+ local pos,j,decline
  
 --new version of BSC database 110825
 --csv file for celestial objects data loading
@@ -1620,11 +1620,16 @@ nblines=0
 print("File " .. filename_bsc .. " opened for reading !")
        buffer = f:read("*all")
        io.close(f)
+       if define_textfile_origin(buffer) == "unix" then 
+          decline=-1
+       else
+          decline=-2 --windows
+       end
        pos=1
        while 1 do
              j = find(buffer,"\n",pos)
              if j then
-	            line = sub(buffer, pos, j)
+	            line = sub(buffer, pos, j+decline)
                 extract_from_bsc2_line(line)
                 pos = j+1
                 nblines=nblines+1
