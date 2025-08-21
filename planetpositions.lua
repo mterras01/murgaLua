@@ -17,6 +17,7 @@ to a Lua Module
 
 --sub = string.sub --NO : sub() is a local function in this module
 floor=math.floor
+find=string.find
 pi=math.pi
 abs=math.abs
 sqrt=math.sqrt
@@ -376,6 +377,7 @@ function julianDateToGregorian(jd)
  year = i
  month = j
  day = k
+ if day==0 then day=1 end
  return year, month, day
 end  --end function
 
@@ -494,7 +496,8 @@ function get_timezone()
 --macos equivalent=>  date +%z
 local osName, linecmd, res, f, sign, buf,st,tz
  osName=murgaLua.getHostOsName()
- if osName == "linux" then
+ print("osName="..osName)
+ if find(osName, "linux",1,true)  then
     linecmd = "date +\"%z\" > temp.txt"
  elseif osName == "macos" then
     linecmd = "date +%z  > temp.txt"
@@ -518,7 +521,7 @@ print("linecmd = " .. linecmd .. ", res is " .. res)
           else
           end
           st = string.sub(buf,2)
-          if osName == "linux" or osName == "macos"then
+          if find(osName,"linux",1,true) or osName == "macos"then
              tz = sign*tonumber(st)/100
           elseif osName == "windows" then
              tz = sign*tonumber(st)
